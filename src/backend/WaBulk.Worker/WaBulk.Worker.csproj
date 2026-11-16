@@ -4,7 +4,6 @@
     <TargetFramework>net10.0</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
-    <UserSecretsId>dotnet-WaBulk.Worker-a6e7c8b3-2b25-4977-a77f-f0f9c6635df9</UserSecretsId>
   </PropertyGroup>
 
   <ItemGroup>

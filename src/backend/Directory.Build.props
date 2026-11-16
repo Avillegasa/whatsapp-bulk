@@ -7,5 +7,7 @@
     <LangVersion>latest</LangVersion>
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
     <AnalysisLevel>latest</AnalysisLevel>
+    <!-- Un solo almacén de dotnet user-secrets para Api, Webhooks y Worker en desarrollo (D-018). -->
+    <UserSecretsId>ef587f8e-fda6-4bf7-b215-bdc70a49c565</UserSecretsId>
   </PropertyGroup>
 </Project>
