@@ -1,7 +1,7 @@
 # Progreso
 
 **Fase actual:** Fase 0 — PoC
-**Siguiente tarea:** F0.2 (Tú) — en Claude desktop: "Sigamos con WhatsApp"
+**Siguiente tarea:** F0.3 (Claude Code) — en `C:\Users\avillegas\dev\whatsapp-bulk`: "Sigamos con la tarea F0.3"
 **Última actualización:** 2026-11-16
 
 ## Estado de tareas
@@ -11,7 +11,7 @@ Estados: Pendiente · En curso · Hecho (sin verificar) · Verificado · Bloquea
 | ID | Tarea | Quién | Estado | Evidencia |
 | --- | --- | --- | --- | --- |
 | F0.1 | App de Meta y número de prueba | Tú | Verificado | `hello_world` recibido (confirmación de Andrés); App, WABA, Phone Number y System User IDs en META-SETUP.md; token del System User (sin caducidad) en gestor de contraseñas; grep `EAA…` sin resultados en la carpeta |
-| F0.2 | Repositorio en GitHub | Tú | En curso | |
+| F0.2 | Repositorio en GitHub | Tú | Verificado | Repo privado Avillegasa/whatsapp-bulk (confirmación de Andrés); `git push origin main` 8176d15..bdafc0e; `dev` al día con `origin/dev`; `git status` limpio; sin `.env` en el commit |
 | F0.3 | Esqueleto de la solución .NET | Claude Code | Pendiente | |
 | F0.4 | SQL Server local y migración inicial | Claude Code | Pendiente | |
 | F0.5 | Cliente de Meta y envío con SendAttempt | Claude Code + Tú | Pendiente | |
@@ -27,6 +27,8 @@ Estados: Pendiente · En curso · Hecho (sin verificar) · Verificado · Bloquea
 
 - Definir dónde corre SQL Server en producción (D-006).
 - Crear el portafolio de Meta de la empresa antes de F1.1 (D-015).
+- Agregar `.gitattributes` para fijar finales de línea (aviso LF→CRLF en Windows); hacerlo en F0.3.
+- Actualizar la ruta de la carpeta (D-016) en las instrucciones del proyecto de claude.ai y en la skill `whatsapp-bulk-guia`; reconectar la carpeta en Claude desktop.
 - Confirmar con el área comercial o legal cómo consta el consentimiento de los clientes para promociones (antes de la Fase 2).
 
 ## Bitácora (lo más reciente arriba)
@@ -34,7 +36,9 @@ Estados: Pendiente · En curso · Hecho (sin verificar) · Verificado · Bloquea
 ### 2026-11-16 — F0.2 iniciada (Claude desktop)
 - Estado: repo privado https://github.com/Avillegasa/whatsapp-bulk con commit 8176d15 (solo README) en `main`; rama local `dev`. Clon en `C:\Users\avillegas\dev\whatsapp-bulk`.
 - Decisión: D-016 — el clon pasa a ser la carpeta del proyecto.
-- Quedó en: copiar los archivos de `Documents\Whatsapp-bulk-proy` al clon, commit y push.
+- Hecho: robocopy al clon (16 archivos, 0 errores); commit `F0.2: setup inicial del proyecto` (bdafc0e) en `main` y push; `dev` sincronizada y publicada.
+- Verificación: F0.2 → Verificado.
+- Siguiente: F0.3 (Claude Code) en el clon.
 
 ### 2026-11-16 — F0.1: portafolio de prueba (Claude desktop)
 - Decisión: D-015 — el PoC usa un portafolio propio de prueba; la empresa aún no tiene uno.
