@@ -1,0 +1,29 @@
+# Secretos y entorno
+.env
+*.env
+!.env.example
+appsettings.*.local.json
+secrets/
+
+# .NET
+bin/
+obj/
+*.user
+*.suo
+.vs/
+TestResults/
+
+# Node / Angular
+node_modules/
+.angular/
+dist/
+
+# Editores y sistema
+.vscode/*
+!.vscode/extensions.json
+.idea/
+.DS_Store
+Thumbs.db
+
+# Claude Code: configuración local personal
+.claude/settings.local.json
