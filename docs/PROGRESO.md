@@ -12,7 +12,7 @@ Estados: Pendiente · En curso · Hecho (sin verificar) · Verificado · Bloquea
 | --- | --- | --- | --- | --- |
 | F0.1 | App de Meta y número de prueba | Tú | Verificado | `hello_world` recibido (confirmación de Andrés); App, WABA, Phone Number y System User IDs en META-SETUP.md; token del System User (sin caducidad) en gestor de contraseñas; grep `EAA…` sin resultados en la carpeta |
 | F0.2 | Repositorio en GitHub | Tú | Verificado | Repo privado Avillegasa/whatsapp-bulk (confirmación de Andrés); `git push origin main` 8176d15..bdafc0e; `dev` al día con `origin/dev`; `git status` limpio; sin `.env` en el commit |
-| F0.3 | Esqueleto de la solución .NET | Claude Code | Pendiente | |
+| F0.3 | Esqueleto de la solución .NET | Claude Code | En curso | |
 | F0.4 | SQL Server local y migración inicial | Claude Code | Pendiente | |
 | F0.5 | Cliente de Meta y envío con SendAttempt | Claude Code + Tú | Pendiente | |
 | F0.6 | Receptor de webhooks | Claude Code + Tú | Pendiente | |

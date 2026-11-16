@@ -1,0 +1,15 @@
+# Finales de línea: LF en el repositorio; Git convierte según la plataforma.
+* text=auto eol=lf
+
+# Scripts de cmd necesitan CRLF
+*.cmd text eol=crlf
+*.bat text eol=crlf
+
+# Solución de Visual Studio
+*.sln text eol=crlf
+
+# Binarios
+*.png binary
+*.jpg binary
+*.ico binary
+*.pfx binary
