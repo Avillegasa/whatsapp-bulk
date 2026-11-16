@@ -20,6 +20,12 @@ public sealed class MetaOptions
     /// <summary>Token del System User. Secreto.</summary>
     public string AccessToken { get; set; } = "";
 
+    /// <summary>App Secret: clave del HMAC de X-Hub-Signature-256. Secreto.</summary>
+    public string AppSecret { get; set; } = "";
+
+    /// <summary>Cadena inventada para el handshake GET del webhook. Secreto.</summary>
+    public string VerifyToken { get; set; } = "";
+
     /// <summary>Tiempo máximo de una llamada; si se supera, el intento queda en SubmissionUnknown.</summary>
     public int RequestTimeoutSeconds { get; set; } = 30;
 }
