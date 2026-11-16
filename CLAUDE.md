@@ -59,11 +59,20 @@ docs/           Plan, progreso, decisiones, arquitectura, setup de Meta
 
 ## Comandos
 
-Se completan en F0.3 y F0.4 cuando exista el código. Mantener esta sección al día.
+Mantener esta sección al día. Todos funcionan en cmd desde la raíz del repo.
 
+- SDK: `dotnet --version` (10.x)
 - Backend: `dotnet build src/backend/WaBulk.sln` · `dotnet test src/backend/WaBulk.sln`
-- SQL Server local: `docker compose -f deploy/docker/compose.dev.yml up -d sqlserver`
+- Ejecutar Api: `dotnet run --project src/backend/WaBulk.Api` → `GET /health` responde `Healthy`
+- Ejecutar Webhooks: `dotnet run --project src/backend/WaBulk.Webhooks` → `GET /health`
+- Ejecutar Worker: `dotnet run --project src/backend/WaBulk.Worker`
+- SQL Server local (desde F0.4): `docker compose -f deploy/docker/compose.dev.yml up -d sqlserver`
 - Frontend (Fase 1): `cd src/frontend && npm ci && npx ng build` · `npx ng test`
+
+Notas de la solución:
+- `src/backend/Directory.Build.props` fija `net10.0`, nullable y warnings como errores para todos los proyectos.
+- Paquetes `Microsoft.AspNetCore.*` / `Microsoft.Extensions.*` en la línea 10.0.x (las 11.x apuntan a net11).
+- Las pruebas de integración usan `WebApplicationFactory<ApiAssemblyMarker>` / `<WebhooksAssemblyMarker>` (no `Program`, que se repite en Api y Webhooks).
 
 ## Estilo
 

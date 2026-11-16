@@ -1,7 +1,7 @@
 # Progreso
 
 **Fase actual:** Fase 0 — PoC
-**Siguiente tarea:** F0.3 (Claude Code) — en `C:\Users\avillegas\dev\whatsapp-bulk`: "Sigamos con la tarea F0.3"
+**Siguiente tarea:** F0.4 (Claude Code) — en `C:\Users\avillegas\dev\whatsapp-bulk`: "Sigamos con la tarea F0.4" (requiere Docker Desktop corriendo)
 **Última actualización:** 2026-11-16
 
 ## Estado de tareas
@@ -12,7 +12,7 @@ Estados: Pendiente · En curso · Hecho (sin verificar) · Verificado · Bloquea
 | --- | --- | --- | --- | --- |
 | F0.1 | App de Meta y número de prueba | Tú | Verificado | `hello_world` recibido (confirmación de Andrés); App, WABA, Phone Number y System User IDs en META-SETUP.md; token del System User (sin caducidad) en gestor de contraseñas; grep `EAA…` sin resultados en la carpeta |
 | F0.2 | Repositorio en GitHub | Tú | Verificado | Repo privado Avillegasa/whatsapp-bulk (confirmación de Andrés); `git push origin main` 8176d15..bdafc0e; `dev` al día con `origin/dev`; `git status` limpio; sin `.env` en el commit |
-| F0.3 | Esqueleto de la solución .NET | Claude Code | En curso | |
+| F0.3 | Esqueleto de la solución .NET | Claude Code | Verificado | `dotnet --version` 10.0.404; `dotnet build` 0 advertencias, 0 errores; `dotnet test` 2/2 (`/health` en Api y Webhooks → 200 `Healthy`); sin secretos (git grep `EAA…` vacío) |
 | F0.4 | SQL Server local y migración inicial | Claude Code | Pendiente | |
 | F0.5 | Cliente de Meta y envío con SendAttempt | Claude Code + Tú | Pendiente | |
 | F0.6 | Receptor de webhooks | Claude Code + Tú | Pendiente | |
@@ -27,11 +27,18 @@ Estados: Pendiente · En curso · Hecho (sin verificar) · Verificado · Bloquea
 
 - Definir dónde corre SQL Server en producción (D-006).
 - Crear el portafolio de Meta de la empresa antes de F1.1 (D-015).
-- Agregar `.gitattributes` para fijar finales de línea (aviso LF→CRLF en Windows); hacerlo en F0.3.
 - Actualizar la ruta de la carpeta (D-016) en las instrucciones del proyecto de claude.ai y en la skill `whatsapp-bulk-guia`; reconectar la carpeta en Claude desktop.
 - Confirmar con el área comercial o legal cómo consta el consentimiento de los clientes para promociones (antes de la Fase 2).
 
 ## Bitácora (lo más reciente arriba)
+
+### 2026-11-16 — F0.3 Esqueleto de la solución .NET (Claude Code)
+- Hecho: `src/backend/WaBulk.sln` con Domain, Infrastructure (classlib), Api y Webhooks (web mínimo con `/health` vía `AddHealthChecks`), Worker (worker service, marcador hasta F0.9) y Tests (xUnit + `Microsoft.AspNetCore.Mvc.Testing` 10.0.15); referencias Infrastructure→Domain, hosts→Domain+Infrastructure, Tests→todos. `Directory.Build.props` (net10.0, nullable, warnings como errores), `.editorconfig` y `.gitattributes` (LF; CRLF para `.cmd`, `.bat`, `.sln`).
+- Verificación: `dotnet --version` → 10.0.404; `dotnet build src/backend/WaBulk.sln` → 0 advertencias, 0 errores; `dotnet test` → 2/2 superadas; `msbuild -getProperty` confirma TreatWarningsAsErrors=true; git grep `EAA…` vacío; `.env` y `appsettings.*.local.json` ignorados.
+- Archivos: `src/backend/**`, `.editorconfig`, `.gitattributes`, `CLAUDE.md` (Comandos). Commit 8fb9978.
+- Decisiones: ninguna nueva. Nota técnica: `Mvc.Testing` fijado en 10.0.x (la 11.0 es solo net11); las pruebas usan tipos marcador por ensamblado en lugar de `Program`.
+- Pendientes: ninguno nuevo.
+- Siguiente: F0.4.
 
 ### 2026-11-16 — F0.2 iniciada (Claude desktop)
 - Estado: repo privado https://github.com/Avillegasa/whatsapp-bulk con commit 8176d15 (solo README) en `main`; rama local `dev`. Clon en `C:\Users\avillegas\dev\whatsapp-bulk`.
