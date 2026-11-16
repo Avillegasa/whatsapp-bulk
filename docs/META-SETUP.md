@@ -40,12 +40,12 @@ Pasos que hace Andrés en los paneles de Meta y en su terminal. Cada paso dice d
    **Pega:** "llegó" o el error que muestre el panel.
 5. 🖱 Manual — panel: **Business Settings → Users → System users → Add**, rol Admin. Luego **Assign assets**: la app, la WhatsApp account y, si aparece, la Messaging account. Luego **Generate token** con `business_management`, `whatsapp_business_management` y `whatsapp_business_messaging` (lista según https://developers.facebook.com/documentation/business-messaging/whatsapp/access-tokens, verificado 2026-11-16). En la PoC el panel no ofreció `business_management` (la app solo tiene el caso de uso de WhatsApp); el token se generó con los dos permisos de WhatsApp. Si una llamada falla por permisos, agregar ese caso de uso.
    **Pega:** nombre del System User y la lista de permisos que muestra el token (no el token).
-6. 🖥 Terminal (cmd, en `src/backend/WaBulk.Api` cuando exista, F0.5): guarda los secretos.
+6. 🖥 Terminal (cmd, desde la raíz del repo): guarda los secretos. El almacén de user-secrets es uno solo para Api, Webhooks y Worker (D-018). Token: hecho en F0.5. App Secret: en F0.6.
    ```cmd
-   dotnet user-secrets set "Meta:AccessToken" "<token>"
-   dotnet user-secrets set "Meta:AppSecret" "<app secret>"
+   dotnet user-secrets set "Meta:AccessToken" "<token>" --project src\backend\WaBulk.Worker
+   dotnet user-secrets set "Meta:AppSecret" "<app secret>" --project src\backend\WaBulk.Worker
    ```
-   **Pega:** la salida de `dotnet user-secrets list` con los valores tapados.
+   **Pega:** "token guardado" (comprobado con `dotnet user-secrets list ... | findstr /C:"Meta:AccessToken"`), nunca el valor.
 
 ## B. Webhooks en desarrollo (tarea F0.6)
 

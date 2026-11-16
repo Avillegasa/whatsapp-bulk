@@ -69,7 +69,10 @@ Mantener esta sección al día. Todos funcionan en cmd desde la raíz del repo.
 - Herramientas locales (dotnet-ef): `dotnet tool restore`
 - SQL Server local: `docker compose -f deploy/docker/compose.dev.yml --env-file .env up -d sqlserver` (expuesto en `127.0.0.1,14333`; clave en `.env`)
 - Estado del contenedor: `docker compose -f deploy/docker/compose.dev.yml --env-file .env ps`
-- Cadena de conexión (una vez, en user-secrets de Api): `dotnet user-secrets set "ConnectionStrings:WaBulk" "Server=127.0.0.1,14333;Database=WaBulk;User Id=sa;Password=<clave de .env>;Encrypt=True;TrustServerCertificate=True" --project src/backend/WaBulk.Api`
+- Secretos de desarrollo: un solo almacén de user-secrets compartido por Api, Webhooks y Worker (D-018); `--project` puede ser cualquiera de ellos.
+  - Cadena de conexión: `dotnet user-secrets set "ConnectionStrings:WaBulk" "Server=127.0.0.1,14333;Database=WaBulk;User Id=sa;Password=<clave de .env>;Encrypt=True;TrustServerCertificate=True" --project src/backend/WaBulk.Api`
+  - Token de Meta: `dotnet user-secrets set "Meta:AccessToken" "<token>" --project src/backend/WaBulk.Worker`
+- Envío de prueba (plantilla a un número permitido): `dotnet run --project src\backend\WaBulk.Worker -- send-test --to +591XXXXXXXX [--template hello_world] [--lang en_US]`
 - Nueva migración: `dotnet ef migrations add <Nombre> --project src/backend/WaBulk.Infrastructure --startup-project src/backend/WaBulk.Api --output-dir Persistence/Migrations`
 - Aplicar migraciones: `dotnet ef database update --project src/backend/WaBulk.Infrastructure --startup-project src/backend/WaBulk.Api`
 - Verificar tablas e índices: ver comando en `db/scripts/verificar-f0.4.sql`
@@ -80,6 +83,7 @@ Notas de la solución:
 - Paquetes `Microsoft.AspNetCore.*` / `Microsoft.Extensions.*` en la línea 10.0.x (las 11.x apuntan a net11).
 - Las pruebas de integración usan `WebApplicationFactory<ApiAssemblyMarker>` / `<WebhooksAssemblyMarker>` (no `Program`, que se repite en Api y Webhooks).
 - Datos: entidades en `WaBulk.Domain/Messaging`, `WaBulkDbContext` y configuraciones en `WaBulk.Infrastructure/Persistence`. Propiedades en inglés, columnas con los nombres de `docs/ARQUITECTURA.md` (`HasColumnName`); enums guardados como texto.
+- Meta: `MetaWhatsAppClient` (Infrastructure/Meta) clasifica cada POST en Accepted/Rejected/SubmissionUnknown, sin retry; `TemplateSendService` (Infrastructure/Messaging) confirma el `SendAttempt` antes del POST. IDs y `GraphApiVersion` en `appsettings.json` del Worker; secretos solo en user-secrets.
 
 ## Estilo
 

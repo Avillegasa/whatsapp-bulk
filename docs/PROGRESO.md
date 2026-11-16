@@ -1,7 +1,7 @@
 # Progreso
 
 **Fase actual:** Fase 0 — PoC
-**Siguiente tarea:** F0.5 (Claude Code + Tú) — en `C:\Users\avillegas\dev\whatsapp-bulk`: "Sigamos con la tarea F0.5" (ten a mano el token del System User para cargarlo con `dotnet user-secrets`)
+**Siguiente tarea:** F0.6 (Claude Code + Tú) — en `C:\Users\avillegas\dev\whatsapp-bulk`: "Sigamos con la tarea F0.6" (tendrás que instalar Dev Tunnels y configurar el webhook en Meta, `META-SETUP.md` sección B; ten a mano el App Secret)
 **Última actualización:** 2026-11-16
 
 ## Estado de tareas
@@ -14,7 +14,7 @@ Estados: Pendiente · En curso · Hecho (sin verificar) · Verificado · Bloquea
 | F0.2 | Repositorio en GitHub | Tú | Verificado | Repo privado Avillegasa/whatsapp-bulk (confirmación de Andrés); `git push origin main` 8176d15..bdafc0e; `dev` al día con `origin/dev`; `git status` limpio; sin `.env` en el commit |
 | F0.3 | Esqueleto de la solución .NET | Claude Code | Verificado | `dotnet --version` 10.0.404; `dotnet build` 0 advertencias, 0 errores; `dotnet test` 2/2 (`/health` en Api y Webhooks → 200 `Healthy`); sin secretos (git grep `EAA…` vacío) |
 | F0.4 | SQL Server local y migración inicial | Claude Code | Verificado | Contenedor `wabulk-sqlserver` `Up (healthy)`; `dotnet ef database update` → `Done.` (InitialCreate, EF 10.0.15); `sys.tables` → DispatchJob, MessageEvent, SendAttempt, WebhookInbox; `sys.indexes` → `IX_SendAttempt_Wamid` filtro `([Wamid] IS NOT NULL)`; `dotnet test` 5/5; build 0 advertencias |
-| F0.5 | Cliente de Meta y envío con SendAttempt | Claude Code + Tú | Pendiente | |
+| F0.5 | Cliente de Meta y envío con SendAttempt | Claude Code + Tú | Verificado | `dotnet test` 14/14 (200 → Accepted, 131026 → Rejected, timeout → SubmissionUnknown, intento confirmado antes del POST, un solo POST); envío real `send-test`: `SendAttempt` 01A1E617… `Accepted`, HTTP 200, `wamid.HBgL…` guardado (consulta SQL) y mensaje recibido (confirmación de Andrés); build 0 advertencias; sin versión literal, retry ni tokens |
 | F0.6 | Receptor de webhooks | Claude Code + Tú | Pendiente | |
 | F0.7 | Procesador de eventos | Claude Code | Pendiente | |
 | F0.8 | Herramienta de replay firmado | Claude Code | Pendiente | |
@@ -31,8 +31,19 @@ Estados: Pendiente · En curso · Hecho (sin verificar) · Verificado · Bloquea
 - Confirmar con el área comercial o legal cómo consta el consentimiento de los clientes para promociones (antes de la Fase 2).
 - Agregar FK de `DispatchJob.CampaignVersionId` y `DispatchJob.ContactId` cuando existan `CampaignVersion` y `Contact` (Fase 1).
 - Índice de reclamo de la cola en `DispatchJob` (EstadoDespacho, ProximoIntentoUtc/ProgramadoUtc) en F0.9; índice por `Estado` en `WebhookInbox` en F0.7.
+- F0.9: actualizar `DispatchJob.EstadoDespacho` según el resultado del intento, verificar el lease antes de guardar y pasar a `SubmissionUnknown` los intentos que quedaron en `Submitting` (hoy `TemplateSendService` solo actualiza el `SendAttempt`).
+- Plantillas con parámetros (`components`) en `TemplateMessage`: con las campañas (F0.9 / Fase 1).
 
 ## Bitácora (lo más reciente arriba)
+
+### 2026-11-16 — F0.5 Cliente de Meta y envío con SendAttempt (Claude Code + Andrés)
+- Hecho: `MetaOptions` (sección `Meta`, versión de Graph API por configuración) y `MetaWhatsAppClient` (HttpClient tipado, sin resiliencia/retry, timeout configurable) que clasifica: 2xx con `messages[0].id` → Accepted; error con `error.code` → Rejected; timeout, conexión cortada, cancelación, 5xx sin cuerpo o 2xx sin id → SubmissionUnknown. `TemplateSendService`: inserta y confirma `SendAttempt` (Submitting, AttemptId = Guid v7) antes del POST, envía `biz_opaque_callback_data` = AttemptId y guarda el resultado aunque se cancele. Comando `send-test` en el Worker (DispatchJob de prueba con CampaignVersionId = 0). `UserSecretsId` compartido en `Directory.Build.props` (D-018). Andrés cargó `Meta:AccessToken` en user-secrets.
+- Verificación: `dotnet build` → 0 advertencias; `dotnet test` → 14/14 (9 nuevas: 200, 131026, timeout, conexión cortada, 502 vacío, 200 sin id, URL con versión configurada y callback data, intento visible como Submitting desde otro contexto durante el POST, timeout → un solo POST); envío real `send-test` → `SendAttempt` 01A1E617-2789-7751-99A1-2D17AE607B7B `Accepted`, HTTP 200, `message_status=accepted`, `wamid.HBgL…` guardado (consulta en `SendAttempt`); mensaje recibido en el teléfono (confirmación de Andrés); git grep sin `graph.facebook.com/vNN`, sin `AddStandardResilienceHandler`/Polly, sin `EAA…`.
+- Fuentes: https://developers.facebook.com/documentation/business-messaging/whatsapp/messages/send-messages · https://developers.facebook.com/documentation/business-messaging/whatsapp/reference/whatsapp-business-phone-number/message-api · https://developers.facebook.com/documentation/business-messaging/whatsapp/support/error-codes · https://developers.facebook.com/docs/whatsapp/cloud-api/reference/messages/ (biz_opaque_callback_data, máx. 512).
+- Archivos: `src/backend/WaBulk.Infrastructure/Meta/*`, `src/backend/WaBulk.Infrastructure/Messaging/TemplateSendService.cs`, `src/backend/WaBulk.Worker/{Program.cs,SendTestCommand.cs,appsettings.json}`, `src/backend/WaBulk.Tests/Meta/*`, `src/backend/Directory.Build.props`, `CLAUDE.md`, `docs/META-SETUP.md`.
+- Decisiones: D-018 (user-secrets compartido).
+- Pendientes: estado del DispatchJob, lease y recuperación de `Submitting` (F0.9); parámetros de plantilla.
+- Siguiente: F0.6.
 
 ### 2026-11-16 — F0.4 SQL Server local y migración inicial (Claude Code)
 - Hecho: `deploy/docker/compose.dev.yml` (SQL Server 2022 Developer, `127.0.0.1:14333`, clave `SQLSERVER_SA_PASSWORD` desde `.env`, volumen `wabulk-sqldata`, healthcheck con `mssql-tools18`). Entidades `WebhookInbox`, `DispatchJob`, `SendAttempt`, `MessageEvent` y enums de estado en `WaBulk.Domain/Messaging`; `WaBulkDbContext` + configuraciones en `WaBulk.Infrastructure/Persistence` (columnas con nombres de ARQUITECTURA, enums como texto); migración `InitialCreate`; `dotnet-ef` 10.0.15 como herramienta local (`dotnet-tools.json`); cadena de conexión en user-secrets de Api; `db/scripts/verificar-f0.4.sql`.
