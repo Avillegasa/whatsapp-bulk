@@ -1,7 +1,7 @@
 # Progreso
 
 **Fase actual:** Fase 0 — PoC
-**Siguiente tarea:** F0.4 (Claude Code) — en `C:\Users\avillegas\dev\whatsapp-bulk`: "Sigamos con la tarea F0.4" (requiere Docker Desktop corriendo)
+**Siguiente tarea:** F0.5 (Claude Code + Tú) — en `C:\Users\avillegas\dev\whatsapp-bulk`: "Sigamos con la tarea F0.5" (ten a mano el token del System User para cargarlo con `dotnet user-secrets`)
 **Última actualización:** 2026-11-16
 
 ## Estado de tareas
@@ -13,7 +13,7 @@ Estados: Pendiente · En curso · Hecho (sin verificar) · Verificado · Bloquea
 | F0.1 | App de Meta y número de prueba | Tú | Verificado | `hello_world` recibido (confirmación de Andrés); App, WABA, Phone Number y System User IDs en META-SETUP.md; token del System User (sin caducidad) en gestor de contraseñas; grep `EAA…` sin resultados en la carpeta |
 | F0.2 | Repositorio en GitHub | Tú | Verificado | Repo privado Avillegasa/whatsapp-bulk (confirmación de Andrés); `git push origin main` 8176d15..bdafc0e; `dev` al día con `origin/dev`; `git status` limpio; sin `.env` en el commit |
 | F0.3 | Esqueleto de la solución .NET | Claude Code | Verificado | `dotnet --version` 10.0.404; `dotnet build` 0 advertencias, 0 errores; `dotnet test` 2/2 (`/health` en Api y Webhooks → 200 `Healthy`); sin secretos (git grep `EAA…` vacío) |
-| F0.4 | SQL Server local y migración inicial | Claude Code | Pendiente | |
+| F0.4 | SQL Server local y migración inicial | Claude Code | Verificado | Contenedor `wabulk-sqlserver` `Up (healthy)`; `dotnet ef database update` → `Done.` (InitialCreate, EF 10.0.15); `sys.tables` → DispatchJob, MessageEvent, SendAttempt, WebhookInbox; `sys.indexes` → `IX_SendAttempt_Wamid` filtro `([Wamid] IS NOT NULL)`; `dotnet test` 5/5; build 0 advertencias |
 | F0.5 | Cliente de Meta y envío con SendAttempt | Claude Code + Tú | Pendiente | |
 | F0.6 | Receptor de webhooks | Claude Code + Tú | Pendiente | |
 | F0.7 | Procesador de eventos | Claude Code | Pendiente | |
@@ -29,8 +29,20 @@ Estados: Pendiente · En curso · Hecho (sin verificar) · Verificado · Bloquea
 - Crear el portafolio de Meta de la empresa antes de F1.1 (D-015).
 - Actualizar la ruta de la carpeta (D-016) en las instrucciones del proyecto de claude.ai y en la skill `whatsapp-bulk-guia`; reconectar la carpeta en Claude desktop.
 - Confirmar con el área comercial o legal cómo consta el consentimiento de los clientes para promociones (antes de la Fase 2).
+- Agregar FK de `DispatchJob.CampaignVersionId` y `DispatchJob.ContactId` cuando existan `CampaignVersion` y `Contact` (Fase 1).
+- Índice de reclamo de la cola en `DispatchJob` (EstadoDespacho, ProximoIntentoUtc/ProgramadoUtc) en F0.9; índice por `Estado` en `WebhookInbox` en F0.7.
 
 ## Bitácora (lo más reciente arriba)
+
+### 2026-11-16 — F0.4 SQL Server local y migración inicial (Claude Code)
+- Hecho: `deploy/docker/compose.dev.yml` (SQL Server 2022 Developer, `127.0.0.1:14333`, clave `SQLSERVER_SA_PASSWORD` desde `.env`, volumen `wabulk-sqldata`, healthcheck con `mssql-tools18`). Entidades `WebhookInbox`, `DispatchJob`, `SendAttempt`, `MessageEvent` y enums de estado en `WaBulk.Domain/Messaging`; `WaBulkDbContext` + configuraciones en `WaBulk.Infrastructure/Persistence` (columnas con nombres de ARQUITECTURA, enums como texto); migración `InitialCreate`; `dotnet-ef` 10.0.15 como herramienta local (`dotnet-tools.json`); cadena de conexión en user-secrets de Api; `db/scripts/verificar-f0.4.sql`.
+- Índices: único filtrado `SendAttempt(Wamid) WHERE [Wamid] IS NOT NULL`; únicos `DispatchJob(CampaignVersionId, ContactId)` y `MessageEvent(Wamid, Estado)`; `MessageEvent(AttemptId)` para correlación.
+- Verificación: `docker compose ... ps` → `Up (healthy)`; `dotnet ef database update` → `Done.`; `verificar-f0.4.sql` → 4 tablas e `IX_SendAttempt_Wamid` con filtro `([Wamid] IS NOT NULL)`; el mismo comando probado desde cmd; `dotnet build` 0 advertencias; `dotnet test` 5/5 (3 nuevas sobre el modelo, incluida la regla 11 aplicada a todos los índices únicos); git grep `EAA…` y `Password=` sin resultados en el repo.
+- Fuentes: https://learn.microsoft.com/sql/linux/quickstart-install-connect-docker (imagen, `MSSQL_SA_PASSWORD`, `mssql-tools18` y `-C`); https://learn.microsoft.com/ef/core/modeling/indexes (`HasFilter`).
+- Archivos: `deploy/docker/compose.dev.yml`, `src/backend/WaBulk.Domain/Messaging/*`, `src/backend/WaBulk.Infrastructure/Persistence/**`, `src/backend/WaBulk.Api/Program.cs`, `src/backend/WaBulk.Tests/PersistenceModelTests.cs`, `db/scripts/verificar-f0.4.sql`, `dotnet-tools.json`, `CLAUDE.md`.
+- Decisiones: D-017 (confirma D-013; puerto 14333; cadena de conexión en user-secrets).
+- Pendientes: FK a CampaignVersion/Contact (Fase 1); índices de reclamo (F0.9) e inbox (F0.7).
+- Siguiente: F0.5.
 
 ### 2026-11-16 — F0.3 Esqueleto de la solución .NET (Claude Code)
 - Hecho: `src/backend/WaBulk.sln` con Domain, Infrastructure (classlib), Api y Webhooks (web mínimo con `/health` vía `AddHealthChecks`), Worker (worker service, marcador hasta F0.9) y Tests (xUnit + `Microsoft.AspNetCore.Mvc.Testing` 10.0.15); referencias Infrastructure→Domain, hosts→Domain+Infrastructure, Tests→todos. `Directory.Build.props` (net10.0, nullable, warnings como errores), `.editorconfig` y `.gitattributes` (LF; CRLF para `.cmd`, `.bat`, `.sln`).

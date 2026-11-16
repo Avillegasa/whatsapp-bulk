@@ -66,13 +66,20 @@ Mantener esta sección al día. Todos funcionan en cmd desde la raíz del repo.
 - Ejecutar Api: `dotnet run --project src/backend/WaBulk.Api` → `GET /health` responde `Healthy`
 - Ejecutar Webhooks: `dotnet run --project src/backend/WaBulk.Webhooks` → `GET /health`
 - Ejecutar Worker: `dotnet run --project src/backend/WaBulk.Worker`
-- SQL Server local (desde F0.4): `docker compose -f deploy/docker/compose.dev.yml up -d sqlserver`
+- Herramientas locales (dotnet-ef): `dotnet tool restore`
+- SQL Server local: `docker compose -f deploy/docker/compose.dev.yml --env-file .env up -d sqlserver` (expuesto en `127.0.0.1,14333`; clave en `.env`)
+- Estado del contenedor: `docker compose -f deploy/docker/compose.dev.yml --env-file .env ps`
+- Cadena de conexión (una vez, en user-secrets de Api): `dotnet user-secrets set "ConnectionStrings:WaBulk" "Server=127.0.0.1,14333;Database=WaBulk;User Id=sa;Password=<clave de .env>;Encrypt=True;TrustServerCertificate=True" --project src/backend/WaBulk.Api`
+- Nueva migración: `dotnet ef migrations add <Nombre> --project src/backend/WaBulk.Infrastructure --startup-project src/backend/WaBulk.Api --output-dir Persistence/Migrations`
+- Aplicar migraciones: `dotnet ef database update --project src/backend/WaBulk.Infrastructure --startup-project src/backend/WaBulk.Api`
+- Verificar tablas e índices: ver comando en `db/scripts/verificar-f0.4.sql`
 - Frontend (Fase 1): `cd src/frontend && npm ci && npx ng build` · `npx ng test`
 
 Notas de la solución:
 - `src/backend/Directory.Build.props` fija `net10.0`, nullable y warnings como errores para todos los proyectos.
 - Paquetes `Microsoft.AspNetCore.*` / `Microsoft.Extensions.*` en la línea 10.0.x (las 11.x apuntan a net11).
 - Las pruebas de integración usan `WebApplicationFactory<ApiAssemblyMarker>` / `<WebhooksAssemblyMarker>` (no `Program`, que se repite en Api y Webhooks).
+- Datos: entidades en `WaBulk.Domain/Messaging`, `WaBulkDbContext` y configuraciones en `WaBulk.Infrastructure/Persistence`. Propiedades en inglés, columnas con los nombres de `docs/ARQUITECTURA.md` (`HasColumnName`); enums guardados como texto.
 
 ## Estilo
 
