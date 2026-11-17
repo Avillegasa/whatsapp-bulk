@@ -37,7 +37,7 @@ Angular nunca habla con Meta. La API nunca envía en masa de forma síncrona. To
 ## Estados
 
 - Campaña: `Draft` → `PendingApproval` → `Scheduled` → `Running` → `DispatchCompleted` → `TrackingClosed` (plazo inicial 72 h); laterales `Paused`, `Cancelled`, `Expired`.
-- Trabajo (`DispatchJob.EstadoDespacho`): `Queued` → `Claimed` → `Submitted`; laterales `RetryScheduled`, `NeedsReview`, `Failed`, `Skipped`, `Expired`.
+- Trabajo (`DispatchJob.EstadoDespacho`): `Queued` → `Claimed` → `Submitted`; laterales `RetryScheduled`, `NeedsReview`, `Failed`, `Skipped`, `Expired`, `OnHold` (campaña en pausa, D-034).
 - Entrega (por `wamid`): `Accepted` → `Sent` → `Delivered` → `Read`, o `Failed`. Solo avanza.
 - Lease vencido: sin intento o con rechazo transitorio → vuelve a la cola; intento en `Submitting` → `SubmissionUnknown`/`NeedsReview`.
 
@@ -52,8 +52,8 @@ Angular nunca habla con Meta. La API nunca envía en masa de forma síncrona. To
 | `PlatformPreference` | PhoneE164, Categoria, Valor (stop/resume), Origen (Webhook/Error131050), FechaUtc | Separada del consentimiento; vigente = FechaUtc de Meta más reciente; único (PhoneE164, Categoria, FechaUtc, Valor) |
 | `Segment`, `SegmentMember` | Segment: Id, Nombre (único), Descripcion, CreadoUtc, CreadoPor · SegmentMember: SegmentId, ContactId, AgregadoUtc, AgregadoPor | Listas estáticas (F1.4); congeladas al aprobar (F1.6) |
 | `Template` | MetaTemplateId, Nombre, Idioma, Categoria, Estado, Calidad, Componentes (JSON) | Sincronizada con Meta |
-| `Campaign`, `CampaignVersion` | Version: plantilla, idioma, categoría, audiencia, parámetros, ProgramadaUtc, ExpiraUtc, Hash, AprobadaPor | Cambios → nueva versión y nueva aprobación |
-| `DispatchJob` | Id, CampaignVersionId, ContactId, PhoneE164, Parametros, Prioridad, ProgramadoUtc, ExpiraUtc, EstadoDespacho, Intentos, ProximoIntentoUtc, LockedBy, LeaseUntilUtc, MotivoOmision | Único (CampaignVersionId, ContactId); MotivoOmision solo en `Skipped` (SinConsentimiento, BajaEmpresa, NoContactar, BajaPlataforma) |
+| `Campaign`, `CampaignVersion` | Campaign: Nombre, Estado, VersionActualId, MotivoEstado, EstadoUtc, DespachoCompletoUtc, CreadaPor · Version: Numero, TemplateId, NombrePlantilla, Idioma, Categoria, FormatoParametros, SegmentId, Audiencia (Ids congelados), Destinatarios, Excluidos, Parametros (fijo o nombre del contacto), ProgramadaUtc, ExpiraUtc, Hash, CreadaPor, EnviadaAprobacionUtc, AprobadaPor/Utc, RechazadaPor/Utc, MotivoRechazo | Cambios → nueva versión y nueva aprobación; quien creó no aprueba (D-034) |
+| `DispatchJob` | Id, CampaignVersionId (FK; NULL solo en send-test), ContactId, PhoneE164, Parametros (valores resueltos), Prioridad, ProgramadoUtc, ExpiraUtc, EstadoDespacho, Intentos, ProximoIntentoUtc, LockedBy, LeaseUntilUtc, MotivoOmision | Único filtrado (CampaignVersionId, ContactId); MotivoOmision solo en `Skipped` (SinConsentimiento, BajaEmpresa, NoContactar, BajaPlataforma, SinCampania, CampanaCancelada, VersionReemplazada, ContactoInactivo, YaEnviado) |
 | `SendAttempt` | AttemptId, DispatchJobId, InicioUtc, FinUtc, Estado, Wamid, HttpStatus, CodigoError, Detalle, EstadoEntrega | Único filtrado en Wamid; EstadoEntrega solo lo escribe el procesador (D-023) |
 | `CapacityReservation` | PortafolioId, PhoneE164, DispatchJobId, ReservadaUtc, ExpiraUtc, Estado (Reservada/Consumida/Liberada) | Una fila por trabajo; cuenta destinatarios únicos vigentes (ventana móvil 24 h); reserva con `sp_getapplock` por portafolio (D-026) |
 | `MessageEvent` | Wamid, AttemptId, Estado, TimestampMeta, Pricing, Errores | Único (Wamid, Estado) |

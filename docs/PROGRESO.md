@@ -1,7 +1,7 @@
 # Progreso
 
 **Fase actual:** Fase 1 — Demo interna (D-028)
-**Siguiente tarea:** F1.6 (Claude Code), empezada con F1.5 en espera de la aprobación de Meta (excepción, ver bitácora); terminar F1.5 pasos 6–9 cuando Meta apruebe `promo_f15` o `promo_demo`; F1.1 sigue en curso con Andrés (Claude desktop)
+**Siguiente tarea:** terminar F1.5 (pasos 6–9) cuando Meta apruebe `promo_f15` o `promo_demo`; con eso F1.5 y F1.6 pasan a Verificado. Luego F1.7 (Claude Code). F1.1 sigue en curso con Andrés (Claude desktop)
 **Última actualización:** 2026-11-17
 
 ## Estado de tareas
@@ -27,7 +27,7 @@ Estados: Pendiente · En curso · Hecho (sin verificar) · Verificado · Bloquea
 | F1.3 | Usuarios, autorización y auditoría | Claude Code | Verificado | `dotnet test` 179/179: `EndpointPolicyTests` recorre todos los endpoints (≥ 10) y exige una política de `Policies.All` salvo `/health`, `/api/auth/sesion` y `/api/auth/login`, sin `Roles` literales; cambio de rol → `AuditLog` con Antes `["Operador"]` / Despues `["Aprobador","Operador"]`; si falla la auditoría el cambio de rol se revierte; desactivado → su sesión abierta recibe 401 y el login falla; restablecer clave cierra sesiones y no guarda la clave; Operador/Aprobador → 403; último Admin y desactivarse a sí mismo → 400; `reanudar` con pausa → fila `ReanudarDespacho`, sin pausa → ninguna. `ng build` OK y `ng test` 12/12. Real (Andrés, navegador + `verificar-f1.3.sql`): `CrearUsuario` prueba1 [Operador], `CambiarRoles` [Operador] → [Admin, Operador], `DesactivarUsuario` activo true → false, las tres por `avillegas`. Build 0 advertencias; sin secretos, sin versión literal ni retry |
 | F1.4 | Contactos y consentimiento por WhatsApp | Claude Code | Verificado | `dotnet test` 224/224: «Sí» → OptIn Boton con `WamidOrigen` y evidencia (botón, texto v1, quién ofreció, wamid de la oferta); webhook repetido → un solo registro; «Ahora no» → sin OptIn y `RechazoReciente` sin POST dentro de 30 días; oferta sin ventana → `SinVentana` sin POST ni fila; «Sí» después de BAJA → vigente OptIn; importación OptIn sobre OptOut → sigue OptOut (Advertencia); 100 filas con 5 inválidas → 95 válidas y 5 errores; baja solo con BSUID → se aplica al teléfono mapeado; estados de la oferta no quedan sin correlación. `ng build` OK, `ng test` 17/17. Real (Andrés): "Hola" → Mensajes recientes → Ofrecer → «Sí, quiero ofertas» → `verificar-f1.4.sql`: oferta 1 `Enviada`/`Si`, ConsentRecord 4 OptIn/Boton con evidencia (revierte su BAJA de F1.1), AuditLog `OfrecerPromociones`, inbox sin pendientes. Build 0 advertencias; sin secretos, sin versión literal ni retry; únicos sobre columnas NULL filtrados |
 | F1.5 | Plantillas | Claude Code (+ Tú) | En curso | Código listo: `dotnet test` 253/253, `ng test` 21/21, build 0 advertencias. Real (parcial): sincronizar → 7 plantillas de Meta; `promo_f15` creada desde la intranet (AuditLog `CrearPlantilla` antes del POST, id 1696871368624750, PENDING; la sincronización la reconoció sin duplicar). Falta: webhook `APPROVED` real (Meta aún revisa `promo_f15` y `promo_demo`), `send-test` con `--param` y toque de «No recibir más» |
-| F1.6 | Campañas versionadas y aprobación | Claude Code | En curso | |
+| F1.6 | Campañas versionadas y aprobación | Claude Code | Hecho (sin verificar) | Evidencia completa del plan; queda sin "Verificado" hasta que F1.5 lo esté (excepción). `dotnet test` 268/268 (3 corridas): creador → 403 (servicio y HTTP, aunque tenga rol Aprobador); editar una aprobada → v2 en Draft, pendientes de v1 `VersionReemplazada`, la v1 ya no se puede aprobar y quien recibió la v1 queda `YaEnviado`; dos aprobaciones simultáneas → una sola crea los trabajos (y el índice único revierte toda la aprobación si ya existían); vencida → `Expired` sin POST; cancelada → pendientes `CampanaCancelada` y el despachador la revisa antes del POST; pausa → `OnHold` sin POST, reanudar → se envía; el despachador envía plantilla y parámetros de la versión. Mutación: sin la regla de cuatro ojos fallan 2 pruebas. `ng test` 25/25; build 0 advertencias; migración `Campanias` aplicada (3 trabajos de send-test → NULL) |
 | F1.7 | Despacho completo | Claude Code | Pendiente | |
 | F1.8 | Monitor en vivo y tablero | Claude Code | Pendiente | |
 | F1.9 | Docker y despliegue | Claude Code + Tú | Pendiente | |
@@ -36,16 +36,17 @@ Estados: Pendiente · En curso · Hecho (sin verificar) · Verificado · Bloquea
 ## Pendientes y bloqueos
 
 - Definir dónde corre SQL Server en producción (D-006).
+- La Api devuelve las fechas UTC sin "Z" (SQL Server no guarda el tipo): Angular las muestra como hora local (4 h de diferencia en Bolivia). Las pantallas de F1.6 usan `utc()`; falta en Mensajes, Contactos, Listas, Usuarios y Plantillas, o corregirlo una vez en la Api (convertidor de fechas a UTC en EF).
+- Aprobar una campaña revisa las bajas con una consulta por contacto: bien para la demo; para miles de contactos, consulta por conjunto (antes de la Fase 2).
+- Prueba real de F1.6 en la intranet (crear campaña con `promo_f15`, aprobar con otro usuario Aprobador, ver los trabajos en `verificar-f1.6.sql`): cuando Meta apruebe la plantilla, junto con F1.5.
 - Usuarios (F1.3): cambiar la propia clave y obligar a cambiar la clave temporal al primer ingreso; auditar intentos de login fallidos; pantalla para consultar el `AuditLog` (hoy, `verificar-f1.3.sql`).
 - Producción: nginx debe servir la app y `/api` bajo el mismo dominio (Angular solo envía el XSRF a URLs relativas, D-029) (F1.9).
 - Portafolio de Meta de la empresa, número dedicado y verificación: después de aprobar la PoC (D-028).
 - Actualizar la ruta de la carpeta (D-016) en las instrucciones del proyecto de claude.ai y en la skill `whatsapp-bulk-guia`; reconectar la carpeta en Claude desktop.
 - Confirmar con el área comercial o legal cómo consta el consentimiento de los clientes para promociones (antes de la Fase 2).
-- Agregar FK de `DispatchJob.CampaignVersionId` cuando exista `CampaignVersion` (F1.6); la de `ContactId` ya está (F1.4).
 - El procesador ignora `account_update`, plantillas (salvo PAUSED) y calidad (Fase 1) y el estado `played`. Los mensajes entrantes ya se guardan en `InboundMessage` (F1.4).
 - Estados de mensajes enviados fuera del sistema con el mismo número (sin AttemptId ni wamid conocido) terminan en `Revision` tras 8 intentos (~35 min): revisar si conviene descartarlos al conectar el número real (F1.1).
 - Un solo procesador del inbox por ahora; con varias instancias del Worker, reclamo con lease o `READPAST` en `WebhookInbox` (el despachador ya admite varias instancias, F0.11).
-- Plantillas con parámetros (`components`) y plantilla por trabajo: hoy el despachador usa `Dispatcher:TemplateName`/`TemplateLanguage` para todos (D-024); en la Fase 1 sale de `CampaignVersion`.
 - Revalidaciones al enviar que faltan (campaña, plantilla, fatiga, horario): Fase 1. Bajas, consentimiento, capacidad y pausa global ya se revisan (F0.10–F0.12).
 - 131049 (+24 h, un intento más): hoy queda `Failed`; con la fatiga (Fase 1).
 - Freno de emergencia que falta (F1.7): baja de calidad del número (`phone_number_quality_update`), 131048/131031/368, fallos > 5 % en los últimos 200, 132000–132016 (salvo 132015) → pausa de la campaña cuando existan campañas; avisar por correo/Teams además del log. Hoy la pausa es solo global (D-027).
@@ -66,6 +67,15 @@ Estados: Pendiente · En curso · Hecho (sin verificar) · Verificado · Bloquea
 - Datos de desarrollo: los intentos 01A1E617… y 01A1E975… quedaron con `EstadoEntrega` = Read por el replay de F0.8 (no es una lectura real).
 
 ## Bitácora (lo más reciente arriba)
+
+### 2026-11-17 — F1.6 Campañas versionadas y aprobación (Claude Code)
+- Hecho: `Campaign` y `CampaignVersion` inmutable (plantilla copiada, audiencia congelada de una lista, parámetros fijos o "nombre del contacto", `ProgramadaUtc`, `ExpiraUtc`, `Hash` SHA-256); estados Draft → PendingApproval → Scheduled → Running → DispatchCompleted → TrackingClosed, y Paused / Cancelled / Expired; `CampaignService` (crear, versión nueva, enviar a aprobación, aprobar con cuatro ojos y trabajos en la misma transacción, rechazar, pausar, reanudar, cancelar; todo con AuditLog); `CampaignLifecycle` en cada vuelta del despachador; estado de trabajo `OnHold`; el despachador revisa la campaña antes del POST y envía plantilla y parámetros de la versión (se retiró `Dispatcher:TemplateName`); FK `DispatchJob.CampaignVersionId` (NULL solo en send-test, único filtrado). Endpoints `/api/campanias` (Operador) y `/api/aprobaciones` (Aprobador). Pantallas Campañas y Aprobaciones. Script `db/scripts/verificar-f1.6.sql`.
+- Verificación: `dotnet build` → 0 advertencias; `dotnet test` → 268/268 (tres corridas); mutación de la regla de cuatro ojos → 2 pruebas fallan; `npx ng build` → OK; `npx ng test --watch=false` → 25/25; `dotnet ef database update` → `Campanias` aplicada, 3 trabajos de send-test con NULL e índice `IX_DispatchJob_CampaignVersionId_ContactId` filtrado; git grep sin `EAA…`, sin versión literal ni retry.
+- Encontrado y corregido: el Hash de una versión leída de SQL Server no coincidía con el calculado al crearla (la fecha vuelve sin tipo UTC); ahora se normaliza.
+- Archivos: `WaBulk.Domain/Campaigns/*`, `WaBulk.Infrastructure/Campaigns/*`, `WaBulk.Infrastructure/Messaging/{Dispatcher,DispatchQueue,DispatcherOptions}.cs`, migración `*_Campanias`, `WaBulk.Api/Campaigns/CampaignsEndpoints.cs`, `WaBulk.Tests/Campaigns/*`, `src/frontend/src/app/pages/{campanias,aprobaciones}/*`, `db/scripts/verificar-f1.6.sql`.
+- Decisiones: D-034.
+- Pendientes: ver "Pendientes y bloqueos" (fechas UTC sin "Z" en pantallas anteriores; revisión de bajas al aprobar por conjunto).
+- Siguiente: F1.5 pasos 6–9 cuando Meta apruebe; luego F1.7.
 
 ### 2026-11-17 — F1.5 Plantillas: avance parcial, en espera de Meta (Claude Code)
 - Hecho: tabla `Template` (migración `Plantillas`) sincronizada con `GET /{WABA_ID}/message_templates`; creación de plantillas de marketing desde la intranet (parámetros con nombre, botones «Me interesa» / «No recibir más»), con fila y AuditLog confirmados antes del único POST; webhooks `message_template_status_update`, `message_template_quality_update` y `template_category_update` actualizan estado, calidad y categoría sin retroceder (`entry.time` ≥ `EstadoUtc`); `send-test` usa la plantilla de la tabla (APPROVED) y manda `components` con `--param`; pantalla Plantillas; escenarios de replay `plantilla-approved/-rejected/-calidad/-categoria` con `--plantilla`; script `db/scripts/verificar-f1.5.sql`.
