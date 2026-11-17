@@ -1,7 +1,7 @@
 # Progreso
 
 **Fase actual:** Fase 0 — PoC
-**Siguiente tarea:** F0.8 (Claude Code) — en `C:\Users\avillegas\dev\whatsapp-bulk`: "Sigamos con la tarea F0.8"
+**Siguiente tarea:** F0.9 (Claude Code) — en `C:\Users\avillegas\dev\whatsapp-bulk`: "Sigamos con la tarea F0.9"
 **Última actualización:** 2026-11-17
 
 ## Estado de tareas
@@ -17,7 +17,7 @@ Estados: Pendiente · En curso · Hecho (sin verificar) · Verificado · Bloquea
 | F0.5 | Cliente de Meta y envío con SendAttempt | Claude Code + Tú | Verificado | `dotnet test` 14/14 (200 → Accepted, 131026 → Rejected, timeout → SubmissionUnknown, intento confirmado antes del POST, un solo POST); envío real `send-test`: `SendAttempt` 01A1E617… `Accepted`, HTTP 200, `wamid.HBgL…` guardado (consulta SQL) y mensaje recibido (confirmación de Andrés); build 0 advertencias; sin versión literal, retry ni tokens |
 | F0.6 | Receptor de webhooks | Claude Code + Tú | Verificado | `dotnet test` 22/22 (firma válida → 200 y fila; inválida, ausente o cuerpo alterado → 401 sin fila; > límite → 413; GET token válido → challenge, inválido → 403); "Verify and save" en Meta OK (log "Handshake de webhook verificado"); webhook de prueba del panel → `WebhookInbox` Id=2 (555 bytes, confirmación de Andrés + SQL); además estados reales `delivered`/`sent` → Id=3/4 con AttemptId 01A1E975… (D-021); build 0 advertencias; sin secretos |
 | F0.7 | Procesador de eventos | Claude Code | Verificado | `dotnet test` 36/36 (14 nuevas: duplicado en dos webhooks y en el mismo lote → 1 evento; `read` antes de `delivered` no retrocede; webhook antes de guardar el wamid → correlación por AttemptId; secuencia `sent`→`delivered`→`read` con payloads de la referencia oficial; lote con varias entry; EnEspera → Procesado y → Revision tras MaxAttempts; SubmissionUnknown resuelto); envío real (WebhookInbox Id=3 `delivered` e Id=4 `sent`, en desorden) → 2 `MessageEvent` con AttemptId 01A1E975… y `EstadoEntrega` = Delivered (`verificar-f0.7.sql`); build 0 advertencias; sin secretos |
-| F0.8 | Herramienta de replay firmado | Claude Code | Pendiente | |
+| F0.8 | Herramienta de replay firmado | Claude Code | Verificado | `dotnet test` 45/45 (9 nuevas: las 7 plantillas → JSON válido y firma aceptada por `WebhookSignature`; duplicado/desorden/lote/stop/resume/PAUSED pasando por receptor + procesador; firma mala → 401 sin filas); corrida real, un comando por escenario, contra el receptor local y el Worker: firma mala → 401; duplicado → inbox 5–6 y 1 `MessageEvent` Delivered; desorden → inbox 7–9, Read/Delivered/Sent, `EstadoEntrega` Read; lote → inbox 10, `EstadoEntrega` Read; stop/resume/PAUSED → inbox 11–13 `Procesado` sin eventos; los 7 escenarios en el README; build 0 advertencias; sin secretos |
 | F0.9 | Despachador con cola y lease | Claude Code | Pendiente | |
 | F0.10 | Bajas | Claude Code | Pendiente | |
 | F0.11 | Concurrencia y capacidad | Claude Code | Pendiente | |
@@ -37,8 +37,20 @@ Estados: Pendiente · En curso · Hecho (sin verificar) · Verificado · Bloquea
 - Un solo procesador del inbox por ahora; con varias instancias del Worker, reclamo con lease o `READPAST` (F0.11).
 - F0.9: actualizar `DispatchJob.EstadoDespacho` según el resultado del intento, verificar el lease antes de guardar y pasar a `SubmissionUnknown` los intentos que quedaron en `Submitting` (hoy `TemplateSendService` solo actualiza el `SendAttempt`).
 - Plantillas con parámetros (`components`) en `TemplateMessage`: con las campañas (F0.9 / Fase 1).
+- Datos de desarrollo: los intentos 01A1E617… y 01A1E975… quedaron con `EstadoEntrega` = Read por el replay de F0.8 (no es una lectura real).
+- Confirmar que `db\scripts\verificar-f0.8.sql` corre desde cmd (Andrés).
 
 ## Bitácora (lo más reciente arriba)
+
+### 2026-11-17 — F0.8 Herramienta de replay firmado (Claude Code)
+- Hecho: consola `tools/webhook-replay` (proyecto `WaBulk.WebhookReplay`, en la solución, carpeta `tools`). Arma el webhook desde plantillas `payloads/*.json` embebidas, lo firma con `Meta:AppSecret` (user-secrets compartido, D-018; HMAC propio, independiente del receptor) y lo envía a `http://localhost:5244/webhooks/whatsapp`. Escenarios `duplicado`, `desorden`, `lote`, `stop`, `resume`, `plantilla-paused` y el modificador `--firma-mala`. `--intento ultimo|<AttemptId>` lee de SQL el AttemptId, el wamid y el teléfono reales para que el procesador correlacione; sin él usa ids sintéticos. Script `db/scripts/verificar-f0.8.sql`.
+- Verificación: `dotnet build` → 0 advertencias (con `--artifacts-path` aparte: el Worker de Andrés tenía las DLL bloqueadas); `dotnet test` → 45/45; corrida real (receptor levantado por Claude Code, Worker de Andrés): `lote --firma-mala` → 401 sin fila; `duplicado --intento ultimo` (01A1E986…) → inbox 5–6, 1 `MessageEvent` Delivered; `desorden --intento 01A1E617…` → inbox 7–9, eventos Read, Delivered y Sent, `EstadoEntrega` = Read; `lote --intento 01A1E975…` → inbox 10, solo `read` nuevo (sent y delivered ya existían), `EstadoEntrega` = Read; `stop`, `resume`, `plantilla-paused` → inbox 11–13 `Procesado` sin eventos; `lista` probado desde cmd; git grep sin `EAA…`, sin versión literal ni retry.
+- Fuentes: https://developers.facebook.com/documentation/business-messaging/whatsapp/webhooks/reference/user_preferences · https://developers.facebook.com/documentation/business-messaging/whatsapp/webhooks/reference/message_template_status_update (sin ejemplo de `PAUSED`: se armó con la sintaxis documentada) · https://developers.facebook.com/documentation/business-messaging/whatsapp/webhooks/reference/messages/status
+- Archivos: `tools/webhook-replay/{WaBulk.WebhookReplay.csproj,Program.cs,Replay.cs,appsettings.json,README.md,payloads/*.json}`, `src/backend/WaBulk.Tests/Tools/WebhookReplayTests.cs`, `src/backend/WaBulk.sln`, `db/scripts/verificar-f0.8.sql`, `CLAUDE.md`.
+- Nota técnica: `Microsoft.Data.SqlClient` 6.1.7 trae `System.Security.Cryptography.Pkcs` 9.0.11 (vulnerable, NU1903); el proyecto fija 10.0.13, la misma versión que ya resuelve el resto de la solución vía EF.
+- Decisiones: ninguna.
+- Pendientes: `EstadoEntrega` = Read de prueba en dos intentos de desarrollo; confirmar `verificar-f0.8.sql` en cmd.
+- Siguiente: F0.9.
 
 ### 2026-11-17 — Verificación manual de scripts SQL (Andrés)
 - `verificar-f0.4.sql`: 4 tablas; `IX_SendAttempt_Wamid` filtrado `([Wamid] IS NOT NULL)`; migraciones `InitialCreate` e `InboxProcessing` (10.0.15).

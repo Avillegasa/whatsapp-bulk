@@ -1,0 +1,35 @@
+{
+  "object": "whatsapp_business_account",
+  "entry": [
+    {
+      "id": "{{WABA_ID}}",
+      "changes": [
+        {
+          "value": {
+            "messaging_product": "whatsapp",
+            "metadata": {
+              "display_phone_number": "{{DISPLAY_PHONE}}",
+              "phone_number_id": "{{PHONE_NUMBER_ID}}"
+            },
+            "statuses": [
+              {
+                "id": "{{WAMID}}",
+                "status": "sent",
+                "timestamp": "{{TS}}",
+                "recipient_id": "{{WA_ID}}",
+                "biz_opaque_callback_data": "{{ATTEMPT_ID}}",
+                "pricing": {
+                  "billable": true,
+                  "pricing_model": "PMP",
+                  "type": "regular",
+                  "category": "marketing"
+                }
+              }
+            ]
+          },
+          "field": "messages"
+        }
+      ]
+    }
+  ]
+}

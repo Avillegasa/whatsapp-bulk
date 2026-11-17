@@ -1,0 +1,33 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- Herramienta de desarrollo (F0.8): firma webhooks de ejemplo y los envía al receptor local.
+       Fuera de src/backend, por eso repite las propiedades de Directory.Build.props. -->
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <LangVersion>latest</LangVersion>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <AnalysisLevel>latest</AnalysisLevel>
+    <RootNamespace>WaBulk.WebhookReplay</RootNamespace>
+    <!-- Mismo almacén de user-secrets que Api, Webhooks y Worker (D-018): lee Meta:AppSecret y ConnectionStrings:WaBulk. -->
+    <UserSecretsId>ef587f8e-fda6-4bf7-b215-bdc70a49c565</UserSecretsId>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Data.SqlClient" Version="6.1.7" />
+    <PackageReference Include="Microsoft.Extensions.Configuration.EnvironmentVariables" Version="10.0.15" />
+    <PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="10.0.15" />
+    <PackageReference Include="Microsoft.Extensions.Configuration.UserSecrets" Version="10.0.15" />
+    <!-- SqlClient 6.1.7 trae Pkcs 9.0.11 (vulnerable, NU1903); se fija la misma versión que resuelve el resto de la solución vía EF. -->
+    <PackageReference Include="System.Security.Cryptography.Pkcs" Version="10.0.13" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Plantillas de payload embebidas: la herramienta y las pruebas leen las mismas. -->
+    <EmbeddedResource Include="payloads\*.json" LogicalName="payloads.%(Filename)%(Extension)" />
+    <None Update="appsettings.json" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+</Project>

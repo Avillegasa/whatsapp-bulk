@@ -26,6 +26,7 @@
     <ProjectReference Include="..\WaBulk.Api\WaBulk.Api.csproj" />
     <ProjectReference Include="..\WaBulk.Webhooks\WaBulk.Webhooks.csproj" />
     <ProjectReference Include="..\WaBulk.Worker\WaBulk.Worker.csproj" />
+    <ProjectReference Include="..\..\..\tools\webhook-replay\WaBulk.WebhookReplay.csproj" />
   </ItemGroup>
 
 </Project>

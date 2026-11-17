@@ -1,0 +1,26 @@
+{
+  "object": "whatsapp_business_account",
+  "entry": [
+    {
+      "id": "{{WABA_ID}}",
+      "time": {{TS}},
+      "changes": [
+        {
+          "value": {
+            "event": "PAUSED",
+            "message_template_id": 1689556908129832,
+            "message_template_name": "promo_prueba",
+            "message_template_language": "es",
+            "reason": "NONE",
+            "message_template_category": "MARKETING",
+            "other_info": {
+              "title": "FIRST_PAUSE",
+              "description": "Plantilla pausada por calidad baja (payload de replay F0.8)"
+            }
+          },
+          "field": "message_template_status_update"
+        }
+      ]
+    }
+  ]
+}
