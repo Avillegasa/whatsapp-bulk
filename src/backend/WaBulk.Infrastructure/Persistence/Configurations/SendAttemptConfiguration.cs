@@ -19,6 +19,8 @@ internal sealed class SendAttemptConfiguration : IEntityTypeConfiguration<SendAt
         builder.Property(x => x.Wamid).HasMaxLength(128).IsUnicode(false);
         builder.Property(x => x.ErrorCode).HasColumnName("CodigoError");
         builder.Property(x => x.Detail).HasColumnName("Detalle");
+        builder.Property(x => x.DeliveryStatus).HasColumnName("EstadoEntrega")
+            .HasConversion<string>().HasMaxLength(20).IsUnicode(false);
 
         builder.HasOne(x => x.DispatchJob)
             .WithMany(j => j.SendAttempts)

@@ -142,6 +142,12 @@ namespace WaBulk.Infrastructure.Persistence.Migrations
                     b.Property<Guid>("AttemptId")
                         .HasColumnType("uniqueidentifier");
 
+                    b.Property<string>("DeliveryStatus")
+                        .HasMaxLength(20)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(20)")
+                        .HasColumnName("EstadoEntrega");
+
                     b.Property<string>("Detail")
                         .HasColumnType("nvarchar(max)")
                         .HasColumnName("Detalle");
@@ -207,6 +213,10 @@ namespace WaBulk.Infrastructure.Persistence.Migrations
                     b.Property<string>("Error")
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<DateTime?>("NextAttemptUtc")
+                        .HasColumnType("datetime2")
+                        .HasColumnName("ProximoIntentoUtc");
+
                     b.Property<DateTime>("ReceivedUtc")
                         .HasColumnType("datetime2")
                         .HasColumnName("RecibidoUtc");
@@ -219,6 +229,8 @@ namespace WaBulk.Infrastructure.Persistence.Migrations
                         .HasColumnName("Estado");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("Status", "NextAttemptUtc");
 
                     b.ToTable("WebhookInbox", (string)null);
                 });

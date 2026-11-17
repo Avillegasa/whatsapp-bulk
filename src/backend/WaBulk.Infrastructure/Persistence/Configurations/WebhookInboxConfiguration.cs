@@ -15,5 +15,9 @@ internal sealed class WebhookInboxConfiguration : IEntityTypeConfiguration<Webho
         builder.Property(x => x.Status).HasColumnName("Estado")
             .HasConversion<string>().HasMaxLength(20).IsUnicode(false);
         builder.Property(x => x.Attempts).HasColumnName("Intentos");
+        builder.Property(x => x.NextAttemptUtc).HasColumnName("ProximoIntentoUtc");
+
+        // Lectura del procesador: Pendiente, o EnEspera con ProximoIntentoUtc vencido.
+        builder.HasIndex(x => new { x.Status, x.NextAttemptUtc });
     }
 }

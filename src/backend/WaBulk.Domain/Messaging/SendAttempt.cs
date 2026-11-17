@@ -16,6 +16,11 @@ public class SendAttempt
     public int? HttpStatus { get; set; }
     public int? ErrorCode { get; set; }
     public string? Detail { get; set; }
+    /// <summary>
+    /// Estado de entrega actual según los webhooks (null hasta el primero). Solo avanza (regla 7);
+    /// lo escribe únicamente el procesador del inbox (F0.7, D-023).
+    /// </summary>
+    public DeliveryStatus? DeliveryStatus { get; set; }
 
     public DispatchJob? DispatchJob { get; set; }
 }
