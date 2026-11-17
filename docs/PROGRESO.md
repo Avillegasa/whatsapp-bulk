@@ -40,6 +40,12 @@ Estados: Pendiente · En curso · Hecho (sin verificar) · Verificado · Bloquea
 
 ## Bitácora (lo más reciente arriba)
 
+### 2026-11-17 — Verificación manual de scripts SQL (Andrés)
+- `verificar-f0.4.sql`: 4 tablas; `IX_SendAttempt_Wamid` filtrado `([Wamid] IS NOT NULL)`; migraciones `InitialCreate` e `InboxProcessing` (10.0.15).
+- `verificar-f0.6.sql`: WebhookInbox 1–4 (account_update; prueba del panel con EntryId 0; `delivered` y `sent` reales del AttemptId 01a1e975…).
+- `verificar-f0.7.sql`: inbox 1–4 `Procesado` (Intentos 1, sin error); MessageEvent `Delivered` y `Sent` del 01A1E975…; `EstadoEntrega` = Delivered.
+- Nuevo intento 01A1E986… `Accepted` sin webhooks (`EstadoEntrega` NULL): enviado con receptor o túnel apagados; no es un error.
+
 ### 2026-11-17 — F0.7 Procesador de eventos (Claude Code)
 - Hecho: `WebhookInboxProcessor` (Infrastructure/Messaging) toma filas `Pendiente` y `EnEspera` vencidas, separa entry/changes/statuses y correlaciona cada estado con su `SendAttempt`: primero por AttemptId (`biz_opaque_callback_data`), luego por wamid. Registra `MessageEvent` una sola vez por (wamid, estado) y hace avanzar `SendAttempt.EstadoEntrega` sin retroceder. Si el intento no tiene wamid se lo completa; un `SubmissionUnknown` pasa a `Accepted`. Sin correlación → `EnEspera` (30 s, 60 s… tope 10 min); tras 8 intentos, JSON inválido, wamid distinto o intento rechazado → `Revision` con el motivo en `Error`. Corre en el Worker (`InboxProcessorWorker`, cada 2 s, sección `InboxProcessor`). Migración `InboxProcessing`. Script `db/scripts/verificar-f0.7.sql`.
 - Verificación: `dotnet test` → 36/36 (14 del procesador); build 0 advertencias (salida aparte: el receptor de Andrés tenía bloqueadas las DLL de Webhooks); `dotnet ef database update` → Done; Worker contra la base real → WebhookInbox 1–4 `Procesado` (1 y 2 sin estados, ignorados); `MessageEvent` 1 `Delivered` y 2 `Sent` del intento 01A1E975…, mismo `TimestampMeta` 12:22:20; `SendAttempt.EstadoEntrega` = `Delivered` (no retrocedió con el `sent` posterior); git grep sin `EAA…`, versión literal ni Polly.
