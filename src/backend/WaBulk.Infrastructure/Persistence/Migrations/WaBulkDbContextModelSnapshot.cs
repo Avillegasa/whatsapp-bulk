@@ -297,6 +297,62 @@ namespace WaBulk.Infrastructure.Persistence.Migrations
                     b.ToTable("DispatchPause", (string)null);
                 });
 
+            modelBuilder.Entity("WaBulk.Domain.Audit.AuditLog", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
+
+                    b.Property<string>("Action")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(50)")
+                        .HasColumnName("Accion");
+
+                    b.Property<string>("After")
+                        .HasColumnType("nvarchar(max)")
+                        .HasColumnName("Despues");
+
+                    b.Property<DateTime>("AtUtc")
+                        .HasColumnType("datetime2")
+                        .HasColumnName("FechaUtc");
+
+                    b.Property<string>("Before")
+                        .HasColumnType("nvarchar(max)")
+                        .HasColumnName("Antes");
+
+                    b.Property<string>("Entity")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(50)")
+                        .HasColumnName("Entidad");
+
+                    b.Property<string>("EntityId")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)")
+                        .HasColumnName("EntidadId");
+
+                    b.Property<string>("User")
+                        .IsRequired()
+                        .HasMaxLength(256)
+                        .HasColumnType("nvarchar(256)")
+                        .HasColumnName("Usuario");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AtUtc")
+                        .HasDatabaseName("IX_AuditLog_Fecha");
+
+                    b.HasIndex("Entity", "EntityId", "AtUtc")
+                        .HasDatabaseName("IX_AuditLog_Entidad");
+
+                    b.ToTable("AuditLog", (string)null);
+                });
+
             modelBuilder.Entity("WaBulk.Domain.Capacity.CapacityReservation", b =>
                 {
                     b.Property<long>("Id")
@@ -718,6 +774,10 @@ namespace WaBulk.Infrastructure.Persistence.Migrations
 
                     b.Property<bool>("EmailConfirmed")
                         .HasColumnType("bit");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit")
+                        .HasColumnName("Activo");
 
                     b.Property<bool>("LockoutEnabled")
                         .HasColumnType("bit");

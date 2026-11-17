@@ -1,4 +1,5 @@
 using WaBulk.Api.Auth;
+using WaBulk.Api.Users;
 using WaBulk.Infrastructure.Persistence;
 
 // Comando de una sola ejecución: crear el primer Admin (no levanta el servidor web).
@@ -28,7 +29,8 @@ app.MapHealthChecks("/health").AllowAnonymous();
 // Toda la API bajo /api, con validación XSRF en los métodos que cambian algo.
 app.MapGroup("/api")
     .AddEndpointFilter<XsrfValidationFilter>()
-    .MapAuthEndpoints();
+    .MapAuthEndpoints()
+    .MapUsersEndpoints();
 
 await app.RunAsync();
 return 0;

@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.DependencyInjection;
 using WaBulk.Api;
 using WaBulk.Api.Auth;
+using WaBulk.Api.Users;
 using WaBulk.Domain.Users;
 using WaBulk.Infrastructure.Identity;
 using WaBulk.Tests.Support;
@@ -77,7 +78,7 @@ public sealed class AuthEndpointsTests(SqlServerTestDatabase db) : IClassFixture
 
         Assert.Equal(["Admin"], session!.Roles);
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-        var users = await response.Content.ReadFromJsonAsync<List<UsuarioResumen>>();
+        var users = await response.Content.ReadFromJsonAsync<List<UsuarioDto>>();
         Assert.Contains(users!, u => u.Usuario == "admin1" && u.Roles.SequenceEqual(["Admin"]));
     }
 
@@ -173,9 +174,9 @@ public sealed class AuthEndpointsTests(SqlServerTestDatabase db) : IClassFixture
             await users.DeleteAsync(admin); // la prueba parte de una base sin Admin
         }
 
-        var weak = await bootstrapper.CreateFirstAdminAsync("primero", "corta");
-        var first = await bootstrapper.CreateFirstAdminAsync("primero", GoodPassword);
-        var second = await bootstrapper.CreateFirstAdminAsync("segundo", GoodPassword);
+        var weak = await bootstrapper.CreateFirstAdminAsync("primero", "corta", "windows:prueba");
+        var first = await bootstrapper.CreateFirstAdminAsync("primero", GoodPassword, "windows:prueba");
+        var second = await bootstrapper.CreateFirstAdminAsync("segundo", GoodPassword, "windows:prueba");
 
         Assert.False(weak.Succeeded);
         Assert.True(first.Succeeded);
@@ -211,9 +212,13 @@ internal sealed class ApiSession(HttpClient client)
         return await PostAsync("/api/auth/login", new LoginRequest(userName, password));
     }
 
-    public async Task<HttpResponseMessage> PostAsync(string path, object? body = null)
+    public Task<HttpResponseMessage> PostAsync(string path, object? body = null) => SendAsync(HttpMethod.Post, path, body);
+
+    public Task<HttpResponseMessage> PutAsync(string path, object? body) => SendAsync(HttpMethod.Put, path, body);
+
+    public async Task<HttpResponseMessage> SendAsync(HttpMethod method, string path, object? body = null)
     {
-        using var request = new HttpRequestMessage(HttpMethod.Post, new Uri(path, UriKind.Relative))
+        using var request = new HttpRequestMessage(method, new Uri(path, UriKind.Relative))
         {
             Content = body is null ? null : JsonContent.Create(body),
         };

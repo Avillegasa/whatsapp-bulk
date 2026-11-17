@@ -3,6 +3,8 @@ using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using WaBulk.Domain.Alerts;
+using WaBulk.Domain.Audit;
+using WaBulk.Infrastructure.Audit;
 using WaBulk.Infrastructure.Persistence;
 
 namespace WaBulk.Infrastructure.Alerts;
@@ -103,6 +105,18 @@ public sealed partial class AlertService(WaBulkDbContext db, TimeProvider clock,
             .ExecuteUpdateAsync(s => s.SetProperty(p => p.LiftedUtc, now).SetProperty(p => p.LiftedBy, liftedBy), cancellationToken);
         var alerts = await db.Alerts.Where(a => a.ResolvedUtc == null)
             .ExecuteUpdateAsync(s => s.SetProperty(a => a.ResolvedUtc, now).SetProperty(a => a.ResolvedBy, liftedBy), cancellationToken);
+        if (pauses > 0 || alerts > 0)
+        {
+            // Auditoría en la misma transacción que levanta la pausa (F1.3): o quedan las dos cosas o ninguna.
+            // INSERT directo, como el resto de esta clase: no se guardan cambios ajenos pendientes en el DbContext.
+            var a = AuditEntry.Create(liftedBy, AuditActions.ReanudarDespacho, "DispatchPause", null,
+                new { pausasActivas = pauses, alertasAbiertas = alerts },
+                new { pausasActivas = 0, alertasAbiertas = 0, levantadaPor = liftedBy }, now);
+            await db.Database.ExecuteSqlInterpolatedAsync(
+                $"INSERT INTO AuditLog (Usuario, Accion, Entidad, EntidadId, Antes, Despues, FechaUtc) VALUES ({a.User}, {a.Action}, {a.Entity}, {a.EntityId}, {a.Before}, {a.After}, {a.AtUtc})",
+                cancellationToken);
+        }
+
         await tx.CommitAsync(cancellationToken);
         LogResumed(logger, liftedBy, pauses, alerts);
         return (pauses, alerts);

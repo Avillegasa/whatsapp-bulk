@@ -39,7 +39,7 @@ public static class CreateAdminCommand
 
         await using var scope = services.CreateAsyncScope();
         var result = await scope.ServiceProvider.GetRequiredService<AdminBootstrapper>()
-            .CreateFirstAdminAsync(userName, password);
+            .CreateFirstAdminAsync(userName, password, ActorFromWindows());
         if (!result.Succeeded)
         {
             await Console.Error.WriteLineAsync("No se creó el Admin:");
@@ -54,6 +54,10 @@ public static class CreateAdminCommand
         Console.WriteLine($"Admin '{userName}' creado. Ya puede iniciar sesión en la intranet.");
         return 0;
     }
+
+    /// <summary>Quién ejecutó el comando, para AuditLog: usuario de Windows (no se escribe a mano).</summary>
+    private static string ActorFromWindows() =>
+        string.IsNullOrWhiteSpace(Environment.UserName) ? "windows:desconocido" : $"windows:{Environment.UserName}";
 
     private static string ReadHidden(string prompt)
     {

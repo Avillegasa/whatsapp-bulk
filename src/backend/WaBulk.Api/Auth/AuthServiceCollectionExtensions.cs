@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using WaBulk.Domain.Users;
 using WaBulk.Infrastructure.Identity;
 using WaBulk.Infrastructure.Persistence;
@@ -40,8 +41,14 @@ public static class AuthServiceCollectionExtensions
             })
             .AddRoles<IdentityRole>()
             .AddEntityFrameworkStores<WaBulkDbContext>()
-            .AddSignInManager()
+            .AddSignInManager<AppSignInManager>()
             .AddDefaultTokenProviders();
+
+        // La cookie se revalida contra la base en CADA petición (intervalo 0): usuario desactivado o con clave
+        // restablecida → fuera en la siguiente petición; cambio de roles → la sesión los toma sin volver a entrar.
+        // Cuesta unas pocas consultas por petición, nada para una intranet de pocos usuarios.
+        // https://learn.microsoft.com/dotnet/api/microsoft.aspnetcore.identity.securitystampvalidatoroptions.validationinterval
+        services.Configure<SecurityStampValidatorOptions>(o => o.ValidationInterval = TimeSpan.Zero);
 
         services.ConfigureApplicationCookie(options =>
         {
@@ -72,12 +79,20 @@ public static class AuthServiceCollectionExtensions
             options.Cookie.SecurePolicy = securePolicy;
         });
 
-        services.AddAuthorizationBuilder()
-            // Todo endpoint exige sesión salvo que diga AllowAnonymous (login, sesión, /health).
+        // Políticas con nombre (D-030): los endpoints solo conocen estos nombres. Con Entra ID, cada política se
+        // arma desde sus roles de aplicación y los endpoints no cambian.
+        var authorization = services.AddAuthorizationBuilder()
+            // Red de seguridad: un endpoint sin política exige igual sesión (la prueba EndpointPolicyTests lo prohíbe).
             .SetFallbackPolicy(new AuthorizationPolicyBuilder().RequireAuthenticatedUser().Build())
-            .AddPolicy(Policies.PuedeAdministrar, p => p.RequireRole(Roles.Admin));
+            .AddPolicy(Policies.ConSesion, p => p.RequireAuthenticatedUser());
+        foreach (var (policy, role) in Policies.RoleFor)
+        {
+            authorization.AddPolicy(policy, p => p.RequireAuthenticatedUser().RequireRole(role));
+        }
 
+        services.TryAddSingleton(TimeProvider.System);
         services.AddScoped<AdminBootstrapper>();
+        services.AddScoped<UserAdminService>();
         return services;
     }
 }

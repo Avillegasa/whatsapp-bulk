@@ -1,7 +1,6 @@
 using System.Security.Claims;
 using Microsoft.AspNetCore.Antiforgery;
 using Microsoft.AspNetCore.Identity;
-using Microsoft.EntityFrameworkCore;
 using WaBulk.Domain.Users;
 using WaBulk.Infrastructure.Identity;
 
@@ -12,8 +11,6 @@ public sealed record LoginRequest(string Usuario, string Clave);
 public sealed record SessionResponse(bool Autenticado, string? Usuario, IReadOnlyList<string> Roles);
 
 public sealed record LoginError(string Error, string Mensaje);
-
-public sealed record UsuarioResumen(string Usuario, IReadOnlyList<string> Roles, DateTimeOffset? BloqueadoHasta);
 
 public static class AuthEndpoints
 {
@@ -44,6 +41,8 @@ public static class AuthEndpoints
                     $"Usuario bloqueado tras {AuthServiceCollectionExtensions.MaxFailedAccessAttempts} intentos fallidos. Intenta en 15 minutos o pide a un Admin que lo desbloquee.");
             }
 
+            // NotAllowed (usuario desactivado, AppSignInManager) responde igual que credenciales malas: no se revela
+            // qué usuarios existen ni cuáles están desactivados.
             if (!result.Succeeded)
             {
                 return Unauthorized("Credenciales", "Usuario o clave incorrectos.");
@@ -63,20 +62,7 @@ public static class AuthEndpoints
             http.User = new ClaimsPrincipal(new ClaimsIdentity());
             XsrfValidationFilter.IssueToken(antiforgery, http);
             return Results.Ok(Session(http.User));
-        });
-
-        // Lista mínima de usuarios (solo Admin); F1.3 la completa con crear, desactivar, cambiar rol y clave.
-        api.MapGet("/usuarios", async (UserManager<AppUser> users) =>
-        {
-            var list = await users.Users.AsNoTracking().OrderBy(u => u.UserName).ToListAsync();
-            var result = new List<UsuarioResumen>(list.Count);
-            foreach (var u in list)
-            {
-                result.Add(new UsuarioResumen(u.UserName!, [.. await users.GetRolesAsync(u)], u.LockoutEnd));
-            }
-
-            return Results.Ok(result);
-        }).RequireAuthorization(Policies.PuedeAdministrar);
+        }).RequireAuthorization(Policies.ConSesion);
 
         return api;
     }

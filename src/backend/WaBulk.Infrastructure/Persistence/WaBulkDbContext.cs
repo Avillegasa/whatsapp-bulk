@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 using WaBulk.Domain.Alerts;
+using WaBulk.Domain.Audit;
 using WaBulk.Domain.Capacity;
 using WaBulk.Domain.Consent;
 using WaBulk.Domain.Messaging;
@@ -23,6 +24,7 @@ public class WaBulkDbContext(DbContextOptions<WaBulkDbContext> options) : Identi
     public DbSet<CapacityReservation> CapacityReservations => Set<CapacityReservation>();
     public DbSet<Alert> Alerts => Set<Alert>();
     public DbSet<DispatchPause> DispatchPauses => Set<DispatchPause>();
+    public DbSet<AuditLog> AuditLogs => Set<AuditLog>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

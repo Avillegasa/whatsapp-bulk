@@ -7,7 +7,7 @@ namespace WaBulk.Worker;
 /// <summary>
 /// Comandos del freno de emergencia (F0.12), hasta que exista la pantalla de la Fase 1:
 ///   dotnet run --project src\backend\WaBulk.Worker -- alertas
-///   dotnet run --project src\backend\WaBulk.Worker -- reanudar   (registra Environment.UserName en LevantadaPor)
+///   dotnet run --project src\backend\WaBulk.Worker -- reanudar   (registra "windows:<usuario>" en LevantadaPor y en AuditLog)
 /// </summary>
 public static class AlertsCommand
 {
@@ -43,8 +43,8 @@ public static class AlertsCommand
             return 2;
         }
 
-        var by = Environment.UserName;
-        if (string.IsNullOrWhiteSpace(by))
+        var by = $"windows:{Environment.UserName}";
+        if (string.IsNullOrWhiteSpace(Environment.UserName))
         {
             await Console.Error.WriteLineAsync("No se pudo obtener el usuario de Windows; la pausa sigue activa.");
             return 2;

@@ -232,6 +232,23 @@ public sealed class AlertIntegrationTests(SqlServerTestDatabase database)
         var (alertRows, pauseRows) = await StateAsync();
         Assert.Equal("andres", Assert.Single(pauseRows).LiftedBy);
         Assert.Equal("andres", Assert.Single(alertRows).ResolvedBy);
+
+        // F1.3: reanudar queda en AuditLog (misma transacción que levantar la pausa).
+        await using var check = database.CreateContext();
+        var audit = Assert.Single(await check.AuditLogs.AsNoTracking().ToListAsync());
+        Assert.Equal(("andres", "ReanudarDespacho", "DispatchPause"), (audit.User, audit.Action, audit.Entity));
+        Assert.Contains("\"pausasActivas\":1", audit.Before, StringComparison.Ordinal);
+        Assert.Contains("\"pausasActivas\":0", audit.After, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task Reanudar_sin_pausa_no_audita()
+    {
+        await using var db = database.CreateContext();
+        var (pauses, _) = await new AlertService(db, _clock, NullLogger<AlertService>.Instance).ResumeAsync("andres", CancellationToken.None);
+
+        Assert.Equal(0, pauses);
+        Assert.Empty(await db.AuditLogs.AsNoTracking().ToListAsync());
     }
 
     [Fact]
