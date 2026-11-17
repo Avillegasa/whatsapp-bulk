@@ -22,7 +22,8 @@ Angular nunca habla con Meta. La API nunca envía en masa de forma síncrona. To
 2. Campaña: versión inmutable (plantilla, idioma, categoría, audiencia, parámetros, programación, vencimiento) aprobada por alguien distinto del operador. Al aprobar se crea un `DispatchJob` por destinatario.
 3. Despachador: reclama lote (transacción corta + lease) → revalida (campaña, vencimiento, plantilla, consentimiento, preferencias, fatiga, capacidad) → inserta `SendAttempt` → POST `/{PHONE_NUMBER_ID}/messages` con `biz_opaque_callback_data` = AttemptId → clasifica resultado.
 4. Receptor: valida firma → `WebhookInbox` → 200.
-5. Procesador: separa `entry`/`changes`/`statuses`; correlaciona por `wamid` o por AttemptId; aplica eventos idempotentes; actualiza bajas, plantillas, calidad y capacidad; notifica al frontend (SignalR).
+5. Procesador: separa `entry`/`changes`/`statuses`; correlaciona por `wamid` o por AttemptId; aplica eventos idempotentes; actualiza bajas, plantillas, calidad y capacidad.
+6. Monitor (F1.8, D-036): la Api recalcula el tablero cada 2 s y, si cambió, lo empuja al frontend por SignalR (`/api/hubs/monitor`).
 
 ## Resultado de un intento
 
