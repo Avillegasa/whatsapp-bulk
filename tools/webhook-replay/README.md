@@ -36,8 +36,10 @@ docker exec -i wabulk-sqlserver sh -c "/opt/mssql-tools18/bin/sqlcmd -S localhos
 | Duplicado | `dotnet run --project tools\webhook-replay -- duplicado --intento ultimo` | El mismo `delivered` dos veces (bytes idénticos), como cuando Meta reintenta | 2 filas en `WebhookInbox`; 1 solo `MessageEvent` Delivered |
 | Desorden | `dotnet run --project tools\webhook-replay -- desorden --intento ultimo` | `read`, `delivered` y `sent`, en ese orden (timestamps T+2, T+1, T) | 3 filas; `MessageEvent` Read, Delivered y Sent; `EstadoEntrega` = Read (no retrocede) |
 | Lote | `dotnet run --project tools\webhook-replay -- lote --intento ultimo` | 1 POST con 2 `entry`: `sent` + `delivered` en la primera, `read` en la segunda | 1 fila; 3 `MessageEvent`; `EstadoEntrega` = Read |
-| Baja de plataforma | `dotnet run --project tools\webhook-replay -- stop` | `user_preferences` con `value` = `stop`, `category` = `marketing_messages` | 1 fila `Procesado` sin eventos. La baja se aplica desde F0.10 |
-| Alta de plataforma | `dotnet run --project tools\webhook-replay -- resume` | `user_preferences` con `value` = `resume` | 1 fila `Procesado` sin eventos. En F0.10 nunca borra una baja de la empresa |
+| Baja de plataforma | `dotnet run --project tools\webhook-replay -- stop` | `user_preferences` con `value` = `stop`, `category` = `marketing_messages` | 1 fila `Procesado` sin eventos; 1 `PlatformPreference` Stop |
+| Alta de plataforma | `dotnet run --project tools\webhook-replay -- resume` | `user_preferences` con `value` = `resume` | 1 fila `Procesado` sin eventos; 1 `PlatformPreference` Resume; no toca `ConsentRecord` (nunca levanta una baja de la empresa) |
+| Baja por palabra clave | `dotnet run --project tools\webhook-replay -- baja-palabra` | Mensaje entrante de texto `BAJA` del contacto | 1 fila `Procesado`; 1 `ConsentRecord` OptOut, Fuente `PalabraClave` |
+| Baja por botón | `dotnet run --project tools\webhook-replay -- baja-boton` | Mensaje `button` con payload `BAJA_PROMOCIONES` y texto "No recibir más" | 1 fila `Procesado`; 1 `ConsentRecord` OptOut, Fuente `Boton` |
 | Plantilla pausada | `dotnet run --project tools\webhook-replay -- plantilla-paused` | `message_template_status_update` con `event` = `PAUSED`, `other_info.title` = `FIRST_PAUSE` | 1 fila `Procesado` sin eventos. La pausa global se aplica desde F0.12 |
 | Firma inválida | `dotnet run --project tools\webhook-replay -- lote --firma-mala` | El lote, firmado con otra clave | 401 en cada POST; ninguna fila nueva |
 

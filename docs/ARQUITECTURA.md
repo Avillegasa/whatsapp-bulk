@@ -46,12 +46,12 @@ Angular nunca habla con Meta. La API nunca envía en masa de forma síncrona. To
 | Tabla | Campos clave | Notas |
 | --- | --- | --- |
 | `Contact` | Id, PhoneE164 (único), WaId, Nombre, ClienteId, Activo | E.164 (Bolivia: 591 + 8 dígitos) |
-| `ConsentRecord` | ContactId, Finalidad, Canal, Estado (OptIn/OptOut/NoContactar), Fuente, Evidencia, FechaUtc, RegistradoPor | Historial inmutable |
-| `PlatformPreference` | PhoneE164, Categoria, Valor (stop/resume), Origen, FechaUtc | Separada del consentimiento |
+| `ConsentRecord` | ContactId (opcional hasta Fase 1), PhoneE164, Finalidad, Canal, Estado (OptIn/OptOut/NoContactar), Fuente, Evidencia, WamidOrigen, FechaUtc, RegistradoPor | Historial inmutable; vigente = último por teléfono y finalidad; único filtrado en WamidOrigen (D-025) |
+| `PlatformPreference` | PhoneE164, Categoria, Valor (stop/resume), Origen (Webhook/Error131050), FechaUtc | Separada del consentimiento; vigente = FechaUtc de Meta más reciente; único (PhoneE164, Categoria, FechaUtc, Valor) |
 | `Segment`, `SegmentMember` | Filtros o listas | Congelados al aprobar |
 | `Template` | MetaTemplateId, Nombre, Idioma, Categoria, Estado, Calidad, Componentes (JSON) | Sincronizada con Meta |
 | `Campaign`, `CampaignVersion` | Version: plantilla, idioma, categoría, audiencia, parámetros, ProgramadaUtc, ExpiraUtc, Hash, AprobadaPor | Cambios → nueva versión y nueva aprobación |
-| `DispatchJob` | Id, CampaignVersionId, ContactId, PhoneE164, Parametros, Prioridad, ProgramadoUtc, ExpiraUtc, EstadoDespacho, Intentos, ProximoIntentoUtc, LockedBy, LeaseUntilUtc | Único (CampaignVersionId, ContactId) |
+| `DispatchJob` | Id, CampaignVersionId, ContactId, PhoneE164, Parametros, Prioridad, ProgramadoUtc, ExpiraUtc, EstadoDespacho, Intentos, ProximoIntentoUtc, LockedBy, LeaseUntilUtc, MotivoOmision | Único (CampaignVersionId, ContactId); MotivoOmision solo en `Skipped` (SinConsentimiento, BajaEmpresa, NoContactar, BajaPlataforma) |
 | `SendAttempt` | AttemptId, DispatchJobId, InicioUtc, FinUtc, Estado, Wamid, HttpStatus, CodigoError, Detalle, EstadoEntrega | Único filtrado en Wamid; EstadoEntrega solo lo escribe el procesador (D-023) |
 | `CapacityReservation` | PortafolioId, PhoneE164, ReservadaUtc, ExpiraUtc, Estado | Destinatarios únicos, ventana móvil 24 h |
 | `MessageEvent` | Wamid, AttemptId, Estado, TimestampMeta, Pricing, Errores | Único (Wamid, Estado) |

@@ -3,7 +3,9 @@ using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using WaBulk.Domain.Consent;
 using WaBulk.Domain.Messaging;
+using WaBulk.Infrastructure.Consent;
 using WaBulk.Infrastructure.Persistence;
 
 namespace WaBulk.Infrastructure.Messaging;
@@ -12,12 +14,15 @@ namespace WaBulk.Infrastructure.Messaging;
 /// Procesa WebhookInbox fuera de la petición (regla 6). Por cada fila: separa entry/changes/statuses,
 /// correlaciona cada estado con su SendAttempt (AttemptId de biz_opaque_callback_data, si no por wamid),
 /// registra MessageEvent una sola vez por (wamid, estado) y hace avanzar SendAttempt.EstadoEntrega
-/// sin retroceder nunca (regla 7). Todo lo de una fila se guarda en un solo SaveChanges.
+/// sin retroceder nunca (regla 7). Bajas (F0.10): mensajes entrantes con palabra clave o botón de baja →
+/// ConsentRecord OptOut (capa empresa); user_preferences y estados failed con 131050 → PlatformPreference (capa
+/// plataforma). Todo lo de una fila se guarda en un solo SaveChanges.
 /// Referencia: https://developers.facebook.com/documentation/business-messaging/whatsapp/webhooks/reference/messages/status
 /// </summary>
 public sealed partial class WebhookInboxProcessor(
     WaBulkDbContext db,
     IOptions<InboxProcessorOptions> options,
+    IOptions<OptOutOptions> optOut,
     TimeProvider clock,
     ILogger<WebhookInboxProcessor> logger)
 {
@@ -80,16 +85,36 @@ public sealed partial class WebhookInboxProcessor(
         {
             foreach (var change in entry.Changes ?? [])
             {
-                var statuses = change.Field == "messages" ? change.Value?.Statuses : null;
-                if (statuses is null)
+                var outcomes = new List<(Outcome Outcome, string? Note)>();
+                switch (change.Field)
                 {
-                    ignored++; // Otros campos (mensajes entrantes, account_update, plantillas…): F0.10 / Fase 1.
-                    continue;
+                    case "messages":
+                        foreach (var status in change.Value?.Statuses ?? [])
+                        {
+                            outcomes.Add(await ApplyPlatformStopFromErrorAsync(status, cancellationToken));
+                            outcomes.Add(await ApplyStatusAsync(status, seen, cancellationToken));
+                        }
+
+                        foreach (var message in change.Value?.Messages ?? [])
+                        {
+                            outcomes.Add(await ApplyInboundMessageAsync(message, change.Value?.Contacts, cancellationToken));
+                        }
+
+                        break;
+                    case "user_preferences":
+                        foreach (var preference in change.Value?.UserPreferences ?? [])
+                        {
+                            outcomes.Add(await ApplyUserPreferenceAsync(preference, cancellationToken));
+                        }
+
+                        break;
+                    default:
+                        outcomes.Add((Outcome.Ignored, null)); // account_update, plantillas, calidad…: F0.12 / Fase 1.
+                        break;
                 }
 
-                foreach (var status in statuses)
+                foreach (var (outcome, note) in outcomes)
                 {
-                    var (outcome, note) = await ApplyStatusAsync(status, seen, cancellationToken);
                     switch (outcome)
                     {
                         case Outcome.Applied: applied++; break;
@@ -135,6 +160,139 @@ public sealed partial class WebhookInboxProcessor(
         }
 
         LogRowDone(logger, row.Id, row.Status, applied, duplicates, ignored, pending.Count);
+    }
+
+    /// <summary>
+    /// Mensaje entrante: si es una baja (palabra clave o botón de baja), ConsentRecord OptOut. Cualquier otro
+    /// mensaje se ignora por ahora (la interacción para la regla de fatiga llega en la Fase 1).
+    /// </summary>
+    private async Task<(Outcome Outcome, string? Note)> ApplyInboundMessageAsync(
+        WebhookMessage message, IReadOnlyList<WebhookContact>? contacts, CancellationToken cancellationToken)
+    {
+        var opts = optOut.Value;
+        (ConsentSource Source, string Evidence)? optOutMatch = message.Type switch
+        {
+            "text" when OptOutDetector.IsKeyword(message.Text?.Body, opts.EffectiveKeywords)
+                => (ConsentSource.PalabraClave, message.Text!.Body!),
+            "button" when OptOutDetector.IsOptOutButton(
+                    message.Button?.Payload, message.Button?.Text, opts.EffectiveButtonPayloads, opts.EffectiveButtonTexts)
+                => (ConsentSource.Boton, $"payload={message.Button!.Payload} text={message.Button.Text}"),
+            "interactive" when OptOutDetector.IsOptOutButton(
+                    message.Interactive?.ButtonReply?.Id, message.Interactive?.ButtonReply?.Title,
+                    opts.EffectiveButtonPayloads, opts.EffectiveButtonTexts)
+                => (ConsentSource.Boton, $"id={message.Interactive!.ButtonReply!.Id} title={message.Interactive.ButtonReply.Title}"),
+            _ => null,
+        };
+        if (optOutMatch is not { } match)
+        {
+            return (Outcome.Ignored, null);
+        }
+
+        var phone = ConsentService.ToE164(message.From ?? (contacts is { Count: 1 } ? contacts[0].WaId : null));
+        if (phone is null)
+        {
+            // Sin teléfono (usuario con nombre de usuario): no se puede aplicar por PhoneE164; lo resuelve una persona.
+            return (Outcome.Review, $"baja sin teléfono (user_id {message.FromUserId}, mensaje {message.Id})");
+        }
+
+        if (string.IsNullOrEmpty(message.Id))
+        {
+            return (Outcome.Review, $"baja de {phone} sin id de mensaje");
+        }
+
+        if (db.ConsentRecords.Local.Any(c => c.SourceWamid == message.Id)
+            || await db.ConsentRecords.AnyAsync(c => c.SourceWamid == message.Id, cancellationToken))
+        {
+            return (Outcome.Duplicate, null);
+        }
+
+        db.ConsentRecords.Add(new ConsentRecord
+        {
+            PhoneE164 = phone,
+            Status = ConsentStatus.OptOut,
+            Source = match.Source,
+            Evidence = TruncateTo(match.Evidence, 1000),
+            SourceWamid = message.Id,
+            RecordedUtc = ParseUnixSeconds(message.Timestamp) ?? Now(),
+            RecordedBy = "webhook",
+        });
+        LogOptOut(logger, phone, match.Source);
+        return (Outcome.Applied, null);
+    }
+
+    /// <summary>user_preferences stop/resume de marketing → PlatformPreference (nunca toca la capa empresa).</summary>
+    private async Task<(Outcome Outcome, string? Note)> ApplyUserPreferenceAsync(
+        WebhookUserPreference preference, CancellationToken cancellationToken)
+    {
+        PlatformPreferenceValue? value = preference.Value switch
+        {
+            "stop" => PlatformPreferenceValue.Stop,
+            "resume" => PlatformPreferenceValue.Resume,
+            _ => null,
+        };
+        if (preference.Category != PlatformCategories.MarketingMessages || value is null)
+        {
+            return (Outcome.Ignored, null);
+        }
+
+        var phone = ConsentService.ToE164(preference.WaId);
+        if (phone is null)
+        {
+            return (Outcome.Review, $"user_preferences {preference.Value} sin wa_id (user_id {preference.UserId})");
+        }
+
+        var timestamp = preference.Timestamp switch
+        {
+            { ValueKind: JsonValueKind.Number } n when n.TryGetInt64(out var s) => DateTimeOffset.FromUnixTimeSeconds(s).UtcDateTime,
+            { ValueKind: JsonValueKind.String } t => ParseUnixSeconds(t.GetString()),
+            _ => null,
+        } ?? Now();
+
+        return await AddPlatformPreferenceAsync(phone, value.Value, PlatformPreferenceOrigin.Webhook, timestamp, cancellationToken);
+    }
+
+    /// <summary>Estado failed con error 131050: el contacto detuvo el marketing en WhatsApp.</summary>
+    private async Task<(Outcome Outcome, string? Note)> ApplyPlatformStopFromErrorAsync(
+        WebhookStatus status, CancellationToken cancellationToken)
+    {
+        if (status.Status != "failed" || status.Errors is not { ValueKind: JsonValueKind.Array } errors
+            || !errors.EnumerateArray().Any(e => e.TryGetProperty("code", out var c) && c.TryGetInt32(out var code)
+                                                 && code == Dispatcher.PlatformStopErrorCode))
+        {
+            return (Outcome.Ignored, null);
+        }
+
+        var phone = ConsentService.ToE164(status.RecipientId);
+        if (phone is null)
+        {
+            return (Outcome.Review, $"131050 sin recipient_id ({Shorten(status.Id ?? "")})");
+        }
+
+        return await AddPlatformPreferenceAsync(phone, PlatformPreferenceValue.Stop, PlatformPreferenceOrigin.Error131050,
+            ParseUnixSeconds(status.Timestamp) ?? Now(), cancellationToken);
+    }
+
+    private async Task<(Outcome Outcome, string? Note)> AddPlatformPreferenceAsync(
+        string phone, PlatformPreferenceValue value, PlatformPreferenceOrigin origin, DateTime recordedUtc,
+        CancellationToken cancellationToken)
+    {
+        if (db.PlatformPreferences.Local.Any(p => p.PhoneE164 == phone && p.RecordedUtc == recordedUtc && p.Value == value)
+            || await db.PlatformPreferences.AnyAsync(
+                p => p.PhoneE164 == phone && p.Category == PlatformCategories.MarketingMessages
+                     && p.RecordedUtc == recordedUtc && p.Value == value, cancellationToken))
+        {
+            return (Outcome.Duplicate, null);
+        }
+
+        db.PlatformPreferences.Add(new PlatformPreference
+        {
+            PhoneE164 = phone,
+            Value = value,
+            Origin = origin,
+            RecordedUtc = recordedUtc,
+        });
+        LogPlatformPreference(logger, phone, value, origin);
+        return (Outcome.Applied, null);
     }
 
     private async Task<(Outcome Outcome, string? Note)> ApplyStatusAsync(
@@ -267,7 +425,9 @@ public sealed partial class WebhookInboxProcessor(
 
     private static string Shorten(string wamid) => wamid.Length <= 24 ? wamid : $"{wamid[..24]}…";
 
-    private static string Truncate(string value) => value.Length <= MaxErrorLength ? value : value[..MaxErrorLength];
+    private static string Truncate(string value) => TruncateTo(value, MaxErrorLength);
+
+    private static string TruncateTo(string value, int max) => value.Length <= max ? value : value[..max];
 
     [LoggerMessage(Level = LogLevel.Information,
         Message = "Inbox {InboxId} → {Status}: {Applied} eventos nuevos, {Duplicates} duplicados, {Ignored} ignorados, {Pending} sin correlación")]
@@ -281,6 +441,12 @@ public sealed partial class WebhookInboxProcessor(
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "Inbox {InboxId}: conflicto al guardar, se reintenta ({Error})")]
     private static partial void LogSaveConflict(ILogger logger, long inboxId, string error);
+
+    [LoggerMessage(Level = LogLevel.Information, Message = "Baja de empresa registrada para {Phone} ({Source})")]
+    private static partial void LogOptOut(ILogger logger, string phone, ConsentSource source);
+
+    [LoggerMessage(Level = LogLevel.Information, Message = "Preferencia de plataforma {Value} para {Phone} ({Origin})")]
+    private static partial void LogPlatformPreference(ILogger logger, string phone, PlatformPreferenceValue value, PlatformPreferenceOrigin origin);
 
     [LoggerMessage(Level = LogLevel.Information, Message = "Estado de entrega no manejado: {Status}")]
     private static partial void LogUnknownStatus(ILogger logger, string? status);

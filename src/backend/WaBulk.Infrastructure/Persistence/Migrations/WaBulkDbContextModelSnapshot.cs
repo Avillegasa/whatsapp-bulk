@@ -22,6 +22,130 @@ namespace WaBulk.Infrastructure.Persistence.Migrations
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
 
+            modelBuilder.Entity("WaBulk.Domain.Consent.ConsentRecord", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
+
+                    b.Property<string>("Channel")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(20)")
+                        .HasColumnName("Canal");
+
+                    b.Property<long?>("ContactId")
+                        .HasColumnType("bigint");
+
+                    b.Property<string>("Evidence")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)")
+                        .HasColumnName("Evidencia");
+
+                    b.Property<string>("PhoneE164")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(16)");
+
+                    b.Property<string>("Purpose")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(40)")
+                        .HasColumnName("Finalidad");
+
+                    b.Property<string>("RecordedBy")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)")
+                        .HasColumnName("RegistradoPor");
+
+                    b.Property<DateTime>("RecordedUtc")
+                        .HasColumnType("datetime2")
+                        .HasColumnName("FechaUtc");
+
+                    b.Property<string>("Source")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(20)")
+                        .HasColumnName("Fuente");
+
+                    b.Property<string>("SourceWamid")
+                        .HasMaxLength(128)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(128)")
+                        .HasColumnName("WamidOrigen");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(20)")
+                        .HasColumnName("Estado");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("SourceWamid")
+                        .IsUnique()
+                        .HasFilter("[WamidOrigen] IS NOT NULL");
+
+                    b.HasIndex("PhoneE164", "Purpose", "RecordedUtc");
+
+                    b.ToTable("ConsentRecord", (string)null);
+                });
+
+            modelBuilder.Entity("WaBulk.Domain.Consent.PlatformPreference", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
+
+                    b.Property<string>("Category")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(40)")
+                        .HasColumnName("Categoria");
+
+                    b.Property<string>("Origin")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(20)")
+                        .HasColumnName("Origen");
+
+                    b.Property<string>("PhoneE164")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(16)");
+
+                    b.Property<DateTime>("RecordedUtc")
+                        .HasColumnType("datetime2")
+                        .HasColumnName("FechaUtc");
+
+                    b.Property<string>("Value")
+                        .IsRequired()
+                        .HasMaxLength(10)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(10)")
+                        .HasColumnName("Valor");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("PhoneE164", "Category", "RecordedUtc", "Value")
+                        .IsUnique();
+
+                    b.ToTable("PlatformPreference", (string)null);
+                });
+
             modelBuilder.Entity("WaBulk.Domain.Messaging.DispatchJob", b =>
                 {
                     b.Property<long>("Id")
@@ -79,6 +203,12 @@ namespace WaBulk.Infrastructure.Persistence.Migrations
                     b.Property<DateTime>("ScheduledUtc")
                         .HasColumnType("datetime2")
                         .HasColumnName("ProgramadoUtc");
+
+                    b.Property<string>("SkipReason")
+                        .HasMaxLength(40)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(40)")
+                        .HasColumnName("MotivoOmision");
 
                     b.HasKey("Id");
 

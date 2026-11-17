@@ -41,12 +41,14 @@ public sealed class PersistenceModelTests
     }
 
     [Fact]
-    public void Model_MapsTheFourInitialTables()
+    public void Model_MapsTheExpectedTables()
     {
         using var db = CreateContext();
 
         var tables = db.Model.GetEntityTypes().Select(e => e.GetTableName() ?? "").Order().ToArray();
 
-        Assert.Equal<string>(["DispatchJob", "MessageEvent", "SendAttempt", "WebhookInbox"], tables);
+        // F0.4 + F0.10 (ConsentRecord, PlatformPreference).
+        Assert.Equal<string>(
+            ["ConsentRecord", "DispatchJob", "MessageEvent", "PlatformPreference", "SendAttempt", "WebhookInbox"], tables);
     }
 }

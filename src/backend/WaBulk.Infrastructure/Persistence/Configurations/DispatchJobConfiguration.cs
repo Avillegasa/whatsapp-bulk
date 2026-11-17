@@ -22,6 +22,7 @@ internal sealed class DispatchJobConfiguration : IEntityTypeConfiguration<Dispat
         builder.Property(x => x.Attempts).HasColumnName("Intentos");
         builder.Property(x => x.NextAttemptUtc).HasColumnName("ProximoIntentoUtc");
         builder.Property(x => x.LockedBy).HasMaxLength(100);
+        builder.Property(x => x.SkipReason).HasColumnName("MotivoOmision").HasMaxLength(40).IsUnicode(false);
 
         // Un destinatario por versión de campaña.
         builder.HasIndex(x => new { x.CampaignVersionId, x.ContactId }).IsUnique();

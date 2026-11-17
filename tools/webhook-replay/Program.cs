@@ -103,7 +103,8 @@ var ctx = new ReplayContext(
     waId,
     wamid,
     attemptId,
-    DateTimeOffset.UtcNow.ToUnixTimeSeconds());
+    DateTimeOffset.UtcNow.ToUnixTimeSeconds(),
+    "wamid.REPLAYIN" + Convert.ToHexString(RandomNumberGenerator.GetBytes(12)));
 
 var pause = TimeSpan.FromMilliseconds(int.TryParse(replay["PauseMs"], out var ms) ? ms : 300);
 using var http = new HttpClient { Timeout = TimeSpan.FromSeconds(15) };

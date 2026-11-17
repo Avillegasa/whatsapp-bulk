@@ -3,6 +3,7 @@ using System.Data.Common;
 using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage;
+using WaBulk.Domain.Consent;
 using WaBulk.Domain.Messaging;
 using WaBulk.Infrastructure.Persistence;
 
@@ -17,6 +18,8 @@ public enum BeginOutcome
     LeaseLost,
     /// <summary>El trabajo venció (ExpiraUtc) mientras estaba reclamado: queda Expired sin POST.</summary>
     Expired,
+    /// <summary>El contacto no es elegible (baja de empresa o de plataforma, sin consentimiento): Skipped sin POST.</summary>
+    Skipped,
 }
 
 public sealed record RecoveredJob(long JobId, DispatchStatus Status);
@@ -164,6 +167,16 @@ public sealed class DispatchQueue(WaBulkDbContext db)
         return BeginOutcome.Started;
     }
 
+    /// <summary>Marca Skipped con su motivo un trabajo reclamado por este worker (revisión de bajas al enviar, F0.10).</summary>
+    public async Task<bool> SkipAsync(long jobId, string owner, string reason, CancellationToken cancellationToken) =>
+        await db.DispatchJobs
+            .Where(j => j.Id == jobId && j.LockedBy == owner && j.DispatchStatus == DispatchStatus.Claimed)
+            .ExecuteUpdateAsync(s => s
+                .SetProperty(j => j.DispatchStatus, DispatchStatus.Skipped)
+                .SetProperty(j => j.SkipReason, reason)
+                .SetProperty(j => j.LockedBy, (string?)null)
+                .SetProperty(j => j.LeaseUntilUtc, (DateTime?)null), cancellationToken) == 1;
+
     /// <summary>
     /// Guarda el resultado del intento y el nuevo estado del trabajo en una transacción.
     /// El trabajo solo se actualiza si el worker sigue siendo dueño (LockedBy y Claimed). Si perdió el lease, la
@@ -173,10 +186,19 @@ public sealed class DispatchQueue(WaBulkDbContext db)
     /// </summary>
     public async Task<bool> CompleteAttemptAsync(
         long jobId, string owner, Guid attemptId, SendAttemptStatus status, string? wamid, int? httpStatus, int? errorCode,
-        string? detail, DispatchTransition transition, DateTime nowUtc, CancellationToken cancellationToken)
+        string? detail, DispatchTransition transition, DateTime nowUtc, CancellationToken cancellationToken,
+        PlatformPreference? platformPreference = null)
     {
         ArgumentNullException.ThrowIfNull(transition);
         await using var tx = await db.Database.BeginTransactionAsync(cancellationToken);
+
+        if (platformPreference is not null)
+        {
+            // 131050: el contacto detuvo el marketing en WhatsApp; se registra junto con el resultado (F0.10).
+            db.PlatformPreferences.Add(platformPreference);
+            await db.SaveChangesAsync(cancellationToken);
+            db.ChangeTracker.Clear();
+        }
 
         // COALESCE: si el procesador ya guardó el wamid de un webhook, no se pierde.
         await db.SendAttempts

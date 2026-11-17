@@ -17,6 +17,8 @@ public class DispatchJob
     public DateTime? NextAttemptUtc { get; set; }
     public string? LockedBy { get; set; }
     public DateTime? LeaseUntilUtc { get; set; }
+    /// <summary>Por qué quedó Skipped (ver WaBulk.Domain.Consent.SkipReasons). Null en los demás estados.</summary>
+    public string? SkipReason { get; set; }
 
     public ICollection<SendAttempt> SendAttempts { get; } = [];
 }

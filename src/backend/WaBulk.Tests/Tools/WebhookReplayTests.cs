@@ -11,6 +11,7 @@ using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using WaBulk.Domain.Messaging;
+using WaBulk.Infrastructure.Consent;
 using WaBulk.Infrastructure.Messaging;
 using WaBulk.Infrastructure.Persistence;
 using WaBulk.WebhookReplay;
@@ -96,7 +97,7 @@ public sealed class WebhookReplayTests : IAsyncLifetime
     {
         await using var db = Db();
         var processor = new WebhookInboxProcessor(db, Options.Create(new InboxProcessorOptions()),
-            TimeProvider.System, NullLogger<WebhookInboxProcessor>.Instance);
+            Options.Create(new OptOutOptions()), TimeProvider.System, NullLogger<WebhookInboxProcessor>.Instance);
         await processor.ProcessBatchAsync(CancellationToken.None);
     }
 
@@ -105,7 +106,7 @@ public sealed class WebhookReplayTests : IAsyncLifetime
     {
         var ctx = Context(Guid.CreateVersion7(), "wamid.X");
         var names = PayloadTemplates.Names().ToList();
-        Assert.Equal(7, names.Count);
+        Assert.Equal(9, names.Count);
 
         foreach (var name in names)
         {
@@ -122,7 +123,7 @@ public sealed class WebhookReplayTests : IAsyncLifetime
     public void Los_escenarios_pedidos_en_el_plan_existen_y_usan_plantillas_existentes()
     {
         var names = PayloadTemplates.Names().ToHashSet();
-        foreach (var scenario in new[] { "duplicado", "desorden", "lote", "stop", "resume", "plantilla-paused" })
+        foreach (var scenario in new[] { "duplicado", "desorden", "lote", "stop", "resume", "plantilla-paused", "baja-palabra", "baja-boton" })
         {
             var s = ReplayScenarios.Find(scenario);
             Assert.NotNull(s);
@@ -194,5 +195,21 @@ public sealed class WebhookReplayTests : IAsyncLifetime
         await using var db = Db();
         Assert.Equal(WebhookInboxStatus.Procesado, (await db.WebhookInbox.SingleAsync()).Status);
         Assert.Equal(0, await db.MessageEvents.CountAsync());
+    }
+
+    [Theory]
+    [InlineData("stop", 0, 1)]
+    [InlineData("resume", 0, 1)]
+    [InlineData("baja-palabra", 1, 0)]
+    [InlineData("baja-boton", 1, 0)]
+    public async Task Escenarios_de_baja_registran_la_capa_que_corresponde(string scenario, int consents, int preferences)
+    {
+        await Sender().RunAsync(ReplayScenarios.Find(scenario)!, Context(Guid.CreateVersion7(), "wamid.X"));
+        await ProcessInboxAsync();
+
+        await using var db = Db();
+        Assert.Equal(consents, await db.ConsentRecords.CountAsync());
+        Assert.Equal(preferences, await db.PlatformPreferences.CountAsync());
+        Assert.All(await db.ConsentRecords.ToListAsync(), c => Assert.Equal("+59170000000", c.PhoneE164));
     }
 }

@@ -2,7 +2,9 @@ using System.Net;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
+using WaBulk.Domain.Consent;
 using WaBulk.Domain.Messaging;
+using WaBulk.Infrastructure.Consent;
 using WaBulk.Infrastructure.Messaging;
 using WaBulk.Infrastructure.Persistence;
 using WaBulk.Tests.Meta;
@@ -23,7 +25,18 @@ public sealed class DispatcherIntegrationTests(SqlServerTestDatabase database)
     private readonly ManualClock _clock = new(Start);
     private int _wamidCounter;
 
-    public Task InitializeAsync() => database.ResetAsync();
+    public async Task InitializeAsync()
+    {
+        await database.ResetAsync();
+        // Desde F0.10 solo se envía a quien tiene OptIn vigente: el contacto de estas pruebas lo tiene.
+        await using var db = database.CreateContext();
+        db.ConsentRecords.Add(new ConsentRecord
+        {
+            PhoneE164 = "+59170000000", Status = ConsentStatus.OptIn, Source = ConsentSource.Manual,
+            RecordedUtc = Start.AddDays(-1), RecordedBy = "prueba",
+        });
+        await db.SaveChangesAsync();
+    }
 
     public Task DisposeAsync() => Task.CompletedTask;
 
@@ -43,7 +56,8 @@ public sealed class DispatcherIntegrationTests(SqlServerTestDatabase database)
     private Dispatcher NewDispatcher(WaBulkDbContext db, FakeHttpHandler handler, string owner, TimeSpan? httpTimeout = null)
     {
         var options = Microsoft.Extensions.Options.Options.Create(Options(owner));
-        return new Dispatcher(db, new DispatchQueue(db), MetaWhatsAppClientTests.CreateClient(handler, httpTimeout),
+        return new Dispatcher(db, new DispatchQueue(db), new ConsentService(db, _clock),
+            MetaWhatsAppClientTests.CreateClient(handler, httpTimeout),
             options, new DispatcherIdentity(options), _clock, NullLogger<Dispatcher>.Instance);
     }
 
@@ -407,7 +421,7 @@ public sealed class DispatcherIntegrationTests(SqlServerTestDatabase database)
         await using (var db = database.CreateContext())
         {
             var processor = new WebhookInboxProcessor(db, Microsoft.Extensions.Options.Options.Create(new InboxProcessorOptions()),
-                _clock, NullLogger<WebhookInboxProcessor>.Instance);
+                Microsoft.Extensions.Options.Options.Create(new OptOutOptions()), _clock, NullLogger<WebhookInboxProcessor>.Instance);
             await processor.ProcessBatchAsync(CancellationToken.None);
         }
 

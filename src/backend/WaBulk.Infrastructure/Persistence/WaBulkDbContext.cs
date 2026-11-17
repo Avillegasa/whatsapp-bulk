@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using WaBulk.Domain.Consent;
 using WaBulk.Domain.Messaging;
 
 namespace WaBulk.Infrastructure.Persistence;
@@ -9,6 +10,8 @@ public class WaBulkDbContext(DbContextOptions<WaBulkDbContext> options) : DbCont
     public DbSet<DispatchJob> DispatchJobs => Set<DispatchJob>();
     public DbSet<SendAttempt> SendAttempts => Set<SendAttempt>();
     public DbSet<MessageEvent> MessageEvents => Set<MessageEvent>();
+    public DbSet<ConsentRecord> ConsentRecords => Set<ConsentRecord>();
+    public DbSet<PlatformPreference> PlatformPreferences => Set<PlatformPreference>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

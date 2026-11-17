@@ -13,7 +13,8 @@ public sealed record ReplayContext(
     string WaId,
     string Wamid,
     Guid AttemptId,
-    long BaseTimestamp);
+    long BaseTimestamp,
+    string InboundWamid = "wamid.REPLAYIN");
 
 /// <summary>Un POST del escenario: plantilla de payload (payloads/*.json) y etiqueta para la consola.</summary>
 public sealed record ReplayStep(string Payload, string Label);
@@ -39,12 +40,20 @@ public static class ReplayScenarios
             [new("lote", "lote sent+delivered+read")]),
         new("stop",
             "user_preferences: el contacto deja de aceptar marketing desde WhatsApp (category marketing_messages).",
-            "1 fila en WebhookInbox Procesado sin eventos (la baja se procesa desde F0.10).",
+            "1 fila Procesado sin MessageEvent; 1 PlatformPreference Stop (Origen Webhook) para el contacto.",
             [new("user-preferences-stop", "user_preferences stop")]),
         new("resume",
             "user_preferences: el contacto vuelve a aceptar marketing.",
-            "1 fila en WebhookInbox Procesado sin eventos (F0.10: nunca borra una baja de la empresa).",
+            "1 fila Procesado sin MessageEvent; 1 PlatformPreference Resume; no toca ConsentRecord (nunca levanta una baja de la empresa).",
             [new("user-preferences-resume", "user_preferences resume")]),
+        new("baja-palabra",
+            "Mensaje entrante de texto 'BAJA' del contacto (palabra clave).",
+            "1 fila Procesado; 1 ConsentRecord OptOut (Fuente PalabraClave, WamidOrigen = id del mensaje).",
+            [new("message-text-baja", "mensaje BAJA")]),
+        new("baja-boton",
+            "Toque del botón de respuesta rápida 'No recibir más' (payload BAJA_PROMOCIONES) de una plantilla.",
+            "1 fila Procesado; 1 ConsentRecord OptOut (Fuente Boton).",
+            [new("message-button-baja", "botón No recibir más")]),
         new("plantilla-paused",
             "message_template_status_update con event PAUSED (FIRST_PAUSE).",
             "1 fila en WebhookInbox Procesado sin eventos (la pausa global llega en F0.12).",
@@ -70,6 +79,7 @@ public static class PayloadTemplates
             .Replace("{{DISPLAY_PHONE}}", ctx.DisplayPhoneNumber, StringComparison.Ordinal)
             .Replace("{{WA_ID}}", ctx.WaId, StringComparison.Ordinal)
             .Replace("{{WAMID}}", ctx.Wamid, StringComparison.Ordinal)
+            .Replace("{{IN_WAMID}}", ctx.InboundWamid, StringComparison.Ordinal)
             .Replace("{{ATTEMPT_ID}}", ctx.AttemptId.ToString("D"), StringComparison.Ordinal)
             .Replace("{{TS}}", Ts(ctx, 0), StringComparison.Ordinal)
             .Replace("{{TS1}}", Ts(ctx, 1), StringComparison.Ordinal)

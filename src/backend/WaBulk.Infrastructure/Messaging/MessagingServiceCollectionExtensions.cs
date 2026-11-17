@@ -1,6 +1,8 @@
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Options;
+using WaBulk.Infrastructure.Consent;
 using WaBulk.Infrastructure.Meta;
 
 namespace WaBulk.Infrastructure.Messaging;
@@ -17,6 +19,16 @@ public static class MessagingServiceCollectionExtensions
                 "InboxProcessor: valores fuera de rango")
             .ValidateOnStart();
         services.AddScoped<WebhookInboxProcessor>();
+        services.AddConsent(configuration);
+        return services;
+    }
+
+    /// <summary>Bajas (F0.10): sección "Bajas", ConsentService y EnqueueService. Se puede llamar más de una vez.</summary>
+    public static IServiceCollection AddConsent(this IServiceCollection services, IConfiguration configuration)
+    {
+        services.AddOptions<OptOutOptions>().Bind(configuration.GetSection(OptOutOptions.SectionName));
+        services.TryAddScoped<ConsentService>();
+        services.TryAddScoped<EnqueueService>();
         return services;
     }
 
@@ -35,6 +47,7 @@ public static class MessagingServiceCollectionExtensions
         services.AddSingleton<DispatcherIdentity>();
         services.AddScoped<DispatchQueue>();
         services.AddScoped<Dispatcher>();
+        services.AddConsent(configuration);
         return services;
     }
 }

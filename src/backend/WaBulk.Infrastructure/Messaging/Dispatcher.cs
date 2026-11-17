@@ -2,24 +2,28 @@ using System.Security.Cryptography;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using WaBulk.Domain.Consent;
 using WaBulk.Domain.Messaging;
+using WaBulk.Infrastructure.Consent;
 using WaBulk.Infrastructure.Meta;
 using WaBulk.Infrastructure.Persistence;
 
 namespace WaBulk.Infrastructure.Messaging;
 
 /// <summary>Resumen de una vuelta del despachador.</summary>
-public sealed record DispatchRound(int Recovered, int Expired, int Claimed, int Sent, int LeaseLost);
+public sealed record DispatchRound(int Recovered, int Expired, int Claimed, int Sent, int LeaseLost, int Skipped);
 
 /// <summary>
 /// Despachador (F0.9). Una vuelta: recupera leases vencidos → marca vencidos → reclama un lote →
 /// por cada trabajo: verifica lease e inserta SendAttempt (confirmado) → POST sin retry → guarda resultado y
 /// estado del trabajo verificando el dueño. Nunca mantiene una transacción abierta durante el POST (regla 5).
-/// Las revalidaciones de campaña, consentimiento, fatiga y capacidad llegan en F0.10, F0.11 y Fase 1.
+/// Antes de cada envío revisa las bajas de empresa y de plataforma (F0.10, regla 8): si no es elegible, Skipped sin POST.
+/// Las revalidaciones de campaña, fatiga y capacidad llegan en F0.11 y la Fase 1.
 /// </summary>
 public sealed partial class Dispatcher(
     WaBulkDbContext db,
     DispatchQueue queue,
+    ConsentService consent,
     MetaWhatsAppClient meta,
     IOptions<DispatcherOptions> options,
     DispatcherIdentity identity,
@@ -41,7 +45,7 @@ public sealed partial class Dispatcher(
         var expired = await queue.ExpireOverdueAsync(Now, cancellationToken);
         var ids = await queue.ClaimBatchAsync(Owner, Options.BatchSize, Now, Options.Lease, cancellationToken);
 
-        int sent = 0, lost = 0;
+        int sent = 0, lost = 0, skipped = 0;
         foreach (var id in ids)
         {
             if (cancellationToken.IsCancellationRequested)
@@ -54,16 +58,26 @@ public sealed partial class Dispatcher(
             {
                 case BeginOutcome.Started: sent++; break;
                 case BeginOutcome.LeaseLost: lost++; break;
+                case BeginOutcome.Skipped: skipped++; break;
             }
         }
 
-        return new DispatchRound(recovered.Count, expired, ids.Count, sent, lost);
+        return new DispatchRound(recovered.Count, expired, ids.Count, sent, lost, skipped);
     }
 
     /// <summary>Procesa un trabajo ya reclamado por este despachador.</summary>
     public async Task<BeginOutcome> ProcessJobAsync(long jobId, CancellationToken cancellationToken)
     {
         var job = await db.DispatchJobs.AsNoTracking().SingleAsync(j => j.Id == jobId, cancellationToken);
+
+        // Revisión de bajas al enviar: una baja que llegó después de encolar gana (regla 8).
+        var eligibility = await consent.EvaluateAsync(job.PhoneE164, cancellationToken);
+        if (!eligibility.Eligible)
+        {
+            var skippedNow = await queue.SkipAsync(job.Id, Owner, eligibility.SkipReason!, cancellationToken);
+            LogSkipped(logger, job.Id, eligibility.SkipReason);
+            return skippedNow ? BeginOutcome.Skipped : BeginOutcome.LeaseLost;
+        }
         var attempt = new SendAttempt
         {
             AttemptId = Guid.CreateVersion7(),
@@ -94,9 +108,19 @@ public sealed partial class Dispatcher(
         var transition = DispatchRetryPolicy.After(
             status, result.ErrorCode, job.Attempts + 1, job.ExpiresUtc, Now, Options.Retry, Jitter());
 
+        PlatformPreference? platformStop = result.ErrorCode == PlatformStopErrorCode
+            ? new PlatformPreference
+            {
+                PhoneE164 = job.PhoneE164,
+                Value = PlatformPreferenceValue.Stop,
+                Origin = PlatformPreferenceOrigin.Error131050,
+                RecordedUtc = Now,
+            }
+            : null;
+
         var owned = await queue.CompleteAttemptAsync(
             job.Id, Owner, attempt.AttemptId, status, result.Wamid, result.HttpStatus, result.ErrorCode, result.Detail,
-            transition, Now, CancellationToken.None);
+            transition, Now, CancellationToken.None, platformStop);
 
         if (owned)
         {
@@ -110,12 +134,18 @@ public sealed partial class Dispatcher(
         return BeginOutcome.Started;
     }
 
+    /// <summary>131050: "This recipient has chosen to stop receiving marketing messages" (no reintentar).</summary>
+    public const int PlatformStopErrorCode = 131050;
+
     private DateTime Now => clock.GetUtcNow().UtcDateTime;
 
     private static double Jitter() => RandomNumberGenerator.GetInt32(1_000_000) / 1_000_000d;
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "Lease vencido del trabajo {JobId}: queda {Status}")]
     private static partial void LogRecovered(ILogger logger, long jobId, DispatchStatus status);
+
+    [LoggerMessage(Level = LogLevel.Information, Message = "Trabajo {JobId} omitido sin POST: {Reason}")]
+    private static partial void LogSkipped(ILogger logger, long jobId, string? reason);
 
     [LoggerMessage(Level = LogLevel.Information, Message = "Trabajo {JobId} no enviado: {Outcome}")]
     private static partial void LogNotStarted(ILogger logger, long jobId, BeginOutcome outcome);
