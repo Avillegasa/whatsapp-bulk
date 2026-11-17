@@ -1,7 +1,7 @@
 # Progreso
 
 **Fase actual:** Fase 1 — Demo interna (D-028)
-**Siguiente tarea:** F1.3 (Claude Code: "Sigamos con la tarea F1.3"); F1.1 sigue en curso con Andrés (Claude desktop)
+**Siguiente tarea:** F1.4 (Claude Code: "Sigamos con la tarea F1.4"); F1.1 sigue en curso con Andrés (Claude desktop)
 **Última actualización:** 2026-11-17
 
 ## Estado de tareas
@@ -24,7 +24,7 @@ Estados: Pendiente · En curso · Hecho (sin verificar) · Verificado · Bloquea
 | F0.12 | Alertas simuladas | Claude Code | Verificado | `dotnet test` 150/150 (9 de integración de alertas + 3 de la regla): un caso por código —190 (Token), 131042 (Facturacion), 132015 (PlantillaPausada)— al enviar: 1 solo POST, alerta registrada (Tipo, Clave, Origen Despachador), pausa global activa, los 3 trabajos en `Queued` y la vuelta siguiente no reclama; plantilla `PAUSED` por webhook (payload del replay) y 131042 en un estado `failed` → alerta (Origen Webhook) + pausa, sin POST; reanudar → pausa levantada, alerta resuelta y los trabajos salen; repetidas → suman `Ocurrencias` sin duplicar; 10 alertas simultáneas → 1 alerta (×10) y 1 pausa; 131026 → sin alerta. Real: replay `plantilla-paused` con receptor + Worker → log Critical "ALERTA PlantillaPausada" y "PAUSA GLOBAL", despachador "no se reclaman trabajos"; comando `alertas` → EN PAUSA; `reanudar --por claude-code` → ACTIVO. Build 0 advertencias; índices únicos filtrados; sin secretos |
 | F1.1 | Preparar la demo | Tú | En curso | (1) entrantes reales: Inbox 21 "Hola", `ConsentRecord` 3 por "BAJA" ✔; (2) `promo_demo` creada, `PENDING` (falta aprobación); (3) destinatarios …9667 (Andrés), …7355 (Sent→Delivered→Read), …5859 (recibido) ✔ — faltan 2 (demo) y el "sí" escrito de cada uno |
 | F1.2 | Login y esqueleto Angular | Claude Code | Verificado | `dotnet test` 160/160 (10 de integración de login contra SQL Server: sin sesión → 401; Operador en `/api/usuarios` → 403; Admin → 200 con sus roles; 5 claves malas → `Bloqueado` aunque la 6.ª sea correcta y 4 no bloquean; POST sin encabezado XSRF o con token falso → 400 sin sesión; logout con el token renovado al entrar → 200; `crear-admin` solo la primera vez y rechaza clave débil); `ng build` OK y `ng test` 7/7 (encabezado `X-XSRF-TOKEN` desde la cookie, bloqueo, guardias, menú por rol, 401 cierra la sesión); real por el proxy de `ng serve`: 401 sin sesión, cookie `XSRF-TOKEN`, POST sin XSRF → 400; `crear-admin --usuario avillegas` → creado; login real en el navegador, menú Admin, salir y `/usuarios` → login, bloqueo tras 5 intentos (confirmación de Andrés; `verificar-f1.2.sql`: avillegas Admin, BloqueadoAhora SI); índices únicos de Identity filtrados; build 0 advertencias; sin secretos |
-| F1.3 | Usuarios, autorización y auditoría | Claude Code | En curso | |
+| F1.3 | Usuarios, autorización y auditoría | Claude Code | Verificado | `dotnet test` 179/179: `EndpointPolicyTests` recorre todos los endpoints (≥ 10) y exige una política de `Policies.All` salvo `/health`, `/api/auth/sesion` y `/api/auth/login`, sin `Roles` literales; cambio de rol → `AuditLog` con Antes `["Operador"]` / Despues `["Aprobador","Operador"]`; si falla la auditoría el cambio de rol se revierte; desactivado → su sesión abierta recibe 401 y el login falla; restablecer clave cierra sesiones y no guarda la clave; Operador/Aprobador → 403; último Admin y desactivarse a sí mismo → 400; `reanudar` con pausa → fila `ReanudarDespacho`, sin pausa → ninguna. `ng build` OK y `ng test` 12/12. Real (Andrés, navegador + `verificar-f1.3.sql`): `CrearUsuario` prueba1 [Operador], `CambiarRoles` [Operador] → [Admin, Operador], `DesactivarUsuario` activo true → false, las tres por `avillegas`. Build 0 advertencias; sin secretos, sin versión literal ni retry |
 | F1.4 | Contactos, importación y consentimiento | Claude Code | Pendiente | |
 | F1.5 | Plantillas | Claude Code (+ Tú) | Pendiente | |
 | F1.6 | Campañas versionadas y aprobación | Claude Code | Pendiente | |
@@ -36,7 +36,7 @@ Estados: Pendiente · En curso · Hecho (sin verificar) · Verificado · Bloquea
 ## Pendientes y bloqueos
 
 - Definir dónde corre SQL Server en producción (D-006).
-- Desbloquear un usuario bloqueado (5 claves malas) desde la pantalla de usuarios, con auditoría (F1.3); hoy se espera 15 min.
+- Usuarios (F1.3): cambiar la propia clave y obligar a cambiar la clave temporal al primer ingreso; auditar intentos de login fallidos; pantalla para consultar el `AuditLog` (hoy, `verificar-f1.3.sql`).
 - Producción: nginx debe servir la app y `/api` bajo el mismo dominio (Angular solo envía el XSRF a URLs relativas, D-029) (F1.9).
 - Portafolio de Meta de la empresa, número dedicado y verificación: después de aprobar la PoC (D-028).
 - Actualizar la ruta de la carpeta (D-016) en las instrucciones del proyecto de claude.ai y en la skill `whatsapp-bulk-guia`; reconectar la carpeta en Claude desktop.
@@ -49,7 +49,7 @@ Estados: Pendiente · En curso · Hecho (sin verificar) · Verificado · Bloquea
 - Revalidaciones al enviar que faltan (campaña, plantilla, fatiga, horario): Fase 1. Bajas, consentimiento, capacidad y pausa global ya se revisan (F0.10–F0.12).
 - 131049 (+24 h, un intento más): hoy queda `Failed`; con la fatiga (Fase 1).
 - Freno de emergencia que falta (F1.7): baja de calidad del número (`phone_number_quality_update`), 131048/131031/368, fallos > 5 % en los últimos 200, 132000–132016 (salvo 132015) → pausa de la campaña cuando existan campañas; avisar por correo/Teams además del log. Hoy la pausa es solo global (D-027).
-- Pantalla de alertas y botón "reanudar" con auditoría (Fase 1); hoy, comandos `alertas` y `reanudar` del Worker (`reanudar` registra el usuario de Windows).
+- Pantalla de alertas y botón "reanudar" (F1.8): debe llamar a `AlertService.ResumeAsync` con el usuario de la intranet para que audite igual que el comando; hoy, comandos `alertas` y `reanudar` del Worker (`reanudar` audita como `windows:<usuario>`, F1.3).
 - Comando para encolar un trabajo de prueba y ver el despachador enviar de verdad (opcional, cuando haga falta una prueba real).
 - Revisión manual de `NeedsReview` tras el plazo configurable (2 h, ARQUITECTURA): pantalla en Fase 1.
 - Bajas de usuarios sin teléfono (nombre de usuario de WhatsApp, solo BSUID `user_id`): hoy van a `Revision`; mapear BSUID ↔ teléfono en `Contact` (Fase 1).
@@ -63,6 +63,14 @@ Estados: Pendiente · En curso · Hecho (sin verificar) · Verificado · Bloquea
 - Datos de desarrollo: los intentos 01A1E617… y 01A1E975… quedaron con `EstadoEntrega` = Read por el replay de F0.8 (no es una lectura real).
 
 ## Bitácora (lo más reciente arriba)
+
+### 2026-11-17 — F1.3 Usuarios, autorización y auditoría (Claude Code)
+- Hecho: `UserAdminService` (Infrastructure/Identity) crea usuarios con varios roles y clave temporal, cambia roles, desactiva/activa, restablece la clave y desbloquea; cada acción abre una transacción y escribe su fila de `AuditLog` antes del commit. Columna `AspNetUsers.Activo` (`AppSignInManager` no deja entrar a un desactivado) y revalidación de la cookie en cada petición (`ValidationInterval` = 0). Políticas con nombre `ConSesion`, `PuedeEnviar`, `PuedeAprobar`, `PuedeAdministrar` (1:1 con los roles). Endpoints `/api/usuarios` (Admin). `crear-admin` y `reanudar` auditan como `windows:<usuario>`. Pantalla de usuarios en Angular. Migración `UsuariosYAuditoria`. Script `db/scripts/verificar-f1.3.sql`.
+- Verificación: `dotnet build` → 0 advertencias; `dotnet test` → 179/179; `npx ng build` → OK; `npx ng test --watch=false` → 12/12; prueba de mutación (sin revalidación ni política en logout) → 4 pruebas fallan; Andrés en el navegador: crear `prueba1`, darle Admin, desactivarlo → `verificar-f1.3.sql` muestra las 3 filas con antes/después; git grep sin `EAA…`, sin versión literal ni retry.
+- Archivos: `WaBulk.Domain/Audit/AuditLog.cs`, `WaBulk.Domain/Users/Roles.cs`, `WaBulk.Infrastructure/{Audit,Identity}/*`, `WaBulk.Infrastructure/Alerts/AlertService.cs`, `WaBulk.Api/{Auth,Users}/*`, migración `*_UsuariosYAuditoria`, `WaBulk.Tests/Auth/{UserAdminTests,EndpointPolicyTests}.cs`, `src/frontend/src/app/pages/usuarios/*`, `db/scripts/verificar-f1.3.sql`.
+- Decisiones: D-030.
+- Pendientes: cambiar la propia clave y forzar cambio de clave temporal; auditar logins fallidos; pantalla de `AuditLog`; botón reanudar (F1.8) con `AlertService.ResumeAsync`.
+- Siguiente: F1.4 (Claude Code) y F1.1 (Andrés, en curso).
 
 ### 2026-11-17 — F1.2 Login y esqueleto Angular (Claude Code)
 - Hecho: ASP.NET Core Identity con cookie en `WaBulk.Api` (`WaBulkDbContext` hereda de `IdentityDbContext<AppUser>`, migración `Identity` con los 3 roles); bloqueo a los 5 intentos (15 min); XSRF con cookie `XSRF-TOKEN` + encabezado `X-XSRF-TOKEN` validado en todo POST/PUT/PATCH/DELETE de `/api`, renovado al entrar y salir; todo endpoint exige sesión salvo `AllowAnonymous`; política con nombre `PuedeAdministrar`; endpoints `/api/auth/sesion|login|logout` y `/api/usuarios`; comando `crear-admin` (clave oculta, solo si no hay Admin). App Angular 21.2 en `src/frontend` (standalone, signals, zoneless, Vitest): login, cierre de sesión, guardias de sesión y de rol, interceptor de 401, menú por rol, pantalla de usuarios (solo lista), proxy de `ng serve` a la Api.

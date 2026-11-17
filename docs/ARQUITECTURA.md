@@ -58,7 +58,7 @@ Angular nunca habla con Meta. La API nunca envía en masa de forma síncrona. To
 | `WebhookInbox` | Id, RecibidoUtc, Cuerpo, Estado (Pendiente/Procesado/EnEspera/Revision), Intentos, ProximoIntentoUtc, Error | Solo el receptor inserta; el procesador actualiza Estado, Intentos, ProximoIntentoUtc y Error (D-023) |
 | `Alert` | Tipo (Token/Facturacion/PlantillaPausada), Clave, Mensaje, Detalle, Origen, Ocurrencias, CreadaUtc, UltimaUtc, ResueltaUtc, ResueltaPor | Una abierta por (Tipo, Clave); único filtrado `ResueltaUtc IS NULL` (D-027) |
 | `DispatchPause` | Alcance (Global), Motivo, AlertId, DesdeUtc, LevantadaUtc, LevantadaPor | Una activa por alcance; el despachador no reclama mientras exista (D-027) |
-| `AuditLog` | Usuario, Accion, Entidad, Antes, Despues, FechaUtc | Importaciones, aprobaciones, bajas, reenvíos manuales |
+| `AuditLog` | Usuario, Accion, Entidad, EntidadId, Antes, Despues, FechaUtc | Importaciones, aprobaciones, bajas, reenvíos manuales, usuarios y roles, reanudar el despacho (D-030) |
 
 ## Controles del despachador
 
