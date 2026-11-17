@@ -1,8 +1,8 @@
 # Progreso
 
 **Fase actual:** Fase 0 — PoC
-**Siguiente tarea:** F0.6 (Claude Code + Tú) — en `C:\Users\avillegas\dev\whatsapp-bulk`: "Sigamos con la tarea F0.6" (tendrás que instalar Dev Tunnels y configurar el webhook en Meta, `META-SETUP.md` sección B; ten a mano el App Secret)
-**Última actualización:** 2026-11-16
+**Siguiente tarea:** F0.7 (Claude Code) — en `C:\Users\avillegas\dev\whatsapp-bulk`: "Sigamos con la tarea F0.7" (antes: rotar App Secret y Verify Token, ver Pendientes)
+**Última actualización:** 2026-11-17
 
 ## Estado de tareas
 
@@ -15,7 +15,7 @@ Estados: Pendiente · En curso · Hecho (sin verificar) · Verificado · Bloquea
 | F0.3 | Esqueleto de la solución .NET | Claude Code | Verificado | `dotnet --version` 10.0.404; `dotnet build` 0 advertencias, 0 errores; `dotnet test` 2/2 (`/health` en Api y Webhooks → 200 `Healthy`); sin secretos (git grep `EAA…` vacío) |
 | F0.4 | SQL Server local y migración inicial | Claude Code | Verificado | Contenedor `wabulk-sqlserver` `Up (healthy)`; `dotnet ef database update` → `Done.` (InitialCreate, EF 10.0.15); `sys.tables` → DispatchJob, MessageEvent, SendAttempt, WebhookInbox; `sys.indexes` → `IX_SendAttempt_Wamid` filtro `([Wamid] IS NOT NULL)`; `dotnet test` 5/5; build 0 advertencias |
 | F0.5 | Cliente de Meta y envío con SendAttempt | Claude Code + Tú | Verificado | `dotnet test` 14/14 (200 → Accepted, 131026 → Rejected, timeout → SubmissionUnknown, intento confirmado antes del POST, un solo POST); envío real `send-test`: `SendAttempt` 01A1E617… `Accepted`, HTTP 200, `wamid.HBgL…` guardado (consulta SQL) y mensaje recibido (confirmación de Andrés); build 0 advertencias; sin versión literal, retry ni tokens |
-| F0.6 | Receptor de webhooks | Claude Code + Tú | Pendiente | |
+| F0.6 | Receptor de webhooks | Claude Code + Tú | Verificado | `dotnet test` 22/22 (firma válida → 200 y fila; inválida, ausente o cuerpo alterado → 401 sin fila; > límite → 413; GET token válido → challenge, inválido → 403); "Verify and save" en Meta OK (log "Handshake de webhook verificado"); webhook de prueba del panel → `WebhookInbox` Id=2 (555 bytes, confirmación de Andrés + SQL); además estados reales `delivered`/`sent` → Id=3/4 con AttemptId 01A1E975… (D-021); build 0 advertencias; sin secretos |
 | F0.7 | Procesador de eventos | Claude Code | Pendiente | |
 | F0.8 | Herramienta de replay firmado | Claude Code | Pendiente | |
 | F0.9 | Despachador con cola y lease | Claude Code | Pendiente | |
@@ -25,6 +25,8 @@ Estados: Pendiente · En curso · Hecho (sin verificar) · Verificado · Bloquea
 
 ## Pendientes y bloqueos
 
+- **Rotar App Secret y Verify Token** (expuestos en el chat de Claude Code el 2026-11-17): restablecer la clave secreta de la app en Meta y generar un verify token nuevo; actualizar KeePass, `dotnet user-secrets` y el panel de Webhooks (Verify and save de nuevo).
+- Revisar con Claude desktop si la verificación de F0.7 en PLAN.md agrega el envío real `sent`/`delivered` (D-021).
 - Definir dónde corre SQL Server en producción (D-006).
 - Crear el portafolio de Meta de la empresa antes de F1.1 (D-015).
 - Actualizar la ruta de la carpeta (D-016) en las instrucciones del proyecto de claude.ai y en la skill `whatsapp-bulk-guia`; reconectar la carpeta en Claude desktop.
@@ -35,6 +37,32 @@ Estados: Pendiente · En curso · Hecho (sin verificar) · Verificado · Bloquea
 - Plantillas con parámetros (`components`) en `TemplateMessage`: con las campañas (F0.9 / Fase 1).
 
 ## Bitácora (lo más reciente arriba)
+
+### 2026-11-17 — F0.6 Receptor de webhooks (Claude Code + Andrés)
+- Hecho: proyecto Webhooks en `http://localhost:5244`. GET `/webhooks/whatsapp` hace el handshake: responde con `hub.challenge` si el verify token coincide (comparación en tiempo constante), 403 si no. POST valida `X-Hub-Signature-256` (HMAC-SHA256 con el App Secret) sobre los bytes crudos con `FixedTimeEquals`, limita el cuerpo (5 MB, 413), guarda en `WebhookInbox` (Pendiente) y recién responde 200. Sin secretos configurados responde 503 para que Meta reintente. Corregido `Meta:WabaId` = 2088365445132575 (Worker y payload de prueba). Script `db/scripts/verificar-f0.6.sql`.
+- Verificación: `dotnet build` → 0 advertencias; `dotnet test` → 22/22 (8 del receptor); "Verify and save" en Meta OK; webhook de prueba del panel guardado (Id=2, 555 bytes, `entry.id` 0 = muestra de Meta); `send-test` real (AttemptId 01A1E975…, Accepted) → Id=3 `delivered` e Id=4 `sent`, con el AttemptId en `biz_opaque_callback_data` (`verificar-f0.6.sql`); git grep sin `EAA…`, sin versión literal ni Polly; `.env` ignorado.
+- Fuentes: https://developers.facebook.com/documentation/business-messaging/whatsapp/webhooks/create-webhook-endpoint · https://developers.facebook.com/documentation/business-messaging/whatsapp/webhooks/overview
+- Archivos: `src/backend/WaBulk.Webhooks/{Program.cs,WhatsAppWebhookEndpoints.cs,WebhookOptions.cs,Security/WebhookSignature.cs}`, `src/backend/WaBulk.Tests/Webhooks/WhatsAppWebhookTests.cs`, `src/backend/WaBulk.Worker/appsettings.json`, `db/scripts/verificar-f0.6.sql`, `CLAUDE.md`.
+- Decisiones: D-021 (sin publicar la app sí llegan estados reales de envíos al número permitido; llegaron en desorden).
+- Incidente: el App Secret y el Verify Token se pegaron en el chat → rotar (Pendientes). No se guardaron en ningún archivo.
+- Pendientes: índice por `Estado` en `WebhookInbox` (F0.7).
+- Siguiente: F0.7.
+
+### 2026-11-17 — F0.6: suscripción de la app (Claude desktop)
+- Token del System User rotado otra vez (expuesto en el chat); cargado solo en `dotnet user-secrets`.
+- `POST /v27.0/2088365445132575/subscribed_apps` → `{"success":true}`; `GET` lista `WaBulk PoC` (1669296924583840) y `WA DevX Webhook Events 1P App` (app de Meta).
+- Webhook: handshake verificado en Meta (log "Handshake de webhook verificado"); primer POST guardado en `WebhookInbox` Id=1 (317 bytes).
+- Decisión: D-019 — publicar la app PoC; reemplazada por D-020 (publicar exige verificación del negocio y App Review): F0.6 con webhooks de prueba del panel, F0.7 con replay; PLAN.md ajustado.
+- Campos suscritos: account_alerts, account_review_update, account_update, business_capability_update, calls, message_template_quality_update, message_template_status_update, messages, phone_number_name_update, phone_number_quality_update, security, template_category_update, user_preferences.
+- El panel "Revisa los webhooks de prueba" muestra `entry.id` = 2088365445132575 (confirma WABA ID = Messaging account ID).
+- Método para usar el token en cmd sin mostrarlo: `for /f` sobre `dotnet user-secrets list` → `%WA_TOKEN%`, y `set WA_TOKEN=` al terminar.
+
+### 2026-11-16 — F0.6 preparación (Claude desktop)
+- Token del System User rotado tras exponerse en el chat (Revocar tokens → Generar token); nuevo en KeePass y en `dotnet user-secrets` (confirmación de Andrés).
+- KeePass: entradas de App Secret y Verify Token listas.
+- Dev Tunnels CLI 1.0.2115 instalado; sesión iniciada con la cuenta Microsoft del trabajo.
+- Puerto del receptor: 5244 (META-SETUP.md sección B actualizada).
+- Corrección de IDs: según la doc de Meta (account-model-evolution), el WABA ID = Messaging account ID 2088365445132575; 2043065989689955 es la WhatsApp account (WAAC). `subscribed_apps` usa 2088…. Pendiente para Claude Code: `Meta:WabaId`.
 
 ### 2026-11-16 — F0.5 Cliente de Meta y envío con SendAttempt (Claude Code + Andrés)
 - Hecho: `MetaOptions` (sección `Meta`, versión de Graph API por configuración) y `MetaWhatsAppClient` (HttpClient tipado, sin resiliencia/retry, timeout configurable) que clasifica: 2xx con `messages[0].id` → Accepted; error con `error.code` → Rejected; timeout, conexión cortada, cancelación, 5xx sin cuerpo o 2xx sin id → SubmissionUnknown. `TemplateSendService`: inserta y confirma `SendAttempt` (Submitting, AttemptId = Guid v7) antes del POST, envía `biz_opaque_callback_data` = AttemptId y guarda el resultado aunque se cancele. Comando `send-test` en el Worker (DispatchJob de prueba con CampaignVersionId = 0). `UserSecretsId` compartido en `Directory.Build.props` (D-018). Andrés cargó `Meta:AccessToken` en user-secrets.

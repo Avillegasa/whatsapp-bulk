@@ -39,12 +39,12 @@ Objetivo: probar la cadena completa y los escenarios de falla que comprometen la
 ### F0.6 — Receptor de webhooks
 - **Quién:** Claude Code + Tú (túnel y configuración en Meta, `META-SETUP.md` sección B) · **Depende de:** F0.4
 - **Entregables:** GET de verificación; POST con validación de `X-Hub-Signature-256` sobre bytes crudos; límite de tamaño; guardado en `WebhookInbox` antes del 200.
-- **Verificación:** pruebas: firma válida → 200 y fila en inbox; inválida o ausente → 401 y sin fila; "Verify and save" en Meta exitoso; un webhook real de estado guardado.
+- **Verificación:** pruebas: firma válida → 200 y fila en inbox; inválida o ausente → 401 y sin fila; "Verify and save" en Meta exitoso; un webhook de prueba enviado desde el panel de Meta (botón Probar de un campo) guardado en `WebhookInbox` (D-020: sin publicar la app no llegan webhooks reales).
 
 ### F0.7 — Procesador de eventos
 - **Quién:** Claude Code · **Depende de:** F0.5, F0.6
 - **Entregables:** procesador del inbox; separación de lotes; correlación por `wamid` y por AttemptId; `MessageEvent` idempotente; estados que solo avanzan; estados `EnEspera` y `Revision` en el inbox.
-- **Verificación:** pruebas: evento duplicado no duplica; `read` antes de `delivered` no retrocede; webhook llegado antes de guardar el `wamid` se correlaciona por AttemptId; envío real muestra `sent`, `delivered` y `read` (si tu WhatsApp tiene confirmaciones de lectura activas).
+- **Verificación:** pruebas: evento duplicado no duplica; `read` antes de `delivered` no retrocede; webhook llegado antes de guardar el `wamid` se correlaciona por AttemptId; secuencia `sent` → `delivered` → `read` reproducida con payloads de replay basados en la referencia oficial (D-020; la prueba con estados reales pasa a F1.1).
 
 ### F0.8 — Herramienta de replay firmado
 - **Quién:** Claude Code · **Depende de:** F0.6

@@ -10,8 +10,8 @@ Pasos que hace Andrés en los paneles de Meta y en su terminal. Cada paso dice d
 | --- | --- | --- |
 | Business portfolio ID | 1437472428502222 (WaBulk Preubas) | |
 | App ID | 1669296924583840 (WaBulk PoC) | |
-| WhatsApp account (WABA) ID | 2043065989689955 | |
-| Messaging account ID (si aparece) | 2088365445132575 ("Identificador de la cuenta de mensajes" en Configuración de la API) | |
+| WABA ID = Messaging account ID (`Meta:WabaId`, `subscribed_apps`, `entry.id` de los webhooks) | 2088365445132575 ("Identificador de la cuenta de mensajes") | |
+| WhatsApp account (WAAC) ID — contiene el número; no se usa en la API por ahora | 2043065989689955 | |
 | Phone Number ID | 1524289747428097 | |
 | Número visible | +1 (555) 189-2694 (prueba) | |
 | System User (nombre) | wabulk-poc (ID 61596887810621) | |
@@ -49,7 +49,7 @@ Pasos que hace Andrés en los paneles de Meta y en su terminal. Cada paso dice d
 
 ## B. Webhooks en desarrollo (tarea F0.6)
 
-Meta solo llama a URLs HTTPS públicas. En desarrollo se usa un túnel de Microsoft Dev Tunnels hacia el receptor local. El puerto del receptor lo fija F0.3 (aquí `5080` como ejemplo).
+Meta solo llama a URLs HTTPS públicas. En desarrollo se usa un túnel de Microsoft Dev Tunnels hacia el receptor local. El receptor `WaBulk.Webhooks` escucha en `http://localhost:5244` (`launchSettings.json`, F0.3).
 
 1. 🖥 Terminal (cmd): instala e inicia sesión.
    ```cmd
@@ -60,10 +60,10 @@ Meta solo llama a URLs HTTPS públicas. En desarrollo se usa un túnel de Micros
 2. 🖥 Terminal: crea un túnel persistente con un ID difícil de adivinar, abre el puerto y publícalo.
    ```cmd
    devtunnel create wabulk-<algo-aleatorio> -a
-   devtunnel port create -p 5080 --protocol http
+   devtunnel port create -p 5244 --protocol http
    devtunnel host
    ```
-   **Pega:** la URL pública que muestra `devtunnel host` (formato `https://<id>-5080.<region>.devtunnels.ms/`).
+   **Pega:** la URL pública que muestra `devtunnel host` (formato `https://<id>-5244.<region>.devtunnels.ms/`).
    El túnel es anónimo: cualquiera que adivine el ID llega al receptor. Por eso la validación de firma es obligatoria y el túnel se apaga (Ctrl+C) cuando no lo usas.
 3. 🖥 Terminal: guarda el verify token (una cadena que inventas, por ejemplo 32 caracteres aleatorios).
    ```cmd
@@ -76,7 +76,7 @@ Meta solo llama a URLs HTTPS públicas. En desarrollo se usa un túnel de Micros
    **Pega:** captura o lista de los campos suscritos.
 6. 🖥 Terminal: suscribe la app a la cuenta de WhatsApp.
    ```cmd
-   curl.exe -X POST "https://graph.facebook.com/v27.0/<WABA_ID>/subscribed_apps" -H "Authorization: Bearer <token>"
+   curl.exe -X POST "https://graph.facebook.com/v27.0/<MESSAGING_ACCOUNT_ID = WABA_ID>/subscribed_apps" -H "Authorization: Bearer <token>"
    ```
    **Pega:** la respuesta (debe ser `{"success":true}`).
 
@@ -89,5 +89,7 @@ Meta solo llama a URLs HTTPS públicas. En desarrollo se usa un túnel de Micros
 5. 🖱 Perfil de empresa del número.
 6. 🖱 Asignar los activos reales al System User y repetir B.5–B.6 con la WABA real.
 7. 🖥 Comprobar límite y throughput: `GET /{PHONE_NUMBER_ID}?fields=whatsapp_business_manager_messaging_limit,throughput,quality_rating`.
+
+Nota (2026-11-16): con el nuevo modelo de cuentas de Meta, "los WABA IDs existentes denotan Messaging account IDs" y las suscripciones de webhooks viven en la Messaging account: https://developers.facebook.com/documentation/business-messaging/whatsapp/account-model-evolution/
 
 Referencias: https://developers.facebook.com/documentation/business-messaging/whatsapp/get-started · https://learn.microsoft.com/en-us/azure/developer/dev-tunnels/cli-commands

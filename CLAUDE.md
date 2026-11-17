@@ -64,7 +64,8 @@ Mantener esta sección al día. Todos funcionan en cmd desde la raíz del repo.
 - SDK: `dotnet --version` (10.x)
 - Backend: `dotnet build src/backend/WaBulk.sln` · `dotnet test src/backend/WaBulk.sln`
 - Ejecutar Api: `dotnet run --project src/backend/WaBulk.Api` → `GET /health` responde `Healthy`
-- Ejecutar Webhooks: `dotnet run --project src/backend/WaBulk.Webhooks` → `GET /health`
+- Ejecutar Webhooks: `dotnet run --project src/backend/WaBulk.Webhooks` → `http://localhost:5244`, `GET /health`; receptor en `/webhooks/whatsapp` (sin `Meta:AppSecret`/`Meta:VerifyToken` responde 503)
+- Túnel para webhooks (otra ventana, ya creado): `devtunnel host` → URL `https://…-5244…devtunnels.ms`; apagar con Ctrl+C al terminar (META-SETUP.md sección B)
 - Ejecutar Worker: `dotnet run --project src/backend/WaBulk.Worker`
 - Herramientas locales (dotnet-ef): `dotnet tool restore`
 - SQL Server local: `docker compose -f deploy/docker/compose.dev.yml --env-file .env up -d sqlserver` (expuesto en `127.0.0.1,14333`; clave en `.env`)
@@ -72,10 +73,12 @@ Mantener esta sección al día. Todos funcionan en cmd desde la raíz del repo.
 - Secretos de desarrollo: un solo almacén de user-secrets compartido por Api, Webhooks y Worker (D-018); `--project` puede ser cualquiera de ellos.
   - Cadena de conexión: `dotnet user-secrets set "ConnectionStrings:WaBulk" "Server=127.0.0.1,14333;Database=WaBulk;User Id=sa;Password=<clave de .env>;Encrypt=True;TrustServerCertificate=True" --project src/backend/WaBulk.Api`
   - Token de Meta: `dotnet user-secrets set "Meta:AccessToken" "<token>" --project src/backend/WaBulk.Worker`
+  - Webhooks: `dotnet user-secrets set "Meta:AppSecret" "<app secret>" --project src/backend/WaBulk.Webhooks` · `dotnet user-secrets set "Meta:VerifyToken" "<verify token>" --project src/backend/WaBulk.Webhooks`
 - Envío de prueba (plantilla a un número permitido): `dotnet run --project src\backend\WaBulk.Worker -- send-test --to +591XXXXXXXX [--template hello_world] [--lang en_US]`
 - Nueva migración: `dotnet ef migrations add <Nombre> --project src/backend/WaBulk.Infrastructure --startup-project src/backend/WaBulk.Api --output-dir Persistence/Migrations`
 - Aplicar migraciones: `dotnet ef database update --project src/backend/WaBulk.Infrastructure --startup-project src/backend/WaBulk.Api`
 - Verificar tablas e índices: ver comando en `db/scripts/verificar-f0.4.sql`
+- Ver webhooks guardados en `WebhookInbox`: ver comando en `db/scripts/verificar-f0.6.sql`
 - Frontend (Fase 1): `cd src/frontend && npm ci && npx ng build` · `npx ng test`
 
 Notas de la solución:
