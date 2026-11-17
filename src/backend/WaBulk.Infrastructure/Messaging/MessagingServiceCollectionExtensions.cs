@@ -2,6 +2,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Options;
+using WaBulk.Infrastructure.Alerts;
 using WaBulk.Infrastructure.Capacity;
 using WaBulk.Infrastructure.Consent;
 using WaBulk.Infrastructure.Meta;
@@ -21,6 +22,7 @@ public static class MessagingServiceCollectionExtensions
             .ValidateOnStart();
         services.AddScoped<WebhookInboxProcessor>();
         services.AddConsent(configuration);
+        services.TryAddScoped<AlertService>();
         return services;
     }
 
@@ -56,6 +58,7 @@ public static class MessagingServiceCollectionExtensions
                 "Capacity: valores fuera de rango")
             .ValidateOnStart();
         services.AddScoped<CapacityService>();
+        services.TryAddScoped<AlertService>();
         return services;
     }
 }

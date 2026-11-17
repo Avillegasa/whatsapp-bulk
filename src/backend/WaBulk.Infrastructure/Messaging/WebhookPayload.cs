@@ -23,7 +23,19 @@ internal sealed record WebhookChangeValue(
     [property: JsonPropertyName("statuses")] IReadOnlyList<WebhookStatus>? Statuses,
     [property: JsonPropertyName("contacts")] IReadOnlyList<WebhookContact>? Contacts,
     [property: JsonPropertyName("messages")] IReadOnlyList<WebhookMessage>? Messages,
-    [property: JsonPropertyName("user_preferences")] IReadOnlyList<WebhookUserPreference>? UserPreferences);
+    [property: JsonPropertyName("user_preferences")] IReadOnlyList<WebhookUserPreference>? UserPreferences,
+    // message_template_status_update (F0.12):
+    // https://developers.facebook.com/documentation/business-messaging/whatsapp/webhooks/reference/message_template_status_update
+    [property: JsonPropertyName("event")] string? Event,
+    [property: JsonPropertyName("message_template_id")] JsonElement? MessageTemplateId,
+    [property: JsonPropertyName("message_template_name")] string? MessageTemplateName,
+    [property: JsonPropertyName("message_template_language")] string? MessageTemplateLanguage,
+    [property: JsonPropertyName("reason")] string? Reason,
+    [property: JsonPropertyName("other_info")] WebhookOtherInfo? OtherInfo);
+
+internal sealed record WebhookOtherInfo(
+    [property: JsonPropertyName("title")] string? Title,
+    [property: JsonPropertyName("description")] string? Description);
 
 // Mensajes entrantes (F0.10). from y wa_id se omiten si el usuario adoptó un nombre de usuario; user_id (BSUID) siempre viene.
 // https://developers.facebook.com/documentation/business-messaging/whatsapp/webhooks/reference/messages/text

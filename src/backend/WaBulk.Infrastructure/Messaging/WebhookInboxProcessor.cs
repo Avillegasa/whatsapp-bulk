@@ -3,8 +3,10 @@ using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using WaBulk.Domain.Alerts;
 using WaBulk.Domain.Consent;
 using WaBulk.Domain.Messaging;
+using WaBulk.Infrastructure.Alerts;
 using WaBulk.Infrastructure.Consent;
 using WaBulk.Infrastructure.Persistence;
 
@@ -23,6 +25,7 @@ public sealed partial class WebhookInboxProcessor(
     WaBulkDbContext db,
     IOptions<InboxProcessorOptions> options,
     IOptions<OptOutOptions> optOut,
+    AlertService alerts,
     TimeProvider clock,
     ILogger<WebhookInboxProcessor> logger)
 {
@@ -91,6 +94,7 @@ public sealed partial class WebhookInboxProcessor(
                     case "messages":
                         foreach (var status in change.Value?.Statuses ?? [])
                         {
+                            outcomes.Add(await ApplyBillingAlertFromErrorAsync(status, cancellationToken));
                             outcomes.Add(await ApplyPlatformStopFromErrorAsync(status, cancellationToken));
                             outcomes.Add(await ApplyStatusAsync(status, seen, cancellationToken));
                         }
@@ -108,8 +112,11 @@ public sealed partial class WebhookInboxProcessor(
                         }
 
                         break;
+                    case "message_template_status_update":
+                        outcomes.Add(await ApplyTemplateStatusAsync(change.Value, cancellationToken));
+                        break;
                     default:
-                        outcomes.Add((Outcome.Ignored, null)); // account_update, plantillas, calidad…: F0.12 / Fase 1.
+                        outcomes.Add((Outcome.Ignored, null)); // account_update, calidad, categoría…: Fase 1.
                         break;
                 }
 
@@ -217,6 +224,39 @@ public sealed partial class WebhookInboxProcessor(
             RecordedBy = "webhook",
         });
         LogOptOut(logger, phone, match.Source);
+        return (Outcome.Applied, null);
+    }
+
+    /// <summary>
+    /// message_template_status_update con event PAUSED → alerta y pausa global (F0.12). Los demás eventos (APPROVED,
+    /// REJECTED, DISABLED…) se sincronizan con la tabla Template en la Fase 1.
+    /// </summary>
+    private async Task<(Outcome Outcome, string? Note)> ApplyTemplateStatusAsync(WebhookChangeValue? value, CancellationToken cancellationToken)
+    {
+        if (value?.Event != "PAUSED")
+        {
+            return (Outcome.Ignored, null);
+        }
+
+        var key = $"{value.MessageTemplateName}:{value.MessageTemplateLanguage}";
+        await alerts.RaiseAsync(AlertType.PlantillaPausada, key,
+            $"Meta pausó la plantilla {key} ({value.OtherInfo?.Title ?? value.Reason})",
+            value.OtherInfo?.Description, "Webhook", cancellationToken);
+        return (Outcome.Applied, null);
+    }
+
+    /// <summary>Estado failed con 131042 (método de pago) → alerta y pausa global (F0.12).</summary>
+    private async Task<(Outcome Outcome, string? Note)> ApplyBillingAlertFromErrorAsync(WebhookStatus status, CancellationToken cancellationToken)
+    {
+        if (status.Status != "failed" || status.Errors is not { ValueKind: JsonValueKind.Array } errors
+            || !errors.EnumerateArray().Any(e => e.TryGetProperty("code", out var c) && c.TryGetInt32(out var code)
+                                                 && EmergencyBrake.ForErrorCode(code) == AlertType.Facturacion))
+        {
+            return (Outcome.Ignored, null);
+        }
+
+        await alerts.RaiseAsync(AlertType.Facturacion, "global", $"Error 131042 en el estado del mensaje {Shorten(status.Id ?? "")}",
+            errors.GetRawText(), "Webhook", cancellationToken);
         return (Outcome.Applied, null);
     }
 

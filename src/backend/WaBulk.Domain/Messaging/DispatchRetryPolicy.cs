@@ -1,3 +1,5 @@
+using WaBulk.Domain.Alerts;
+
 namespace WaBulk.Domain.Messaging;
 
 /// <summary>Parámetros de reintento (sección "Dispatcher" del Worker).</summary>
@@ -35,6 +37,10 @@ public static class DispatchRetryPolicy
                 return new(DispatchStatus.Submitted, null);
             case SendAttemptStatus.SubmissionUnknown:
                 return new(DispatchStatus.NeedsReview, null);
+            case SendAttemptStatus.Rejected when EmergencyBrake.ForErrorCode(errorCode) is not null:
+                // 190, 131042, 132015: el problema es nuestro (token, pago, plantilla), no del destinatario. El trabajo
+                // vuelve a la cola y el despacho queda en pausa global hasta que una persona la levante (F0.12).
+                return new(DispatchStatus.Queued, null);
             case SendAttemptStatus.Rejected when IsTransient(errorCode) && attempts < settings.MaxAttempts:
                 var next = nowUtc + Backoff(attempts, settings, jitter);
                 return next < expiresUtc

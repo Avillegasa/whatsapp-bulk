@@ -5,6 +5,7 @@ using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using WaBulk.Domain.Consent;
 using WaBulk.Domain.Messaging;
+using WaBulk.Infrastructure.Alerts;
 using WaBulk.Infrastructure.Consent;
 using WaBulk.Infrastructure.Messaging;
 using WaBulk.Infrastructure.Persistence;
@@ -174,7 +175,8 @@ public sealed class OptOutIntegrationTests(SqlServerTestDatabase database)
 
         await db.SaveChangesAsync();
         var processor = new WebhookInboxProcessor(db, Options.Create(new InboxProcessorOptions()),
-            Options.Create(new OptOutOptions()), _clock, NullLogger<WebhookInboxProcessor>.Instance);
+            Options.Create(new OptOutOptions()), new AlertService(db, _clock, NullLogger<AlertService>.Instance), _clock,
+            NullLogger<WebhookInboxProcessor>.Instance);
         await processor.ProcessBatchAsync(CancellationToken.None);
     }
 
@@ -188,7 +190,7 @@ public sealed class OptOutIntegrationTests(SqlServerTestDatabase database)
     {
         await using var db = database.CreateContext();
         var options = Options.Create(new DispatcherOptions { WorkerId = "W", LeaseSeconds = 120 });
-        var dispatcher = new Dispatcher(db, new DispatchQueue(db), new ConsentService(db, _clock), TestCapacity.Unlimited(db),
+        var dispatcher = new Dispatcher(db, new DispatchQueue(db), new ConsentService(db, _clock), TestCapacity.Unlimited(db), new AlertService(db, _clock, NullLogger<AlertService>.Instance),
             MetaWhatsAppClientTests.CreateClient(handler), options, new DispatcherIdentity(options), _clock,
             NullLogger<Dispatcher>.Instance);
         return await dispatcher.RunOnceAsync(CancellationToken.None);

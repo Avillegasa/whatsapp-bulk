@@ -2,9 +2,11 @@ using System.Security.Cryptography;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using WaBulk.Domain.Alerts;
 using WaBulk.Domain.Capacity;
 using WaBulk.Domain.Consent;
 using WaBulk.Domain.Messaging;
+using WaBulk.Infrastructure.Alerts;
 using WaBulk.Infrastructure.Capacity;
 using WaBulk.Infrastructure.Consent;
 using WaBulk.Infrastructure.Meta;
@@ -14,7 +16,7 @@ namespace WaBulk.Infrastructure.Messaging;
 
 /// <summary>Resumen de una vuelta del despachador.</summary>
 public sealed record DispatchRound(
-    int Recovered, int Expired, int Claimed, int Sent, int LeaseLost, int Skipped, int NoCapacity = 0);
+    int Recovered, int Expired, int Claimed, int Sent, int LeaseLost, int Skipped, int NoCapacity = 0, bool Paused = false);
 
 /// <summary>
 /// Despachador (F0.9). Una vuelta: recupera leases vencidos → marca vencidos → reclama un lote →
@@ -23,13 +25,15 @@ public sealed record DispatchRound(
 /// Antes de cada envío revisa las bajas de empresa y de plataforma (F0.10, regla 8): si no es elegible, Skipped sin POST.
 /// Después reserva capacidad del portafolio (F0.11): sin lugar, el trabajo se pospone (RetryScheduled, sin sumar intento)
 /// y la vuelta sigue con el resto del lote, porque un trabajo a un número ya contado no necesita lugar nuevo.
-/// Las revalidaciones de campaña y fatiga llegan en la Fase 1.
+/// Freno de emergencia (F0.12): con una pausa global activa no reclama; si un envío recibe 190, 131042 o 132015,
+/// alerta, pausa y devuelve a la cola lo que quedaba del lote. Las revalidaciones de campaña y fatiga llegan en la Fase 1.
 /// </summary>
 public sealed partial class Dispatcher(
     WaBulkDbContext db,
     DispatchQueue queue,
     ConsentService consent,
     CapacityService capacity,
+    AlertService alerts,
     MetaWhatsAppClient meta,
     IOptions<DispatcherOptions> options,
     DispatcherIdentity identity,
@@ -50,14 +54,32 @@ public sealed partial class Dispatcher(
 
         var expired = await queue.ExpireOverdueAsync(Now, cancellationToken);
 
+        if (await alerts.IsPausedAsync(cancellationToken))
+        {
+            return new DispatchRound(recovered.Count, expired, 0, 0, 0, 0, Paused: true);
+        }
+
         var ids = await queue.ClaimBatchAsync(Owner, Options.BatchSize, Now, Options.Lease, cancellationToken);
 
         int sent = 0, lost = 0, skipped = 0, noCapacity = 0;
+        var paused = false;
         for (var i = 0; i < ids.Count; i++)
         {
             if (cancellationToken.IsCancellationRequested)
             {
                 // Los trabajos reclamados y no empezados vuelven a la cola cuando venza su lease.
+                break;
+            }
+
+            // La pausa puede llegar a mitad del lote (este despachador, otro o el procesador de webhooks).
+            if (await alerts.IsPausedAsync(cancellationToken))
+            {
+                foreach (var pending in ids.Skip(i))
+                {
+                    await queue.ReleaseClaimAsync(pending, Owner, cancellationToken);
+                }
+
+                paused = true;
                 break;
             }
 
@@ -75,7 +97,7 @@ public sealed partial class Dispatcher(
             LogNoCapacity(logger, noCapacity, Options.NoCapacityRetryMinutes);
         }
 
-        return new DispatchRound(recovered.Count, expired, ids.Count, sent, lost, skipped, noCapacity);
+        return new DispatchRound(recovered.Count, expired, ids.Count, sent, lost, skipped, noCapacity, paused);
     }
 
     /// <summary>Procesa un trabajo ya reclamado por este despachador.</summary>
@@ -143,6 +165,13 @@ public sealed partial class Dispatcher(
         var owned = await queue.CompleteAttemptAsync(
             job.Id, Owner, attempt.AttemptId, status, result.Wamid, result.HttpStatus, result.ErrorCode, result.Detail,
             transition, Now, CancellationToken.None, platformStop);
+
+        if (status == SendAttemptStatus.Rejected && EmergencyBrake.ForErrorCode(result.ErrorCode) is { } alertType)
+        {
+            var key = alertType == AlertType.PlantillaPausada ? $"{Options.TemplateName}:{Options.TemplateLanguage}" : "global";
+            await alerts.RaiseAsync(alertType, key, $"Error {result.ErrorCode} al enviar el trabajo {job.Id}", result.Detail,
+                "Despachador", CancellationToken.None);
+        }
 
         if (owned)
         {

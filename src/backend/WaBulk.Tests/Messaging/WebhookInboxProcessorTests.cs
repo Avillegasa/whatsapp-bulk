@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using WaBulk.Domain.Messaging;
+using WaBulk.Infrastructure.Alerts;
 using WaBulk.Infrastructure.Consent;
 using WaBulk.Infrastructure.Messaging;
 using WaBulk.Infrastructure.Persistence;
@@ -96,7 +97,8 @@ public sealed class WebhookInboxProcessorTests
     private WaBulkDbContext Db() => new(_dbOptions);
 
     private WebhookInboxProcessor Processor(WaBulkDbContext db) =>
-        new(db, Options.Create(_options), Options.Create(new OptOutOptions()), _clock, NullLogger<WebhookInboxProcessor>.Instance);
+        new(db, Options.Create(_options), Options.Create(new OptOutOptions()),
+            new AlertService(db, _clock, NullLogger<AlertService>.Instance), _clock, NullLogger<WebhookInboxProcessor>.Instance);
 
     private async Task<SendAttempt> SeedAttemptAsync(string? wamid, SendAttemptStatus status = SendAttemptStatus.Accepted)
     {

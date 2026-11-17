@@ -28,7 +28,6 @@ public sealed class DispatchRetryPolicyTests
     [InlineData(131050)] // baja de marketing de la plataforma
     [InlineData(131049)] // ecosistema: tratamiento propio fuera de F0.9
     [InlineData(132001)] // plantilla
-    [InlineData(190)]    // token
     [InlineData(100)]
     public void No_transitorio_falla_sin_reintento(int code)
     {
@@ -36,6 +35,14 @@ public sealed class DispatchRetryPolicyTests
 
         Assert.Equal(new DispatchTransition(DispatchStatus.Failed, null), t);
     }
+
+    [Theory]
+    [InlineData(190)]    // token
+    [InlineData(131042)] // facturación
+    [InlineData(132015)] // plantilla pausada
+    public void Freno_de_emergencia_devuelve_el_trabajo_a_la_cola(int code) =>
+        Assert.Equal(new DispatchTransition(DispatchStatus.Queued, null),
+            DispatchRetryPolicy.After(SendAttemptStatus.Rejected, code, 1, Now.AddDays(1), Now, Settings, 0.5));
 
     [Fact]
     public void Rechazo_sin_codigo_falla() =>

@@ -47,9 +47,10 @@ public sealed class PersistenceModelTests
 
         var tables = db.Model.GetEntityTypes().Select(e => e.GetTableName() ?? "").Order().ToArray();
 
-        // F0.4 + F0.10 (ConsentRecord, PlatformPreference) + F0.11 (CapacityReservation).
+        // F0.4 + F0.10 (ConsentRecord, PlatformPreference) + F0.11 (CapacityReservation) + F0.12 (Alert, DispatchPause).
         Assert.Equal<string>(
-            ["CapacityReservation", "ConsentRecord", "DispatchJob", "MessageEvent", "PlatformPreference", "SendAttempt", "WebhookInbox"],
+            ["Alert", "CapacityReservation", "ConsentRecord", "DispatchJob", "DispatchPause", "MessageEvent", "PlatformPreference",
+             "SendAttempt", "WebhookInbox"],
             tables);
     }
 }

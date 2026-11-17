@@ -177,6 +177,15 @@ public sealed class DispatchQueue(WaBulkDbContext db)
         return BeginOutcome.Started;
     }
 
+    /// <summary>Devuelve a Queued un trabajo reclamado por este worker y no empezado (pausa global, F0.12).</summary>
+    public async Task<bool> ReleaseClaimAsync(long jobId, string owner, CancellationToken cancellationToken) =>
+        await db.DispatchJobs
+            .Where(j => j.Id == jobId && j.LockedBy == owner && j.DispatchStatus == DispatchStatus.Claimed)
+            .ExecuteUpdateAsync(s => s
+                .SetProperty(j => j.DispatchStatus, DispatchStatus.Queued)
+                .SetProperty(j => j.LockedBy, (string?)null)
+                .SetProperty(j => j.LeaseUntilUtc, (DateTime?)null), cancellationToken) == 1;
+
     /// <summary>
     /// Pospone un trabajo reclamado por este worker que no consiguió capacidad: RetryScheduled hasta
     /// <paramref name="nextAttemptUtc"/>, sin sumar intento (no hubo POST). Así no se vuelve a reclamar en cada vuelta

@@ -22,6 +22,125 @@ namespace WaBulk.Infrastructure.Persistence.Migrations
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
 
+            modelBuilder.Entity("WaBulk.Domain.Alerts.Alert", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
+
+                    b.Property<DateTime>("CreatedUtc")
+                        .HasColumnType("datetime2")
+                        .HasColumnName("CreadaUtc");
+
+                    b.Property<string>("Detail")
+                        .HasColumnType("nvarchar(max)")
+                        .HasColumnName("Detalle");
+
+                    b.Property<string>("Key")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)")
+                        .HasColumnName("Clave");
+
+                    b.Property<DateTime>("LastUtc")
+                        .HasColumnType("datetime2")
+                        .HasColumnName("UltimaUtc");
+
+                    b.Property<string>("Message")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)")
+                        .HasColumnName("Mensaje");
+
+                    b.Property<int>("Occurrences")
+                        .HasColumnType("int")
+                        .HasColumnName("Ocurrencias");
+
+                    b.Property<string>("ResolvedBy")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)")
+                        .HasColumnName("ResueltaPor");
+
+                    b.Property<DateTime?>("ResolvedUtc")
+                        .HasColumnType("datetime2")
+                        .HasColumnName("ResueltaUtc");
+
+                    b.Property<string>("Source")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(30)")
+                        .HasColumnName("Origen");
+
+                    b.Property<string>("Type")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(30)")
+                        .HasColumnName("Tipo");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Type", "Key")
+                        .IsUnique()
+                        .HasDatabaseName("IX_Alert_Abierta")
+                        .HasFilter("[ResueltaUtc] IS NULL");
+
+                    b.ToTable("Alert", (string)null);
+                });
+
+            modelBuilder.Entity("WaBulk.Domain.Alerts.DispatchPause", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
+
+                    b.Property<long>("AlertId")
+                        .HasColumnType("bigint");
+
+                    b.Property<DateTime>("FromUtc")
+                        .HasColumnType("datetime2")
+                        .HasColumnName("DesdeUtc");
+
+                    b.Property<string>("LiftedBy")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)")
+                        .HasColumnName("LevantadaPor");
+
+                    b.Property<DateTime?>("LiftedUtc")
+                        .HasColumnType("datetime2")
+                        .HasColumnName("LevantadaUtc");
+
+                    b.Property<string>("Reason")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(30)")
+                        .HasColumnName("Motivo");
+
+                    b.Property<string>("Scope")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(20)")
+                        .HasColumnName("Alcance");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AlertId");
+
+                    b.HasIndex("Scope")
+                        .IsUnique()
+                        .HasDatabaseName("IX_DispatchPause_Activa")
+                        .HasFilter("[LevantadaUtc] IS NULL");
+
+                    b.ToTable("DispatchPause", (string)null);
+                });
+
             modelBuilder.Entity("WaBulk.Domain.Capacity.CapacityReservation", b =>
                 {
                     b.Property<long>("Id")
@@ -423,6 +542,15 @@ namespace WaBulk.Infrastructure.Persistence.Migrations
                     b.HasIndex("Status", "NextAttemptUtc");
 
                     b.ToTable("WebhookInbox", (string)null);
+                });
+
+            modelBuilder.Entity("WaBulk.Domain.Alerts.DispatchPause", b =>
+                {
+                    b.HasOne("WaBulk.Domain.Alerts.Alert", null)
+                        .WithMany()
+                        .HasForeignKey("AlertId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
                 });
 
             modelBuilder.Entity("WaBulk.Domain.Messaging.SendAttempt", b =>

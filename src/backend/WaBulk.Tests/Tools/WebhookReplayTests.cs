@@ -11,6 +11,7 @@ using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using WaBulk.Domain.Messaging;
+using WaBulk.Infrastructure.Alerts;
 using WaBulk.Infrastructure.Consent;
 using WaBulk.Infrastructure.Messaging;
 using WaBulk.Infrastructure.Persistence;
@@ -97,7 +98,7 @@ public sealed class WebhookReplayTests : IAsyncLifetime
     {
         await using var db = Db();
         var processor = new WebhookInboxProcessor(db, Options.Create(new InboxProcessorOptions()),
-            Options.Create(new OptOutOptions()), TimeProvider.System, NullLogger<WebhookInboxProcessor>.Instance);
+            Options.Create(new OptOutOptions()), new AlertService(db, TimeProvider.System, NullLogger<AlertService>.Instance), TimeProvider.System, NullLogger<WebhookInboxProcessor>.Instance);
         await processor.ProcessBatchAsync(CancellationToken.None);
     }
 
@@ -185,7 +186,7 @@ public sealed class WebhookReplayTests : IAsyncLifetime
     [Theory]
     [InlineData("stop")]
     [InlineData("resume")]
-    [InlineData("plantilla-paused")]
+    // plantilla-paused alerta y pausa con SQL Server desde F0.12: se prueba en AlertIntegrationTests.
     public async Task Sin_statuses_se_guarda_y_queda_procesado_sin_eventos(string scenario)
     {
         var results = await Sender().RunAsync(ReplayScenarios.Find(scenario)!, Context(Guid.CreateVersion7(), "wamid.X"));

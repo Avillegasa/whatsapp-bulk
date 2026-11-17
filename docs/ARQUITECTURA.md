@@ -56,6 +56,8 @@ Angular nunca habla con Meta. La API nunca envía en masa de forma síncrona. To
 | `CapacityReservation` | PortafolioId, PhoneE164, DispatchJobId, ReservadaUtc, ExpiraUtc, Estado (Reservada/Consumida/Liberada) | Una fila por trabajo; cuenta destinatarios únicos vigentes (ventana móvil 24 h); reserva con `sp_getapplock` por portafolio (D-026) |
 | `MessageEvent` | Wamid, AttemptId, Estado, TimestampMeta, Pricing, Errores | Único (Wamid, Estado) |
 | `WebhookInbox` | Id, RecibidoUtc, Cuerpo, Estado (Pendiente/Procesado/EnEspera/Revision), Intentos, ProximoIntentoUtc, Error | Solo el receptor inserta; el procesador actualiza Estado, Intentos, ProximoIntentoUtc y Error (D-023) |
+| `Alert` | Tipo (Token/Facturacion/PlantillaPausada), Clave, Mensaje, Detalle, Origen, Ocurrencias, CreadaUtc, UltimaUtc, ResueltaUtc, ResueltaPor | Una abierta por (Tipo, Clave); único filtrado `ResueltaUtc IS NULL` (D-027) |
+| `DispatchPause` | Alcance (Global), Motivo, AlertId, DesdeUtc, LevantadaUtc, LevantadaPor | Una activa por alcance; el despachador no reclama mientras exista (D-027) |
 | `AuditLog` | Usuario, Accion, Entidad, Antes, Despues, FechaUtc | Importaciones, aprobaciones, bajas, reenvíos manuales |
 
 ## Controles del despachador
@@ -77,10 +79,11 @@ Angular nunca habla con Meta. La API nunca envía en masa de forma síncrona. To
 | 131049 | Destinatario | +24 h mínimo, un intento más, solo si sigue vigente |
 | 131050 | Destinatario | No reintentar; `PlatformPreference` stop |
 | 131026 | Destinatario | No reintentar en esta campaña; "no alcanzable" con fecha; excluir solo tras varias fallas seguidas |
+| 132015 | Plantilla pausada | Pausa global + alerta; el trabajo vuelve a la cola (D-027) |
 | 132000–132016 | Plantilla | Pausar campaña; 132016 → plantilla nueva y nueva versión |
-| 131042 | Facturación | Pausa global + alerta |
+| 131042 | Facturación | Pausa global + alerta; el trabajo vuelve a la cola (también si llega en un estado `failed`) |
 | 131048, 131031, 368 | Calidad/política | Pausa global + alerta |
-| 190 | Configuración | Pausa global + alerta; rotar token |
+| 190 | Configuración | Pausa global + alerta; rotar token; el trabajo vuelve a la cola |
 | 100, 135000 | Configuración | No reintentar; corregir payload |
 
 Fuente: https://developers.facebook.com/documentation/business-messaging/whatsapp/support/error-codes

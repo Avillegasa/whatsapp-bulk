@@ -25,6 +25,7 @@ public sealed partial class DispatcherWorker(
 
         LogStarted(logger, identity.Owner, options.Value.PollSeconds, options.Value.TemplateName);
         var poll = TimeSpan.FromSeconds(options.Value.PollSeconds);
+        var pausedLogged = false;
 
         while (!stoppingToken.IsCancellationRequested)
         {
@@ -35,6 +36,12 @@ public sealed partial class DispatcherWorker(
                 var dispatcher = scope.ServiceProvider.GetRequiredService<Dispatcher>();
                 var round = await dispatcher.RunOnceAsync(stoppingToken);
                 claimed = round.Claimed;
+                if (round.Paused && !pausedLogged)
+                {
+                    LogPaused(logger);
+                }
+
+                pausedLogged = round.Paused;
                 if (round.Claimed + round.Recovered + round.Expired > 0)
                 {
                     LogRound(logger, round.Recovered, round.Expired, round.Claimed, round.Sent, round.Skipped, round.NoCapacity, round.LeaseLost);
@@ -74,6 +81,9 @@ public sealed partial class DispatcherWorker(
     [LoggerMessage(Level = LogLevel.Information,
         Message = "Vuelta: recuperados={Recovered} vencidos={Expired} reclamados={Claimed} enviados={Sent} omitidos={Skipped} sin capacidad={NoCapacity} sin lease={LeaseLost}")]
     private static partial void LogRound(ILogger logger, int recovered, int expired, int claimed, int sent, int skipped, int noCapacity, int leaseLost);
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Despacho en pausa global: no se reclaman trabajos (ver alertas; levantar con reanudar --por <nombre>)")]
+    private static partial void LogPaused(ILogger logger);
 
     [LoggerMessage(Level = LogLevel.Error, Message = "Falló una vuelta del despachador")]
     private static partial void LogRoundFailed(ILogger logger, Exception exception);
