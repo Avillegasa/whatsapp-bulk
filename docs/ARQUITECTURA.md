@@ -45,10 +45,12 @@ Angular nunca habla con Meta. La API nunca envía en masa de forma síncrona. To
 
 | Tabla | Campos clave | Notas |
 | --- | --- | --- |
-| `Contact` | Id, PhoneE164 (único), WaId, Nombre, ClienteId, Activo | E.164 (Bolivia: 591 + 8 dígitos) |
-| `ConsentRecord` | ContactId (opcional hasta Fase 1), PhoneE164, Finalidad, Canal, Estado (OptIn/OptOut/NoContactar), Fuente, Evidencia, WamidOrigen, FechaUtc, RegistradoPor | Historial inmutable; vigente = último por teléfono y finalidad; único filtrado en WamidOrigen (D-025) |
+| `Contact` | Id, PhoneE164 (único filtrado), WaId, UserId (BSUID, único filtrado), Nombre, ClienteId, Activo, CreadoUtc, CreadoPor | E.164 (Bolivia: 591 + 8 dígitos); mapeo BSUID ↔ teléfono (D-032) |
+| `InboundMessage` | Id, Wamid (único), ContactId, PhoneE164, UserId, Tipo, Texto, BotonId, WamidContexto, FechaUtc, RecibidoUtc, WebhookInboxId | Mensajes que escribe el cliente; abren la ventana de 24 h |
+| `ConsentOffer` | Id, ContactId, PhoneE164, VersionTexto, Texto, OfrecidoPor, FechaUtc, Estado (Enviando/Enviada/Rechazada/Incierta), Wamid (único filtrado), HttpStatus, CodigoError, Detalle, Respuesta (Si/AhoraNo), RespuestaUtc, WamidRespuesta | Oferta de promociones por botones (D-031, D-032) |
+| `ConsentRecord` | ContactId (FK a Contact desde F1.4), PhoneE164, Finalidad, Canal, Estado (OptIn/OptOut/NoContactar), Fuente, Evidencia, WamidOrigen, FechaUtc, RegistradoPor | Historial inmutable; vigente = último por teléfono y finalidad; único filtrado en WamidOrigen (D-025) |
 | `PlatformPreference` | PhoneE164, Categoria, Valor (stop/resume), Origen (Webhook/Error131050), FechaUtc | Separada del consentimiento; vigente = FechaUtc de Meta más reciente; único (PhoneE164, Categoria, FechaUtc, Valor) |
-| `Segment`, `SegmentMember` | Filtros o listas | Congelados al aprobar |
+| `Segment`, `SegmentMember` | Segment: Id, Nombre (único), Descripcion, CreadoUtc, CreadoPor · SegmentMember: SegmentId, ContactId, AgregadoUtc, AgregadoPor | Listas estáticas (F1.4); congeladas al aprobar (F1.6) |
 | `Template` | MetaTemplateId, Nombre, Idioma, Categoria, Estado, Calidad, Componentes (JSON) | Sincronizada con Meta |
 | `Campaign`, `CampaignVersion` | Version: plantilla, idioma, categoría, audiencia, parámetros, ProgramadaUtc, ExpiraUtc, Hash, AprobadaPor | Cambios → nueva versión y nueva aprobación |
 | `DispatchJob` | Id, CampaignVersionId, ContactId, PhoneE164, Parametros, Prioridad, ProgramadoUtc, ExpiraUtc, EstadoDespacho, Intentos, ProximoIntentoUtc, LockedBy, LeaseUntilUtc, MotivoOmision | Único (CampaignVersionId, ContactId); MotivoOmision solo en `Skipped` (SinConsentimiento, BajaEmpresa, NoContactar, BajaPlataforma) |

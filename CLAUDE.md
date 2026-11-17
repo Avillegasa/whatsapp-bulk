@@ -90,6 +90,8 @@ Mantener esta sección al día. Todos funcionan en cmd desde la raíz del repo.
 - Ver inbox procesado, `MessageEvent` y `EstadoEntrega`: ver comando en `db/scripts/verificar-f0.7.sql`
 - Primer Admin (una sola vez; la clave se pide sin mostrarla): `dotnet run --project src\backend\WaBulk.Api -- crear-admin --usuario <nombre>`
 - Ver usuarios (roles, activo, bloqueo) y las últimas filas de `AuditLog`: ver comando en `db/scripts/verificar-f1.3.sql`
+- Ver contactos, mensajes entrantes, ofertas y consentimiento vigente: ver comando en `db/scripts/verificar-f1.4.sql`
+- Pantallas de contactos (Mensajes recientes, Contactos, Importar, Listas): solo con rol Operador; la oferta necesita el Worker corriendo (procesa la respuesta) y el receptor con el túnel
 - Frontend: `cd src\frontend && npm ci` · `npx ng build` · `npx ng test --watch=false` (Vitest)
 - Intranet en desarrollo (dos ventanas): `dotnet run --project src\backend\WaBulk.Api --launch-profile http` (http://localhost:5047) y `cd src\frontend && npx ng serve` → http://localhost:4200 (el proxy manda `/api` a la Api)
 
@@ -105,6 +107,7 @@ Notas de la solución:
 - Bajas: entidades y reglas en `WaBulk.Domain/Consent` (`MarketingEligibility`, `OptOutDetector`); `ConsentService` y `EnqueueService` en `WaBulk.Infrastructure/Consent`. Sin OptIn vigente no se envía (D-025). Palabras clave y botón de baja en la sección `Bajas` del Worker.
 - Usuarios (F1.2): `WaBulkDbContext` hereda de `IdentityDbContext<AppUser>` (tablas `AspNet*` en la misma base; roles como datos de la migración). La Api usa cookie `WaBulk.Auth` (401/403 sin redirección), política por defecto "con sesión" y `XsrfValidationFilter` en todo POST/PUT/PATCH/DELETE de `/api` (cookie `XSRF-TOKEN` + encabezado `X-XSRF-TOKEN`). Endpoints con políticas con nombre (`WaBulk.Domain/Users/Roles.cs`), no con nombres de rol; `EndpointPolicyTests` falla si un endpoint nuevo no tiene política.
 - Usuarios y auditoría (F1.3, D-030): `UserAdminService` (Infrastructure/Identity) hace cada cambio y su fila de `AuditLog` en una sola transacción (`AuditEntry.Create`); usuarios desactivados con `Activo` (no se borran), revalidados en cada petición por `AppSignInManager`. Toda acción nueva que cambie datos de negocio debe auditar igual. Actor de los comandos de consola: `windows:<usuario>`.
+- Contactos (F1.4, D-031, D-032): `Contact`/`InboundMessage`/`ConsentOffer`/`Segment` en `WaBulk.Domain/Contacts`; servicios en `WaBulk.Infrastructure/Contacts` (`ContactDirectory` mapea BSUID ↔ teléfono, `ConsentOfferService` revisa la ventana y hace un solo POST de botones tras guardar la oferta, `ContactImportService` CSV/Excel con ClosedXML). Texto de la oferta en la sección `OfertaPromociones` de la Api. La Api también envía por Meta (`AddMetaWhatsApp`): mismo token en user-secrets. Tras cambiar el procesador, reiniciar el Worker.
 - Webhooks: el receptor solo guarda; `WebhookInboxProcessor` (Infrastructure/Messaging, corre en el Worker) correlaciona estados y escribe `MessageEvent` y `SendAttempt.EstadoEntrega` (solo avanza).
 - Si `dotnet build` falla con "archivo bloqueado por WaBulk.Webhooks", el receptor está corriendo: detenerlo con Ctrl+C o compilar con `-o` a otra carpeta.
 
