@@ -136,12 +136,77 @@ public sealed class AlertIntegrationTests(SqlServerTestDatabase database)
             .ToDictionaryAsync(x => x.Key, x => x.N);
     }
 
+    // ---------- Tasa de fallos (F1.7) ----------
+
+    [Theory]
+    [InlineData(6, true)]   // 6 de 100 (+1 aceptado) > 5 %: pausa.
+    [InlineData(4, false)]  // 4 de 101: no.
+    public async Task Fallos_sobre_el_umbral_en_los_ultimos_envios_pausan_todo(int failures, bool paused)
+    {
+        await SeedHistoryAsync(total: 100, rejected: failures);
+        await SeedJobsAsync(1);
+
+        await DispatchAsync(Accepting()); // Un envío más dispara la revisión.
+
+        var (alerts, pauses) = await StateAsync();
+        Assert.Equal(paused, alerts.Any(a => a.Type == AlertType.TasaFallos));
+        Assert.Equal(paused ? 1 : 0, pauses.Count);
+    }
+
+    [Fact]
+    public async Task Tasa_de_fallos_cuenta_desde_la_ultima_reanudacion()
+    {
+        await SeedHistoryAsync(total: 100, rejected: 10);
+        await SeedJobsAsync(1);
+        await DispatchAsync(Accepting());
+        await using (var db = database.CreateContext())
+        {
+            await new AlertService(db, _clock, NullLogger<AlertService>.Instance).ResumeAsync("andres", CancellationToken.None);
+        }
+
+        _clock.Advance(TimeSpan.FromMinutes(1));
+        await SeedJobsAsync(1);
+        var round = await DispatchAsync(Accepting());
+
+        Assert.False(round.Paused);
+        var (_, pauses) = await StateAsync();
+        Assert.All(pauses, p => Assert.NotNull(p.LiftedUtc)); // La racha vieja no vuelve a pausar.
+    }
+
+    /// <summary>Historial de envíos de campañas ya terminados (antes de Start): <paramref name="rejected"/> rechazados.</summary>
+    private async Task SeedHistoryAsync(int total, int rejected)
+    {
+        await using var db = database.CreateContext();
+        var contact = await TestServices.ContactIdAsync(db, "+59179999999");
+        for (var i = 0; i < total; i++)
+        {
+            var job = new DispatchJob
+            {
+                CampaignVersionId = await TestServices.CampaignVersionAsync(db), ContactId = contact, PhoneE164 = "+59179999999",
+                ScheduledUtc = Start.AddHours(-2), ExpiresUtc = Start.AddDays(1),
+                DispatchStatus = i < rejected ? DispatchStatus.Failed : DispatchStatus.Submitted,
+            };
+            db.DispatchJobs.Add(job);
+            await db.SaveChangesAsync();
+            db.SendAttempts.Add(new SendAttempt
+            {
+                AttemptId = Guid.CreateVersion7(), DispatchJobId = job.Id, StartedUtc = Start.AddMinutes(-100 + i),
+                FinishedUtc = Start.AddMinutes(-100 + i), Status = i < rejected ? SendAttemptStatus.Rejected : SendAttemptStatus.Accepted,
+            });
+        }
+
+        await db.SaveChangesAsync();
+    }
+
     // ---------- Un caso por código (verificación del plan) ----------
 
     [Theory]
     [InlineData(190, AlertType.Token, "global")]
     [InlineData(131042, AlertType.Facturacion, "global")]
     [InlineData(132015, AlertType.PlantillaPausada, "promo_prueba:es")]
+    [InlineData(131048, AlertType.Calidad, "global")]   // F1.7
+    [InlineData(131031, AlertType.Politica, "global")]  // F1.7
+    [InlineData(368, AlertType.Politica, "global")]     // F1.7
     public async Task Error_al_enviar_alerta_pausa_y_devuelve_el_lote_a_la_cola(int code, AlertType type, string key)
     {
         await SeedJobsAsync(3);

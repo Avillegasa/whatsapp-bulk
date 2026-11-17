@@ -125,6 +125,11 @@ public sealed partial class Dispatcher(
             LogNoCapacity(logger, noCapacity, Options.NoCapacityRetryMinutes);
         }
 
+        if (sent > 0)
+        {
+            await CheckFailureRateAsync(CancellationToken.None);
+        }
+
         return new DispatchRound(recovered.Count, expired, ids.Count, sent, lost, skipped, noCapacity, paused, held);
     }
 
@@ -277,6 +282,31 @@ public sealed partial class Dispatcher(
         }
 
         return BeginOutcome.Started;
+    }
+
+    /// <summary>
+    /// Freno por tasa de fallos (F1.7): de los últimos FailureWindow intentos de campañas terminados desde que se levantó
+    /// la última pausa, cuántos fallaron (rechazados por Meta o failed por webhook). Si pasa el umbral → alerta y pausa
+    /// global. Contar desde la reanudación evita que la misma racha vuelva a pausar apenas una persona reanuda.
+    /// </summary>
+    private async Task CheckFailureRateAsync(CancellationToken cancellationToken)
+    {
+        var since = await db.DispatchPauses.AsNoTracking().Where(p => p.LiftedUtc != null)
+            .MaxAsync(p => p.LiftedUtc, cancellationToken) ?? DateTime.MinValue;
+        var recent = await (from a in db.SendAttempts.AsNoTracking()
+                            join j in db.DispatchJobs.AsNoTracking() on a.DispatchJobId equals j.Id
+                            where j.CampaignVersionId != null && a.StartedUtc > since
+                                  && (a.Status == SendAttemptStatus.Accepted || a.Status == SendAttemptStatus.Rejected)
+                            orderby a.StartedUtc descending
+                            select new { a.Status, a.DeliveryStatus })
+            .Take(Options.FailureWindow).ToListAsync(cancellationToken);
+        var failures = recent.Count(a => a.Status == SendAttemptStatus.Rejected || a.DeliveryStatus == DeliveryStatus.Failed);
+        if (EmergencyBrake.FailureRateExceeded(recent.Count, failures, Options.FailureMinSample, Options.FailureThresholdPercent))
+        {
+            await alerts.RaiseAsync(AlertType.TasaFallos, "global",
+                $"{failures} fallos en los últimos {recent.Count} envíos (umbral {Options.FailureThresholdPercent} %)", null,
+                "Despachador", cancellationToken);
+        }
     }
 
     /// <summary>

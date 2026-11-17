@@ -603,17 +603,27 @@ public sealed partial class WebhookInboxProcessor(
         _ => Now(),
     };
 
-    /// <summary>Estado failed con 131042 (método de pago) → alerta y pausa global (F0.12).</summary>
+    /// <summary>
+    /// Estado failed con un código del freno (131042 método de pago, F0.12; F1.7: 131048 calidad, 131031/368 política)
+    /// → alerta y pausa global. 132015 (plantilla) se ignora aquí: lo cubre el webhook de plantilla PAUSED.
+    /// </summary>
     private async Task<(Outcome Outcome, string? Note)> ApplyBillingAlertFromErrorAsync(WebhookStatus status, CancellationToken cancellationToken)
     {
-        if (status.Status != "failed" || status.Errors is not { ValueKind: JsonValueKind.Array } errors
-            || !errors.EnumerateArray().Any(e => e.TryGetProperty("code", out var c) && c.TryGetInt32(out var code)
-                                                 && EmergencyBrake.ForErrorCode(code) == AlertType.Facturacion))
+        if (status.Status != "failed" || status.Errors is not { ValueKind: JsonValueKind.Array } errors)
         {
             return (Outcome.Ignored, null);
         }
 
-        await alerts.RaiseAsync(AlertType.Facturacion, "global", $"Error 131042 en el estado del mensaje {Shorten(status.Id ?? "")}",
+        var match = errors.EnumerateArray()
+            .Select(e => e.TryGetProperty("code", out var c) && c.TryGetInt32(out var code) ? code : (int?)null)
+            .Select(code => (Code: code, Type: EmergencyBrake.ForErrorCode(code)))
+            .FirstOrDefault(x => x.Type is { } t && t != AlertType.PlantillaPausada);
+        if (match.Type is not { } type)
+        {
+            return (Outcome.Ignored, null);
+        }
+
+        await alerts.RaiseAsync(type, "global", $"Error {match.Code} en el estado del mensaje {Shorten(status.Id ?? "")}",
             errors.GetRawText(), "Webhook", cancellationToken);
         return (Outcome.Applied, null);
     }

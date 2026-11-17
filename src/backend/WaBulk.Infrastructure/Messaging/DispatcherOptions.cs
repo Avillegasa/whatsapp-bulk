@@ -52,6 +52,15 @@ public sealed class DispatcherOptions
     /// <summary>Zona IANA del horario. Bolivia: America/La_Paz (UTC−4, sin horario de verano).</summary>
     public string TimeZone { get; set; } = "America/La_Paz";
 
+    /// <summary>Freno por tasa de fallos (F1.7): últimos N envíos de campañas desde la última reanudación.</summary>
+    public int FailureWindow { get; set; } = 200;
+
+    /// <summary>Envíos mínimos para evaluar la tasa de fallos.</summary>
+    public int FailureMinSample { get; set; } = 100;
+
+    /// <summary>Porcentaje de fallos que pausa todo (docs/ARQUITECTURA.md: 5 %).</summary>
+    public int FailureThresholdPercent { get; set; } = 5;
+
     public SendingWindow Window => SendingWindow.Parse(AllowedFrom, AllowedUntil, TimeZone);
 
     public TimeSpan Lease => TimeSpan.FromSeconds(LeaseSeconds);

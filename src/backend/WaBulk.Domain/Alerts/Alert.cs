@@ -9,6 +9,15 @@ public enum AlertType
     Facturacion,
     /// <summary>Plantilla pausada por Meta (webhook PAUSED o error 132015 al enviar).</summary>
     PlantillaPausada,
+
+    /// <summary>F1.7 · 131048: Meta restringe cuántos mensajes puede enviar el número (calidad).</summary>
+    Calidad,
+
+    /// <summary>F1.7 · 131031 o 368: la cuenta fue restringida o desactivada por infringir una política.</summary>
+    Politica,
+
+    /// <summary>F1.7 · más del 5 % de fallos en los últimos 200 envíos de campañas.</summary>
+    TasaFallos,
 }
 
 /// <summary>
@@ -56,8 +65,9 @@ public static class PauseScopes
 public static class EmergencyBrake
 {
     /// <summary>
-    /// 190 token, 131042 facturación, 132015 plantilla pausada. Ninguno es culpa del destinatario: el trabajo vuelve
-    /// a la cola y sale cuando una persona levanta la pausa (no es un reintento automático).
+    /// 190 token, 131042 facturación, 132015 plantilla pausada; F1.7: 131048 (límite por calidad del número), 131031 y
+    /// 368 (cuenta restringida por política). Ninguno es culpa del destinatario: el trabajo vuelve a la cola y sale cuando
+    /// una persona levanta la pausa (no es un reintento automático).
     /// https://developers.facebook.com/documentation/business-messaging/whatsapp/support/error-codes
     /// </summary>
     public static AlertType? ForErrorCode(int? code) => code switch
@@ -65,6 +75,15 @@ public static class EmergencyBrake
         190 => AlertType.Token,
         131042 => AlertType.Facturacion,
         132015 => AlertType.PlantillaPausada,
+        131048 => AlertType.Calidad,
+        131031 or 368 => AlertType.Politica,
         _ => null,
     };
+
+    /// <summary>
+    /// ¿Superan los fallos el umbral? Solo con una muestra mínima (con pocos envíos, un fallo daría un porcentaje alto
+    /// sin significar nada).
+    /// </summary>
+    public static bool FailureRateExceeded(int total, int failures, int minSample, int thresholdPercent) =>
+        total >= minSample && failures * 100 > thresholdPercent * total;
 }
