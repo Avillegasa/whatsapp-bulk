@@ -29,6 +29,9 @@ public sealed class DispatcherOptions
     public int RetryBaseSeconds { get; set; } = 30;
     public int RetryMaxSeconds { get; set; } = 1800;
 
+    /// <summary>Cuánto se pospone un trabajo que no consiguió capacidad del portafolio (F0.11).</summary>
+    public int NoCapacityRetryMinutes { get; set; } = 5;
+
     /// <summary>Plantilla del PoC mientras no exista CampaignVersion (Fase 1 la toma de la versión de campaña).</summary>
     public string TemplateName { get; set; } = "hello_world";
     public string TemplateLanguage { get; set; } = "en_US";

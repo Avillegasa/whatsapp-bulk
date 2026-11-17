@@ -3,6 +3,7 @@ using System.Data.Common;
 using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage;
+using WaBulk.Domain.Capacity;
 using WaBulk.Domain.Consent;
 using WaBulk.Domain.Messaging;
 using WaBulk.Infrastructure.Persistence;
@@ -20,6 +21,8 @@ public enum BeginOutcome
     Expired,
     /// <summary>El contacto no es elegible (baja de empresa o de plataforma, sin consentimiento): Skipped sin POST.</summary>
     Skipped,
+    /// <summary>Sin capacidad del portafolio (F0.11): el trabajo se reprograma sin POST y sin sumar intento.</summary>
+    NoCapacity,
 }
 
 public sealed record RecoveredJob(long JobId, DispatchStatus Status);
@@ -90,6 +93,13 @@ public sealed class DispatchQueue(WaBulkDbContext db)
         OUTPUT inserted.Id, inserted.EstadoDespacho INTO @out
         FROM DispatchJob j
         JOIN @ids i ON i.Id = j.Id;
+
+        -- Capacidad (F0.11): vuelve a la cola → se libera; enviado o incierto → cuenta (por prudencia).
+        UPDATE r
+        SET Estado = CASE WHEN o.Estado = 'Queued' THEN 'Liberada' ELSE 'Consumida' END
+        FROM CapacityReservation r
+        JOIN @out o ON o.Id = r.DispatchJobId
+        WHERE r.Estado = 'Reservada';
 
         COMMIT TRANSACTION;
 
@@ -167,6 +177,20 @@ public sealed class DispatchQueue(WaBulkDbContext db)
         return BeginOutcome.Started;
     }
 
+    /// <summary>
+    /// Pospone un trabajo reclamado por este worker que no consiguió capacidad: RetryScheduled hasta
+    /// <paramref name="nextAttemptUtc"/>, sin sumar intento (no hubo POST). Así no se vuelve a reclamar en cada vuelta
+    /// y los trabajos que siguen en la cola (por ejemplo, a un número ya contado) pueden salir.
+    /// </summary>
+    public async Task<bool> DeferAsync(long jobId, string owner, DateTime nextAttemptUtc, CancellationToken cancellationToken) =>
+        await db.DispatchJobs
+            .Where(j => j.Id == jobId && j.LockedBy == owner && j.DispatchStatus == DispatchStatus.Claimed)
+            .ExecuteUpdateAsync(s => s
+                .SetProperty(j => j.DispatchStatus, DispatchStatus.RetryScheduled)
+                .SetProperty(j => j.NextAttemptUtc, nextAttemptUtc)
+                .SetProperty(j => j.LockedBy, (string?)null)
+                .SetProperty(j => j.LeaseUntilUtc, (DateTime?)null), cancellationToken) == 1;
+
     /// <summary>Marca Skipped con su motivo un trabajo reclamado por este worker (revisión de bajas al enviar, F0.10).</summary>
     public async Task<bool> SkipAsync(long jobId, string owner, string reason, CancellationToken cancellationToken) =>
         await db.DispatchJobs
@@ -211,6 +235,12 @@ public sealed class DispatchQueue(WaBulkDbContext db)
                 .SetProperty(a => a.ErrorCode, errorCode)
                 .SetProperty(a => a.Detail, detail)
                 .SetProperty(a => a.FinishedUtc, nowUtc), cancellationToken);
+
+        // Capacidad (F0.11): aceptado o incierto consume el lugar; rechazado lo libera. Es un hecho: no depende del lease.
+        var reservation = status == SendAttemptStatus.Rejected ? ReservationStatus.Liberada : ReservationStatus.Consumida;
+        await db.CapacityReservations
+            .Where(r => r.DispatchJobId == jobId && r.Status == ReservationStatus.Reservada)
+            .ExecuteUpdateAsync(s => s.SetProperty(r => r.Status, reservation), cancellationToken);
 
         var owned = await db.DispatchJobs
             .Where(j => j.Id == jobId && j.LockedBy == owner && j.DispatchStatus == DispatchStatus.Claimed)

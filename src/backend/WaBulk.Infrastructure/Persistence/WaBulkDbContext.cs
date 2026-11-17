@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using WaBulk.Domain.Capacity;
 using WaBulk.Domain.Consent;
 using WaBulk.Domain.Messaging;
 
@@ -12,6 +13,7 @@ public class WaBulkDbContext(DbContextOptions<WaBulkDbContext> options) : DbCont
     public DbSet<MessageEvent> MessageEvents => Set<MessageEvent>();
     public DbSet<ConsentRecord> ConsentRecords => Set<ConsentRecord>();
     public DbSet<PlatformPreference> PlatformPreferences => Set<PlatformPreference>();
+    public DbSet<CapacityReservation> CapacityReservations => Set<CapacityReservation>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

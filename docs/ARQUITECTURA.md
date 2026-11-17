@@ -53,7 +53,7 @@ Angular nunca habla con Meta. La API nunca envía en masa de forma síncrona. To
 | `Campaign`, `CampaignVersion` | Version: plantilla, idioma, categoría, audiencia, parámetros, ProgramadaUtc, ExpiraUtc, Hash, AprobadaPor | Cambios → nueva versión y nueva aprobación |
 | `DispatchJob` | Id, CampaignVersionId, ContactId, PhoneE164, Parametros, Prioridad, ProgramadoUtc, ExpiraUtc, EstadoDespacho, Intentos, ProximoIntentoUtc, LockedBy, LeaseUntilUtc, MotivoOmision | Único (CampaignVersionId, ContactId); MotivoOmision solo en `Skipped` (SinConsentimiento, BajaEmpresa, NoContactar, BajaPlataforma) |
 | `SendAttempt` | AttemptId, DispatchJobId, InicioUtc, FinUtc, Estado, Wamid, HttpStatus, CodigoError, Detalle, EstadoEntrega | Único filtrado en Wamid; EstadoEntrega solo lo escribe el procesador (D-023) |
-| `CapacityReservation` | PortafolioId, PhoneE164, ReservadaUtc, ExpiraUtc, Estado | Destinatarios únicos, ventana móvil 24 h |
+| `CapacityReservation` | PortafolioId, PhoneE164, DispatchJobId, ReservadaUtc, ExpiraUtc, Estado (Reservada/Consumida/Liberada) | Una fila por trabajo; cuenta destinatarios únicos vigentes (ventana móvil 24 h); reserva con `sp_getapplock` por portafolio (D-026) |
 | `MessageEvent` | Wamid, AttemptId, Estado, TimestampMeta, Pricing, Errores | Único (Wamid, Estado) |
 | `WebhookInbox` | Id, RecibidoUtc, Cuerpo, Estado (Pendiente/Procesado/EnEspera/Revision), Intentos, ProximoIntentoUtc, Error | Solo el receptor inserta; el procesador actualiza Estado, Intentos, ProximoIntentoUtc y Error (D-023) |
 | `AuditLog` | Usuario, Accion, Entidad, Antes, Despues, FechaUtc | Importaciones, aprobaciones, bajas, reenvíos manuales |

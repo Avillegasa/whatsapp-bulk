@@ -37,7 +37,7 @@ public sealed partial class DispatcherWorker(
                 claimed = round.Claimed;
                 if (round.Claimed + round.Recovered + round.Expired > 0)
                 {
-                    LogRound(logger, round.Recovered, round.Expired, round.Claimed, round.Sent, round.Skipped, round.LeaseLost);
+                    LogRound(logger, round.Recovered, round.Expired, round.Claimed, round.Sent, round.Skipped, round.NoCapacity, round.LeaseLost);
                 }
             }
             catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
@@ -72,8 +72,8 @@ public sealed partial class DispatcherWorker(
     private static partial void LogStarted(ILogger logger, string owner, int pollSeconds, string template);
 
     [LoggerMessage(Level = LogLevel.Information,
-        Message = "Vuelta: recuperados={Recovered} vencidos={Expired} reclamados={Claimed} enviados={Sent} omitidos={Skipped} sin lease={LeaseLost}")]
-    private static partial void LogRound(ILogger logger, int recovered, int expired, int claimed, int sent, int skipped, int leaseLost);
+        Message = "Vuelta: recuperados={Recovered} vencidos={Expired} reclamados={Claimed} enviados={Sent} omitidos={Skipped} sin capacidad={NoCapacity} sin lease={LeaseLost}")]
+    private static partial void LogRound(ILogger logger, int recovered, int expired, int claimed, int sent, int skipped, int noCapacity, int leaseLost);
 
     [LoggerMessage(Level = LogLevel.Error, Message = "Falló una vuelta del despachador")]
     private static partial void LogRoundFailed(ILogger logger, Exception exception);

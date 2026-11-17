@@ -188,7 +188,7 @@ public sealed class OptOutIntegrationTests(SqlServerTestDatabase database)
     {
         await using var db = database.CreateContext();
         var options = Options.Create(new DispatcherOptions { WorkerId = "W", LeaseSeconds = 120 });
-        var dispatcher = new Dispatcher(db, new DispatchQueue(db), new ConsentService(db, _clock),
+        var dispatcher = new Dispatcher(db, new DispatchQueue(db), new ConsentService(db, _clock), TestCapacity.Unlimited(db),
             MetaWhatsAppClientTests.CreateClient(handler), options, new DispatcherIdentity(options), _clock,
             NullLogger<Dispatcher>.Instance);
         return await dispatcher.RunOnceAsync(CancellationToken.None);

@@ -2,6 +2,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Options;
+using WaBulk.Infrastructure.Capacity;
 using WaBulk.Infrastructure.Consent;
 using WaBulk.Infrastructure.Meta;
 
@@ -48,6 +49,13 @@ public static class MessagingServiceCollectionExtensions
         services.AddScoped<DispatchQueue>();
         services.AddScoped<Dispatcher>();
         services.AddConsent(configuration);
+        services.AddOptions<CapacityOptions>()
+            .Bind(configuration.GetSection(CapacityOptions.SectionName))
+            .Validate(o => !string.IsNullOrWhiteSpace(o.PortfolioId), "Capacity:PortfolioId es obligatorio")
+            .Validate(o => o.PortfolioLimit > 0 && o.UsagePercent is > 0 and <= 100 && o.ManualQuota >= 0 && o.LockTimeoutMs > 0,
+                "Capacity: valores fuera de rango")
+            .ValidateOnStart();
+        services.AddScoped<CapacityService>();
         return services;
     }
 }

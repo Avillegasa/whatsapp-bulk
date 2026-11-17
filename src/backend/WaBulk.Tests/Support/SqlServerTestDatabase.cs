@@ -1,6 +1,7 @@
 using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
+using WaBulk.Infrastructure.Capacity;
 using WaBulk.Infrastructure.Persistence;
 
 namespace WaBulk.Tests.Support;
@@ -52,7 +53,7 @@ public sealed class SqlServerTestDatabase : IAsyncLifetime
         await using var db = CreateContext();
         await db.Database.ExecuteSqlRawAsync(
             "DELETE FROM MessageEvent; DELETE FROM SendAttempt; DELETE FROM DispatchJob; DELETE FROM WebhookInbox; " +
-            "DELETE FROM ConsentRecord; DELETE FROM PlatformPreference;");
+            "DELETE FROM ConsentRecord; DELETE FROM PlatformPreference; DELETE FROM CapacityReservation;");
     }
 
     public async Task DisposeAsync()
@@ -64,6 +65,22 @@ public sealed class SqlServerTestDatabase : IAsyncLifetime
         drop.CommandText = $"ALTER DATABASE [{_name}] SET SINGLE_USER WITH ROLLBACK IMMEDIATE; DROP DATABASE [{_name}];";
         await drop.ExecuteNonQueryAsync();
     }
+}
+
+/// <summary>Capacidad para pruebas que no tratan de capacidad: presupuesto sin límite práctico.</summary>
+public static class TestCapacity
+{
+    public static CapacityService Unlimited(WaBulkDbContext db) => With(db, 100_000);
+
+    /// <summary>Presupuesto exacto: límite = presupuesto, 100 % de uso, sin cupo manual.</summary>
+    public static CapacityService With(WaBulkDbContext db, int budget, string portfolio = "TEST") =>
+        new(db, Microsoft.Extensions.Options.Options.Create(new CapacityOptions
+        {
+            PortfolioId = portfolio,
+            PortfolioLimit = budget,
+            UsagePercent = 100,
+            ManualQuota = 0,
+        }));
 }
 
 /// <summary>Reloj manual compartido por las pruebas.</summary>

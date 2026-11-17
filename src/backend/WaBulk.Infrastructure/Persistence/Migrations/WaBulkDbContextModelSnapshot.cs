@@ -22,6 +22,57 @@ namespace WaBulk.Infrastructure.Persistence.Migrations
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
 
+            modelBuilder.Entity("WaBulk.Domain.Capacity.CapacityReservation", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
+
+                    b.Property<long>("DispatchJobId")
+                        .HasColumnType("bigint");
+
+                    b.Property<DateTime>("ExpiresUtc")
+                        .HasColumnType("datetime2")
+                        .HasColumnName("ExpiraUtc");
+
+                    b.Property<string>("PhoneE164")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(16)");
+
+                    b.Property<string>("PortfolioId")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(32)")
+                        .HasColumnName("PortafolioId");
+
+                    b.Property<DateTime>("ReservedUtc")
+                        .HasColumnType("datetime2")
+                        .HasColumnName("ReservadaUtc");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(20)")
+                        .HasColumnName("Estado");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("DispatchJobId");
+
+                    b.HasIndex("PortfolioId", "ExpiresUtc")
+                        .HasDatabaseName("IX_CapacityReservation_Ventana");
+
+                    SqlServerIndexBuilderExtensions.IncludeProperties(b.HasIndex("PortfolioId", "ExpiresUtc"), new[] { "PhoneE164", "Status" });
+
+                    b.ToTable("CapacityReservation", (string)null);
+                });
+
             modelBuilder.Entity("WaBulk.Domain.Consent.ConsentRecord", b =>
                 {
                     b.Property<long>("Id")

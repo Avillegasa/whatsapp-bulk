@@ -2,8 +2,10 @@ using System.Security.Cryptography;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using WaBulk.Domain.Capacity;
 using WaBulk.Domain.Consent;
 using WaBulk.Domain.Messaging;
+using WaBulk.Infrastructure.Capacity;
 using WaBulk.Infrastructure.Consent;
 using WaBulk.Infrastructure.Meta;
 using WaBulk.Infrastructure.Persistence;
@@ -11,19 +13,23 @@ using WaBulk.Infrastructure.Persistence;
 namespace WaBulk.Infrastructure.Messaging;
 
 /// <summary>Resumen de una vuelta del despachador.</summary>
-public sealed record DispatchRound(int Recovered, int Expired, int Claimed, int Sent, int LeaseLost, int Skipped);
+public sealed record DispatchRound(
+    int Recovered, int Expired, int Claimed, int Sent, int LeaseLost, int Skipped, int NoCapacity = 0);
 
 /// <summary>
 /// Despachador (F0.9). Una vuelta: recupera leases vencidos → marca vencidos → reclama un lote →
 /// por cada trabajo: verifica lease e inserta SendAttempt (confirmado) → POST sin retry → guarda resultado y
 /// estado del trabajo verificando el dueño. Nunca mantiene una transacción abierta durante el POST (regla 5).
 /// Antes de cada envío revisa las bajas de empresa y de plataforma (F0.10, regla 8): si no es elegible, Skipped sin POST.
-/// Las revalidaciones de campaña, fatiga y capacidad llegan en F0.11 y la Fase 1.
+/// Después reserva capacidad del portafolio (F0.11): sin lugar, el trabajo se pospone (RetryScheduled, sin sumar intento)
+/// y la vuelta sigue con el resto del lote, porque un trabajo a un número ya contado no necesita lugar nuevo.
+/// Las revalidaciones de campaña y fatiga llegan en la Fase 1.
 /// </summary>
 public sealed partial class Dispatcher(
     WaBulkDbContext db,
     DispatchQueue queue,
     ConsentService consent,
+    CapacityService capacity,
     MetaWhatsAppClient meta,
     IOptions<DispatcherOptions> options,
     DispatcherIdentity identity,
@@ -43,10 +49,11 @@ public sealed partial class Dispatcher(
         }
 
         var expired = await queue.ExpireOverdueAsync(Now, cancellationToken);
+
         var ids = await queue.ClaimBatchAsync(Owner, Options.BatchSize, Now, Options.Lease, cancellationToken);
 
-        int sent = 0, lost = 0, skipped = 0;
-        foreach (var id in ids)
+        int sent = 0, lost = 0, skipped = 0, noCapacity = 0;
+        for (var i = 0; i < ids.Count; i++)
         {
             if (cancellationToken.IsCancellationRequested)
             {
@@ -54,15 +61,21 @@ public sealed partial class Dispatcher(
                 break;
             }
 
-            switch (await ProcessJobAsync(id, cancellationToken))
+            switch (await ProcessJobAsync(ids[i], cancellationToken))
             {
                 case BeginOutcome.Started: sent++; break;
                 case BeginOutcome.LeaseLost: lost++; break;
                 case BeginOutcome.Skipped: skipped++; break;
+                case BeginOutcome.NoCapacity: noCapacity++; break;
             }
         }
 
-        return new DispatchRound(recovered.Count, expired, ids.Count, sent, lost, skipped);
+        if (noCapacity > 0)
+        {
+            LogNoCapacity(logger, noCapacity, Options.NoCapacityRetryMinutes);
+        }
+
+        return new DispatchRound(recovered.Count, expired, ids.Count, sent, lost, skipped, noCapacity);
     }
 
     /// <summary>Procesa un trabajo ya reclamado por este despachador.</summary>
@@ -78,6 +91,14 @@ public sealed partial class Dispatcher(
             LogSkipped(logger, job.Id, eligibility.SkipReason);
             return skippedNow ? BeginOutcome.Skipped : BeginOutcome.LeaseLost;
         }
+
+        // Capacidad del portafolio (F0.11): reserva atómica antes del intento; un número ya contado no ocupa lugar.
+        if (await capacity.ReserveAsync(job.Id, job.PhoneE164, Now, cancellationToken) == ReserveOutcome.NoCapacity)
+        {
+            await queue.DeferAsync(job.Id, Owner, Now.AddMinutes(Options.NoCapacityRetryMinutes), cancellationToken);
+            return BeginOutcome.NoCapacity;
+        }
+
         var attempt = new SendAttempt
         {
             AttemptId = Guid.CreateVersion7(),
@@ -89,6 +110,7 @@ public sealed partial class Dispatcher(
         var begin = await queue.BeginAttemptAsync(job.Id, Owner, attempt, Now, Options.Lease, cancellationToken);
         if (begin != BeginOutcome.Started)
         {
+            await capacity.ReleaseAsync(job.Id, cancellationToken); // No hubo POST: el lugar queda libre.
             LogNotStarted(logger, job.Id, begin);
             return begin;
         }
@@ -143,6 +165,9 @@ public sealed partial class Dispatcher(
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "Lease vencido del trabajo {JobId}: queda {Status}")]
     private static partial void LogRecovered(ILogger logger, long jobId, DispatchStatus status);
+
+    [LoggerMessage(Level = LogLevel.Information, Message = "Sin capacidad del portafolio: {Count} trabajos se posponen {Minutes} min")]
+    private static partial void LogNoCapacity(ILogger logger, int count, int minutes);
 
     [LoggerMessage(Level = LogLevel.Information, Message = "Trabajo {JobId} omitido sin POST: {Reason}")]
     private static partial void LogSkipped(ILogger logger, long jobId, string? reason);
