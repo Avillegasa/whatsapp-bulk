@@ -22,7 +22,17 @@ describe('Shell: menú por rol', () => {
     expect(menuPara({ autenticado: true, usuario: 'andres', roles: ['Admin'] })).toEqual(['Inicio', 'Usuarios']);
   });
 
-  it('Operador y Aprobador no ven Usuarios', () => {
-    expect(menuPara({ autenticado: true, usuario: 'x', roles: ['Operador', 'Aprobador'] })).toEqual(['Inicio']);
+  it('Operador ve las pantallas de contactos (F1.4) y no Usuarios', () => {
+    expect(menuPara({ autenticado: true, usuario: 'x', roles: ['Operador', 'Aprobador'] })).toEqual([
+      'Inicio',
+      'Mensajes recientes',
+      'Contactos',
+      'Importar',
+      'Listas',
+    ]);
+  });
+
+  it('Aprobador solo no ve contactos ni Usuarios', () => {
+    expect(menuPara({ autenticado: true, usuario: 'x', roles: ['Aprobador'] })).toEqual(['Inicio']);
   });
 });

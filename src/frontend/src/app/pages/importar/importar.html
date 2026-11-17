@@ -1,0 +1,77 @@
+<h1>Importar contactos</h1>
+
+<section class="caja">
+  <p>
+    Archivo <strong>.csv</strong> o <strong>.xlsx</strong> con los títulos en la primera fila:
+    <strong>Telefono</strong> (obligatorio), Nombre, ClienteId, Consentimiento (vacío, OptIn u OptOut) y Evidencia.
+  </p>
+  <ul class="ayuda">
+    <li>Teléfono: 8 dígitos para Bolivia (70000000) o con código de país (+54…).</li>
+    <li>Un OptIn exige Evidencia: cómo y cuándo aceptó (por ejemplo, "Formulario firmado en tienda, 10/11/2026").</li>
+    <li>Una importación nunca levanta una baja: si el cliente pidió la baja, el OptIn del archivo se ignora.</li>
+  </ul>
+  <form class="barra" (ngSubmit)="importar()">
+    <label>
+      Archivo
+      <input type="file" accept=".csv,.xlsx" (change)="elegir($event)" />
+    </label>
+    <label>
+      Agregar a la lista (opcional)
+      <select name="lista" [(ngModel)]="listaId">
+        <option [ngValue]="null">Ninguna</option>
+        @for (l of listas(); track l.id) {
+          <option [ngValue]="l.id">{{ l.nombre }}</option>
+        }
+      </select>
+    </label>
+    <button type="submit" [disabled]="!archivo() || ocupado()">{{ ocupado() ? 'Importando…' : 'Importar' }}</button>
+  </form>
+</section>
+
+@if (error()) {
+  <p class="aviso error" role="alert">{{ error() }}</p>
+}
+
+@if (reporte(); as r) {
+  <h2>Resultado de {{ r.archivo }}</h2>
+  <div class="resumen">
+    <div><strong>{{ r.filas }}</strong>filas</div>
+    <div><strong>{{ r.validas }}</strong>válidas</div>
+    <div><strong>{{ r.errores }}</strong>con error</div>
+    <div><strong>{{ r.creados }}</strong>nuevos</div>
+    <div><strong>{{ r.actualizados }}</strong>actualizados</div>
+    <div><strong>{{ r.optIn }}</strong>OptIn</div>
+    <div><strong>{{ r.optOut }}</strong>bajas</div>
+    <div><strong>{{ r.advertencias }}</strong>advertencias</div>
+  </div>
+  <label class="sec">
+    <input type="checkbox" [checked]="soloProblemas()" (change)="soloProblemas.set(!soloProblemas())" />
+    Mostrar solo errores y advertencias
+  </label>
+  @if (filas().length === 0) {
+    <p>Sin errores ni advertencias.</p>
+  } @else {
+    <div class="tabla">
+      <table>
+        <thead>
+          <tr>
+            <th>Fila</th>
+            <th>Teléfono</th>
+            <th>Resultado</th>
+            <th>Detalle</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (f of filas(); track f.row) {
+            <tr>
+              <td>{{ f.row }}</td>
+              <td>{{ f.phone ?? '—' }}</td>
+              <td><span class="estado {{ f.result }}">{{ f.result }}</span></td>
+              <td>{{ f.message }}</td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  }
+}

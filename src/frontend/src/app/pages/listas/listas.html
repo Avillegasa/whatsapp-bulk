@@ -1,0 +1,75 @@
+<h1>Listas</h1>
+
+@if (aviso(); as a) {
+  <p class="aviso" [class.error]="a.tipo === 'error'" role="status">{{ a.texto }}</p>
+}
+
+<section class="caja">
+  <form class="barra" (ngSubmit)="crear()">
+    <label>
+      Nombre
+      <input name="nombre" [(ngModel)]="nueva.nombre" required maxlength="100" />
+    </label>
+    <label>
+      Descripción
+      <input name="descripcion" [(ngModel)]="nueva.descripcion" maxlength="500" />
+    </label>
+    <button type="submit" [disabled]="ocupado() || !nueva.nombre.trim()">Crear lista</button>
+  </form>
+  <p class="ayuda">Agrega contactos desde "Contactos" (eligiéndolos) o al importar un archivo.</p>
+</section>
+
+@if (listas(); as ls) {
+  @if (ls.length === 0) {
+    <p>Todavía no hay listas.</p>
+  } @else {
+    <table>
+      <thead>
+        <tr>
+          <th>Lista</th>
+          <th>Contactos</th>
+          <th>Creada por</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (l of ls; track l.id) {
+          <tr>
+            <td>
+              {{ l.nombre }}
+              @if (l.descripcion) {
+                <br /><span class="sec">{{ l.descripcion }}</span>
+              }
+            </td>
+            <td>{{ l.miembros }}</td>
+            <td>{{ l.creadaPor }}</td>
+            <td><button type="button" class="chico" (click)="ver(l)">Ver contactos</button></td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  }
+} @else {
+  <p>Cargando…</p>
+}
+
+@if (abierta(); as l) {
+  <section class="detalle" aria-label="Contactos de la lista">
+    <h2>{{ l.nombre }}</h2>
+    @if (miembros().length === 0) {
+      <p class="sec">La lista está vacía.</p>
+    } @else {
+      <table>
+        <tbody>
+          @for (c of miembros(); track c.id) {
+            <tr>
+              <td>{{ c.nombre ?? 'Sin nombre' }} <span class="sec">{{ c.telefono }}</span></td>
+              <td><span class="estado {{ c.consentimiento }}">{{ texto(c.consentimiento) }}</span></td>
+              <td><button type="button" class="chico" [disabled]="ocupado()" (click)="quitar(l, c)">Quitar</button></td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    }
+  </section>
+}

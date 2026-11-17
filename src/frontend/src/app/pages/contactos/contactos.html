@@ -1,0 +1,161 @@
+<h1>Contactos</h1>
+
+@if (aviso(); as a) {
+  <p class="aviso" [class.error]="a.tipo === 'error'" role="status">{{ a.texto }}</p>
+}
+
+<form class="barra" (ngSubmit)="buscar()">
+  <label>
+    Consentimiento
+    <select name="consentimiento" [(ngModel)]="filtro.consentimiento">
+      <option value="">Todos</option>
+      @for (e of estados; track e[0]) {
+        <option [value]="e[0]">{{ e[1] }}</option>
+      }
+    </select>
+  </label>
+  <label>
+    Buscar
+    <input name="buscar" [(ngModel)]="filtro.buscar" placeholder="Teléfono, nombre o código" />
+  </label>
+  <button type="submit">Filtrar</button>
+</form>
+
+@if (elegidos().size > 0) {
+  <div class="barra caja">
+    <span>{{ elegidos().size }} elegido(s)</span>
+    @if (listas().length === 0) {
+      <span class="sec">Crea una lista en "Listas" para agregarlos.</span>
+    } @else {
+      <label>
+        Lista
+        <select name="lista" [(ngModel)]="listaDestino">
+          @for (l of listas(); track l.id) {
+            <option [ngValue]="l.id">{{ l.nombre }}</option>
+          }
+        </select>
+      </label>
+      <button type="button" [disabled]="ocupado() || !listaDestino" (click)="agregarALista()">Agregar a la lista</button>
+    }
+  </div>
+}
+
+@if (errorCarga()) {
+  <p class="aviso error" role="alert">{{ errorCarga() }}</p>
+} @else if (contactos(); as lista) {
+  @if (lista.length === 0) {
+    <p>No hay contactos con ese filtro.</p>
+  } @else {
+    <div class="tabla">
+      <table>
+        <thead>
+          <tr>
+            <th></th>
+            <th>Cliente</th>
+            <th>Código</th>
+            <th>Consentimiento</th>
+            <th>Último mensaje</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (c of lista; track c.id) {
+            <tr [class.elegida]="elegidos().has(c.id)">
+              <td>
+                <input
+                  type="checkbox"
+                  [attr.aria-label]="'Elegir ' + (c.nombre ?? c.telefono)"
+                  [checked]="elegidos().has(c.id)"
+                  (change)="alternar(c.id)"
+                />
+              </td>
+              <td>
+                {{ c.nombre ?? 'Sin nombre' }}<br />
+                <span class="sec">{{ c.telefono ?? 'solo nombre de usuario' }}</span>
+              </td>
+              <td>{{ c.clienteId ?? '—' }}</td>
+              <td>
+                <span class="estado {{ c.consentimiento }}">{{ texto(c.consentimiento) }}</span>
+                @if (c.bajaPlataforma) {
+                  <br /><span class="sec">Detuvo el marketing en WhatsApp</span>
+                }
+              </td>
+              <td>{{ c.ultimoMensajeUtc ? (c.ultimoMensajeUtc | date: 'dd/MM HH:mm') : '—' }}</td>
+              <td><button type="button" class="chico" (click)="ver(c)">Ver</button></td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+    @if (lista.length >= 500) {
+      <p class="ayuda">Se muestran los primeros 500: usa el filtro para encontrar el resto.</p>
+    }
+  }
+} @else {
+  <p>Cargando…</p>
+}
+
+@if (detalle(); as d) {
+  <section class="detalle" aria-label="Detalle del contacto">
+    <div class="barra">
+      <h2>{{ d.contacto.nombre ?? 'Sin nombre' }} · {{ d.contacto.telefono ?? 'sin teléfono' }}</h2>
+      <button type="button" class="chico" (click)="cerrar()">Cerrar</button>
+    </div>
+    <p>
+      <span class="estado {{ d.contacto.consentimiento }}">{{ texto(d.contacto.consentimiento) }}</span>
+      @if (d.listas.length) {
+        <span class="sec"> · Listas: {{ d.listas.join(', ') }}</span>
+      }
+    </p>
+
+    @if (d.contacto.telefono && d.contacto.consentimiento !== 'OptOut' && d.contacto.consentimiento !== 'NoContactar') {
+      <form class="fila" (ngSubmit)="registrarBaja(d)">
+        <input name="motivo" [(ngModel)]="motivo" placeholder="Cómo pidió la baja (por ejemplo: llamó a la tienda)" required />
+        <button type="submit" [disabled]="ocupado() || !motivo.trim()">Registrar baja</button>
+      </form>
+    }
+
+    <h2>Historial de consentimiento</h2>
+    @if (d.historial.length === 0) {
+      <p class="sec">Sin registros.</p>
+    } @else {
+      <ul>
+        @for (h of d.historial; track $index) {
+          <li>
+            {{ h.recordedUtc | date: 'dd/MM/yyyy HH:mm' }} · <strong>{{ h.status }}</strong> por {{ h.source }} ({{ h.recordedBy }})
+            @if (h.evidence) {
+              <br /><span class="sec">{{ h.evidence }}</span>
+            }
+          </li>
+        }
+      </ul>
+    }
+
+    <h2>Ofertas de promociones</h2>
+    @if (d.ofertas.length === 0) {
+      <p class="sec">Nunca se le ofreció.</p>
+    } @else {
+      <ul>
+        @for (o of d.ofertas; track o.id) {
+          <li>
+            {{ o.offeredUtc | date: 'dd/MM/yyyy HH:mm' }} por {{ o.offeredBy }} (texto {{ o.textVersion }}) · {{ o.status }}
+            @if (o.response) {
+              · respondió {{ o.response === 'Si' ? 'Sí' : 'Ahora no' }}
+            }
+          </li>
+        }
+      </ul>
+    }
+
+    <h2>Últimos mensajes</h2>
+    @if (d.mensajes.length === 0) {
+      <p class="sec">No escribió.</p>
+    } @else {
+      <ul>
+        @for (m of d.mensajes; track m.id) {
+          <li>{{ m.sentUtc | date: 'dd/MM HH:mm' }} · {{ m.text ?? '(' + m.type + ')' }}</li>
+        }
+      </ul>
+    }
+  </section>
+}

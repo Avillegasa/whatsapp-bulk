@@ -1,0 +1,64 @@
+<h1>Mensajes recientes</h1>
+<p class="ayuda">
+  Clientes que escribieron en los últimos 7 días. Puedes ofrecerles promociones mientras su ventana de 24 h esté abierta;
+  su respuesta se registra sola. La lista se actualiza cada 15 segundos.
+  <button type="button" class="chico" (click)="cargar()">Actualizar</button>
+</p>
+
+@if (aviso(); as a) {
+  <p class="aviso" [class.error]="a.tipo === 'error'" role="status">{{ a.texto }}</p>
+}
+
+@if (errorCarga()) {
+  <p class="aviso error" role="alert">{{ errorCarga() }}</p>
+} @else if (conversaciones(); as lista) {
+  @if (lista.length === 0) {
+    <p>Nadie escribió en los últimos 7 días.</p>
+  } @else {
+    <div class="tabla">
+      <table>
+        <thead>
+          <tr>
+            <th>Cliente</th>
+            <th>Último mensaje</th>
+            <th>Ventana abierta hasta</th>
+            <th>Consentimiento</th>
+            <th>Oferta</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (c of lista; track c.contactoId) {
+            <tr>
+              <td>
+                {{ c.nombre ?? 'Sin nombre' }}<br />
+                <span class="sec">{{ c.telefono ?? 'solo nombre de usuario' }}</span>
+              </td>
+              <td>
+                {{ c.texto ?? '(' + c.tipo + ')' }}<br />
+                <span class="sec">{{ c.fechaUtc | date: 'dd/MM HH:mm' }}</span>
+              </td>
+              <td>{{ c.ventanaHastaUtc | date: 'dd/MM HH:mm' }}</td>
+              <td><span class="estado {{ c.consentimiento }}">{{ texto(c.consentimiento) }}</span></td>
+              <td>
+                @if (c.respuesta) {
+                  <span class="sec">Respondió: {{ c.respuesta === 'Si' ? 'Sí' : 'Ahora no' }}</span><br />
+                } @else if (c.ultimaOferta) {
+                  <span class="sec">Última oferta: {{ c.ultimaOferta }}</span><br />
+                }
+                @if (c.puedeOfrecer) {
+                  <button type="button" class="principal chico" [disabled]="ocupado() !== null" (click)="ofrecer(c)">
+                    Ofrecer promociones
+                  </button>
+                } @else {
+                  <span class="sec">{{ c.motivo }}</span>
+                }
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  }
+} @else {
+  <p>Cargando…</p>
+}

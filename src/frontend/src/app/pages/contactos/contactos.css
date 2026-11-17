@@ -1,0 +1,30 @@
+/* Estilos compartidos por Mensajes, Contactos, Importar y Listas (F1.4). */
+h2 { font-size: 1.1rem; margin: 1.5rem 0 0.75rem; }
+.barra { display: flex; flex-wrap: wrap; gap: 0.75rem; align-items: flex-end; margin-bottom: 1rem; }
+.barra label { display: grid; gap: 0.25rem; font-size: 0.9rem; }
+.caja { background: #f6f8f7; border: 1px solid #dde3e0; border-radius: 6px; padding: 1rem; margin-bottom: 1.5rem; }
+input:not([type='checkbox']):not([type='file']), select, textarea { padding: 0.4rem; border: 1px solid #bbb; border-radius: 4px; font: inherit; }
+button { padding: 0.4rem 0.75rem; border: 1px solid #075e54; background: #fff; color: #075e54; border-radius: 4px; cursor: pointer; font: inherit; }
+button.principal, button[type='submit'] { background: #075e54; color: #fff; }
+button:disabled { opacity: 0.5; cursor: default; }
+button.chico { padding: 0.2rem 0.5rem; font-size: 0.85rem; }
+.ayuda { color: #555; font-size: 0.85rem; margin: 0.5rem 0 0; }
+.aviso { padding: 0.5rem 0.75rem; border-radius: 4px; background: #e7f6ec; color: #1e5631; }
+.aviso.error { background: #fdecea; color: #b3261e; }
+.tabla { overflow-x: auto; }
+table { border-collapse: collapse; width: 100%; }
+th, td { text-align: left; padding: 0.5rem; border-bottom: 1px solid #ddd; vertical-align: top; }
+tr.elegida td { background: #eef6f4; }
+.sec { color: #666; font-size: 0.85rem; }
+.estado { display: inline-block; padding: 0.1rem 0.5rem; border-radius: 999px; font-size: 0.8rem; white-space: nowrap; }
+.estado.OptIn, .estado.Creado { background: #e7f6ec; color: #1e5631; }
+.estado.OptOut, .estado.NoContactar, .estado.Error { background: #fdecea; color: #b3261e; }
+.estado.SinConsentimiento, .estado.Actualizado { background: #eef0f2; color: #444; }
+.estado.Advertencia { background: #fff4e5; color: #8a5300; }
+.resumen { display: flex; flex-wrap: wrap; gap: 1rem; margin: 0.75rem 0; }
+.resumen div { background: #f6f8f7; border: 1px solid #dde3e0; border-radius: 6px; padding: 0.5rem 0.75rem; }
+.resumen strong { display: block; font-size: 1.25rem; }
+.detalle { border: 1px solid #dde3e0; border-radius: 6px; padding: 1rem; margin-top: 1rem; }
+.detalle ul { margin: 0.25rem 0 0.75rem; padding-left: 1.2rem; }
+form.fila { display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center; }
+form.fila input { flex: 1 1 16rem; }

@@ -1,0 +1,64 @@
+import { DatePipe } from '@angular/common';
+import { Component, DestroyRef, inject, OnInit, signal } from '@angular/core';
+import { Consentimiento, ContactosService, Conversacion, TEXTO_CONSENTIMIENTO } from '../contactos/contactos.service';
+
+/** Cada cuánto se recarga la lista (para ver llegar la respuesta del cliente sin tocar nada). */
+export const RECARGA_MS = 15_000;
+
+/**
+ * Mensajes recientes (D-031): quién escribió en los últimos 7 días y el botón "Ofrecer promociones", que solo se
+ * habilita con la ventana de 24 h abierta. La respuesta del cliente («Sí» / «Ahora no») actualiza el estado sola.
+ */
+@Component({
+  selector: 'app-mensajes',
+  imports: [DatePipe],
+  templateUrl: './mensajes.html',
+  styleUrl: '../contactos/contactos.css',
+})
+export class Mensajes implements OnInit {
+  private readonly api = inject(ContactosService);
+  protected readonly conversaciones = signal<Conversacion[] | null>(null);
+  protected readonly errorCarga = signal<string | null>(null);
+  protected readonly aviso = signal<{ tipo: 'ok' | 'error'; texto: string } | null>(null);
+  protected readonly ocupado = signal<number | null>(null);
+
+  constructor() {
+    const id = setInterval(() => void this.cargar(), RECARGA_MS);
+    inject(DestroyRef).onDestroy(() => clearInterval(id));
+  }
+
+  async ngOnInit(): Promise<void> {
+    await this.cargar();
+  }
+
+  protected texto(c: Consentimiento): string {
+    return TEXTO_CONSENTIMIENTO[c];
+  }
+
+  protected async ofrecer(c: Conversacion): Promise<void> {
+    const quien = c.nombre ?? c.telefono ?? `contacto ${c.contactoId}`;
+    if (!confirm(`¿Enviar a ${quien} la pregunta para recibir promociones?`)) {
+      return;
+    }
+
+    this.ocupado.set(c.contactoId);
+    this.aviso.set(null);
+    const r = await this.api.ofrecer(c.contactoId);
+    this.ocupado.set(null);
+    this.aviso.set(
+      r.ok
+        ? { tipo: r.valor.enviada ? 'ok' : 'error', texto: r.valor.mensaje }
+        : { tipo: 'error', texto: r.mensaje },
+    );
+    await this.cargar();
+  }
+
+  protected async cargar(): Promise<void> {
+    try {
+      this.conversaciones.set(await this.api.conversaciones());
+      this.errorCarga.set(null);
+    } catch {
+      this.errorCarga.set('No se pudieron cargar los mensajes.');
+    }
+  }
+}
