@@ -40,7 +40,7 @@ docker exec -i wabulk-sqlserver sh -c "/opt/mssql-tools18/bin/sqlcmd -S localhos
 | Alta de plataforma | `dotnet run --project tools\webhook-replay -- resume` | `user_preferences` con `value` = `resume` | 1 fila `Procesado` sin eventos; 1 `PlatformPreference` Resume; no toca `ConsentRecord` (nunca levanta una baja de la empresa) |
 | Baja por palabra clave | `dotnet run --project tools\webhook-replay -- baja-palabra` | Mensaje entrante de texto `BAJA` del contacto | 1 fila `Procesado`; 1 `ConsentRecord` OptOut, Fuente `PalabraClave` |
 | Baja por botón | `dotnet run --project tools\webhook-replay -- baja-boton` | Mensaje `button` con payload `BAJA_PROMOCIONES` y texto "No recibir más" | 1 fila `Procesado`; 1 `ConsentRecord` OptOut, Fuente `Boton` |
-| Plantilla pausada | `dotnet run --project tools\webhook-replay -- plantilla-paused` | `message_template_status_update` con `event` = `PAUSED`, `other_info.title` = `FIRST_PAUSE` | 1 fila `Procesado`; 1 `Alert` PlantillaPausada (Origen Webhook) y pausa global (`DispatchPause`). Levantarla después con `reanudar --por <nombre>` |
+| Plantilla pausada | `dotnet run --project tools\webhook-replay -- plantilla-paused` | `message_template_status_update` con `event` = `PAUSED`, `other_info.title` = `FIRST_PAUSE` | 1 fila `Procesado`; 1 `Alert` PlantillaPausada (Origen Webhook) y pausa global (`DispatchPause`). Levantarla después con `dotnet run --project src\backend\WaBulk.Worker -- reanudar` (queda registrado el usuario de Windows) |
 | Firma inválida | `dotnet run --project tools\webhook-replay -- lote --firma-mala` | El lote, firmado con otra clave | 401 en cada POST; ninguna fila nueva |
 
 Notas:

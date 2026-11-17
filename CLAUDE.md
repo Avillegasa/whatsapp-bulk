@@ -69,7 +69,7 @@ Mantener esta sección al día. Todos funcionan en cmd desde la raíz del repo.
 - Ejecutar Worker: `dotnet run --project src/backend/WaBulk.Worker` (procesa `WebhookInbox` cada 2 s, sección `InboxProcessor`). El despachador está apagado por defecto (D-024); encenderlo en cmd: `set Dispatcher__Enabled=true` antes del `dotnet run` (envía de verdad lo que haya en cola)
 - Ver bajas (`ConsentRecord`, `PlatformPreference`, estado vigente y trabajos `Skipped`): ver comando en `db/scripts/verificar-f0.10.sql`
 - Ver capacidad (destinatarios únicos vigentes, reservas, trabajos pospuestos): ver comando en `db/scripts/verificar-f0.11.sql`
-- Alertas y pausa global: `dotnet run --project src\backend\WaBulk.Worker -- alertas` (estado y alertas abiertas) · `dotnet run --project src\backend\WaBulk.Worker -- reanudar --por <nombre>` (levanta la pausa); historial en `db/scripts/verificar-f0.12.sql`
+- Alertas y pausa global: `dotnet run --project src\backend\WaBulk.Worker -- alertas` (estado y alertas abiertas) · `dotnet run --project src\backend\WaBulk.Worker -- reanudar` (levanta la pausa; sin argumentos, registra el usuario de Windows en `LevantadaPor`); historial en `db/scripts/verificar-f0.12.sql`
 - Ver la cola (`DispatchJob`, leases, índices): ver comando en `db/scripts/verificar-f0.9.sql`. `sqlcmd` lleva `-I` para poder escribir en `DispatchJob` (índices filtrados)
 - Replay de webhooks firmados (receptor y Worker corriendo): `dotnet run --project tools\webhook-replay -- lista` · `dotnet run --project tools\webhook-replay -- desorden --intento ultimo` → resultado con `db/scripts/verificar-f0.8.sql`; escenarios en `tools/webhook-replay/README.md`
 - Herramientas locales (dotnet-ef): `dotnet tool restore`

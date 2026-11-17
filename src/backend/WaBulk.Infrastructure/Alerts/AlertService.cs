@@ -111,7 +111,7 @@ public sealed partial class AlertService(WaBulkDbContext db, TimeProvider clock,
     [LoggerMessage(Level = LogLevel.Critical, Message = "ALERTA {Type} ({Key}) desde {Source}: {Message}")]
     private static partial void LogAlert(ILogger logger, AlertType type, string key, string message, string source);
 
-    [LoggerMessage(Level = LogLevel.Critical, Message = "Despacho en PAUSA GLOBAL por {Type} (alerta {AlertId}). Levantar con: reanudar --por <nombre>")]
+    [LoggerMessage(Level = LogLevel.Critical, Message = "Despacho en PAUSA GLOBAL por {Type} (alerta {AlertId}). Levantar con: reanudar")]
     private static partial void LogPaused(ILogger logger, AlertType type, long alertId);
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "Pausa levantada por {LiftedBy}: {Pauses} pausas, {Alerts} alertas resueltas")]

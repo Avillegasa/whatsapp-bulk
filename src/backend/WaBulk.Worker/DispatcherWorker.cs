@@ -82,7 +82,7 @@ public sealed partial class DispatcherWorker(
         Message = "Vuelta: recuperados={Recovered} vencidos={Expired} reclamados={Claimed} enviados={Sent} omitidos={Skipped} sin capacidad={NoCapacity} sin lease={LeaseLost}")]
     private static partial void LogRound(ILogger logger, int recovered, int expired, int claimed, int sent, int skipped, int noCapacity, int leaseLost);
 
-    [LoggerMessage(Level = LogLevel.Warning, Message = "Despacho en pausa global: no se reclaman trabajos (ver alertas; levantar con reanudar --por <nombre>)")]
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Despacho en pausa global: no se reclaman trabajos (ver alertas; levantar con el comando reanudar)")]
     private static partial void LogPaused(ILogger logger);
 
     [LoggerMessage(Level = LogLevel.Error, Message = "Falló una vuelta del despachador")]

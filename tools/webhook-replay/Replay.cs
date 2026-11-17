@@ -56,7 +56,7 @@ public static class ReplayScenarios
             [new("message-button-baja", "botón No recibir más")]),
         new("plantilla-paused",
             "message_template_status_update con event PAUSED (FIRST_PAUSE).",
-            "1 fila Procesado; 1 Alert PlantillaPausada y pausa global. Levantar con: dotnet run --project src\\backend\\WaBulk.Worker -- reanudar --por <nombre>",
+            "1 fila Procesado; 1 Alert PlantillaPausada y pausa global. Levantar con: dotnet run --project src\\backend\\WaBulk.Worker -- reanudar",
             [new("template-paused", "plantilla PAUSED")]),
     ];
 

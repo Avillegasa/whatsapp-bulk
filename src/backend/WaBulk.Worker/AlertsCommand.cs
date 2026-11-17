@@ -7,7 +7,7 @@ namespace WaBulk.Worker;
 /// <summary>
 /// Comandos del freno de emergencia (F0.12), hasta que exista la pantalla de la Fase 1:
 ///   dotnet run --project src\backend\WaBulk.Worker -- alertas
-///   dotnet run --project src\backend\WaBulk.Worker -- reanudar --por andres
+///   dotnet run --project src\backend\WaBulk.Worker -- reanudar   (registra Environment.UserName en LevantadaPor)
 /// </summary>
 public static class AlertsCommand
 {
@@ -36,11 +36,17 @@ public static class AlertsCommand
 
     public static async Task<int> ResumeAsync(IServiceProvider services, string[] args, CancellationToken cancellationToken)
     {
-        var i = Array.IndexOf(args, "--por");
-        var by = i >= 0 && i + 1 < args.Length ? args[i + 1] : null;
+        // Quién levanta la pausa es el usuario de Windows que ejecuta el comando (LevantadaPor): no se escribe a mano.
+        if (args.Length > 0)
+        {
+            await Console.Error.WriteLineAsync("Uso: reanudar   (sin argumentos; se registra el usuario de Windows que lo ejecuta)");
+            return 2;
+        }
+
+        var by = Environment.UserName;
         if (string.IsNullOrWhiteSpace(by))
         {
-            await Console.Error.WriteLineAsync("Uso: reanudar --por <nombre>   (queda registrado quién levantó la pausa)");
+            await Console.Error.WriteLineAsync("No se pudo obtener el usuario de Windows; la pausa sigue activa.");
             return 2;
         }
 

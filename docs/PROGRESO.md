@@ -37,7 +37,7 @@ Estados: Pendiente · En curso · Hecho (sin verificar) · Verificado · Bloquea
 - Revalidaciones al enviar que faltan (campaña, plantilla, fatiga, horario): Fase 1. Bajas, consentimiento, capacidad y pausa global ya se revisan (F0.10–F0.12).
 - 131049 (+24 h, un intento más): hoy queda `Failed`; con la fatiga (Fase 1).
 - Freno de emergencia que falta (F1.7): baja de calidad del número (`phone_number_quality_update`), 131048/131031/368, fallos > 5 % en los últimos 200, 132000–132016 (salvo 132015) → pausa de la campaña cuando existan campañas; avisar por correo/Teams además del log. Hoy la pausa es solo global (D-027).
-- Pantalla de alertas y botón "reanudar" con auditoría (Fase 1); hoy, comandos `alertas` y `reanudar --por` del Worker.
+- Pantalla de alertas y botón "reanudar" con auditoría (Fase 1); hoy, comandos `alertas` y `reanudar` del Worker (`reanudar` registra el usuario de Windows).
 - Comando para encolar un trabajo de prueba y ver el despachador enviar de verdad (opcional, cuando haga falta una prueba real).
 - Revisión manual de `NeedsReview` tras el plazo configurable (2 h, ARQUITECTURA): pantalla en Fase 1.
 - Bajas de usuarios sin teléfono (nombre de usuario de WhatsApp, solo BSUID `user_id`): hoy van a `Revision`; mapear BSUID ↔ teléfono en `Contact` (Fase 1).
@@ -51,6 +51,11 @@ Estados: Pendiente · En curso · Hecho (sin verificar) · Verificado · Bloquea
 - Datos de desarrollo: los intentos 01A1E617… y 01A1E975… quedaron con `EstadoEntrega` = Read por el replay de F0.8 (no es una lectura real).
 
 ## Bitácora (lo más reciente arriba)
+
+### 2026-11-17 — Ajuste a F0.12: `reanudar` con el usuario de Windows (Claude Code, pedido de Andrés)
+- Hecho: `reanudar` ya no recibe `--por`; registra `Environment.UserName` en `DispatchPause.LevantadaPor` y en `Alert.ResueltaPor`. Con cualquier argumento muestra el uso y sale con 2. Actualizados CLAUDE.md, `tools/webhook-replay/README.md`, `Replay.cs`, `verificar-f0.12.sql`, los mensajes de log y la nota (3) de D-027.
+- Verificación: build 0 advertencias; `dotnet test` 150/150; `reanudar --por andres` → uso, salida 2; pausa de prueba (alerta 2, Token, insertada por SQL en desarrollo) → `alertas` "EN PAUSA… (alerta 2)" → `reanudar` → "Pausa levantada por avillegas" → `DispatchPause` 2 `LevantadaPor` = avillegas y `Alert` 2 `ResueltaPor` = avillegas.
+- Datos de desarrollo: alerta 2 y pausa 2 de esta prueba, ya levantadas.
 
 ### 2026-11-17 — F0.12 Alertas simuladas (Claude Code)
 - Hecho: tablas `Alert` (Tipo Token/Facturacion/PlantillaPausada, Clave, Mensaje, Detalle, Origen, Ocurrencias, CreadaUtc, UltimaUtc, ResueltaUtc, ResueltaPor; una abierta por Tipo+Clave, índice único filtrado) y `DispatchPause` (Alcance Global, Motivo, AlertId, DesdeUtc, LevantadaUtc, LevantadaPor; una activa, índice único filtrado). `AlertService`: registra alerta y pausa en una transacción corta con `sp_getapplock` (SQL crudo, no toca lo pendiente del procesador) y escribe log Critical; `ResumeAsync` levanta la pausa y resuelve las alertas. Disparadores: 190, 131042 y 132015 al enviar (despachador); `message_template_status_update` `PAUSED` y estado `failed` con 131042 (procesador). Con pausa activa el despachador no reclama; si la pausa llega a mitad del lote, devuelve los reclamados a `Queued`; el trabajo que recibió 190/131042/132015 vuelve a `Queued` (no es culpa del destinatario; sale al reanudar, no es un reintento automático). Comandos del Worker `alertas` y `reanudar --por <nombre>`. Migración `Alerts`.
