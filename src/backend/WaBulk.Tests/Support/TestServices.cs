@@ -6,6 +6,7 @@ using WaBulk.Domain.Contacts;
 using WaBulk.Domain.Templates;
 using WaBulk.Infrastructure.Campaigns;
 using WaBulk.Infrastructure.Alerts;
+using WaBulk.Infrastructure.Capacity;
 using WaBulk.Infrastructure.Consent;
 using WaBulk.Infrastructure.Contacts;
 using WaBulk.Infrastructure.Messaging;
@@ -20,7 +21,12 @@ public static class TestServices
         WaBulkDbContext db, TimeProvider clock, InboxProcessorOptions? options = null, OptOutOptions? optOut = null) =>
         new(db, Options.Create(options ?? new InboxProcessorOptions()), Options.Create(optOut ?? new OptOutOptions()),
             new AlertService(db, clock, NullLogger<AlertService>.Instance),
-            new ContactDirectory(db, clock, NullLogger<ContactDirectory>.Instance), clock, NullLogger<WebhookInboxProcessor>.Instance);
+            new ContactDirectory(db, clock, NullLogger<ContactDirectory>.Instance), Limits(db, clock), clock,
+            NullLogger<WebhookInboxProcessor>.Instance);
+
+    /// <summary>Límite real de Meta (F1.7) del portafolio de prueba "TEST".</summary>
+    public static MessagingLimitService Limits(WaBulkDbContext db, TimeProvider clock) =>
+        new(db, Options.Create(new CapacityOptions { PortfolioId = "TEST" }), clock, NullLogger<MessagingLimitService>.Instance);
 
     public static CampaignLifecycle Lifecycle(WaBulkDbContext db) => new(db, Options.Create(new CampaignOptions()));
 

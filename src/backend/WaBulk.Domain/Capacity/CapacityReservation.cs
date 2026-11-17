@@ -46,7 +46,7 @@ public static class CapacityBudget
 {
     public static int Compute(int portfolioLimit, int usagePercent, int manualQuota)
     {
-        var usable = (int)Math.Floor(portfolioLimit * (usagePercent / 100.0));
+        var usable = (int)Math.Min(int.MaxValue, Math.Floor(portfolioLimit * (usagePercent / 100.0)));
         return Math.Max(0, usable - manualQuota);
     }
 }

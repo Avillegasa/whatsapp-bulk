@@ -589,6 +589,41 @@ namespace WaBulk.Infrastructure.Persistence.Migrations
                     b.ToTable("CapacityReservation", (string)null);
                 });
 
+            modelBuilder.Entity("WaBulk.Domain.Capacity.MessagingLimit", b =>
+                {
+                    b.Property<string>("PortfolioId")
+                        .HasMaxLength(32)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(32)")
+                        .HasColumnName("PortafolioId");
+
+                    b.Property<int>("Limit")
+                        .HasColumnType("int")
+                        .HasColumnName("Limite");
+
+                    b.Property<string>("MetaValue")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(30)")
+                        .HasColumnName("ValorMeta");
+
+                    b.Property<string>("Source")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(20)")
+                        .HasColumnName("Origen");
+
+                    b.Property<DateTime>("UpdatedUtc")
+                        .HasColumnType("datetime2")
+                        .HasColumnName("ActualizadoUtc");
+
+                    b.HasKey("PortfolioId");
+
+                    b.ToTable("MessagingLimit", (string)null);
+                });
+
             modelBuilder.Entity("WaBulk.Domain.Consent.ConsentRecord", b =>
                 {
                     b.Property<long>("Id")

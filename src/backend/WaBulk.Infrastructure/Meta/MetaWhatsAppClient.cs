@@ -88,6 +88,47 @@ public sealed partial class MetaWhatsAppClient(
         return PostAsync(body, callbackData, cancellationToken);
     }
 
+    /// <summary>
+    /// Límite de mensajería del número (F1.7): GET /{PHONE_NUMBER_ID}?fields=whatsapp_business_manager_messaging_limit →
+    /// "TIER_250"… Es una lectura: no tiene riesgo de duplicar envíos, pero tampoco se reintenta (lo hace la próxima vuelta).
+    /// https://developers.facebook.com/documentation/business-messaging/whatsapp/messaging-limits
+    /// </summary>
+    public async Task<string?> GetMessagingLimitAsync(CancellationToken cancellationToken)
+    {
+        var meta = options.CurrentValue;
+        if (string.IsNullOrWhiteSpace(meta.GraphApiVersion) || string.IsNullOrWhiteSpace(meta.PhoneNumberId)
+            || string.IsNullOrWhiteSpace(meta.AccessToken))
+        {
+            throw new MetaApiException("Configuración de Meta incompleta (GraphApiVersion, PhoneNumberId, AccessToken).");
+        }
+
+        using var request = new HttpRequestMessage(HttpMethod.Get,
+            new Uri(meta.BaseUrl, $"{meta.GraphApiVersion}/{meta.PhoneNumberId}?fields=whatsapp_business_manager_messaging_limit"));
+        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", meta.AccessToken);
+        string text;
+        int status;
+        try
+        {
+            using var response = await httpClient.SendAsync(request, cancellationToken);
+            status = (int)response.StatusCode;
+            text = await response.Content.ReadAsStringAsync(cancellationToken);
+        }
+        catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or IOException)
+        {
+            throw new MetaApiException($"Sin respuesta de Meta al leer el límite ({ex.GetType().Name}).");
+        }
+
+        if (status is < 200 or >= 300)
+        {
+            var error = TryDeserialize<ErrorResponse>(text)?.Error;
+            throw new MetaApiException($"Meta respondió {status} al leer el límite: {error?.Message ?? Truncate(text)}", error?.Code);
+        }
+
+        return TryDeserialize<LimitResponse>(text)?.WhatsappBusinessManagerMessagingLimit;
+    }
+
+    private sealed record LimitResponse(string? WhatsappBusinessManagerMessagingLimit);
+
     private async Task<MetaSendResult> PostAsync<TBody>(TBody body, string logId, CancellationToken cancellationToken)
     {
         var meta = options.CurrentValue;

@@ -36,6 +36,7 @@ public class WaBulkDbContext(DbContextOptions<WaBulkDbContext> options) : Identi
     public DbSet<Template> Templates => Set<Template>();
     public DbSet<Campaign> Campaigns => Set<Campaign>();
     public DbSet<CampaignVersion> CampaignVersions => Set<CampaignVersion>();
+    public DbSet<MessagingLimit> MessagingLimits => Set<MessagingLimit>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

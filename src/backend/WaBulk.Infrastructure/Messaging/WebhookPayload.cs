@@ -44,7 +44,10 @@ internal sealed record WebhookChangeValue(
     [property: JsonPropertyName("previous_category")] string? PreviousCategory,
     [property: JsonPropertyName("new_category")] string? NewCategory,
     [property: JsonPropertyName("correct_category")] string? CorrectCategory,
-    [property: JsonPropertyName("category_update_timestamp")] JsonElement? CategoryUpdateTimestamp);
+    [property: JsonPropertyName("category_update_timestamp")] JsonElement? CategoryUpdateTimestamp,
+    // F1.7: business_capability_update y phone_number_quality_update (número o "TIER_*", según el ejemplo de Meta).
+    // https://developers.facebook.com/documentation/business-messaging/whatsapp/webhooks/reference/business_capability_update
+    [property: JsonPropertyName("max_daily_conversations_per_business")] JsonElement? MaxDailyConversationsPerBusiness);
 
 internal sealed record WebhookRejectionInfo(
     [property: JsonPropertyName("reason")] string? Reason,

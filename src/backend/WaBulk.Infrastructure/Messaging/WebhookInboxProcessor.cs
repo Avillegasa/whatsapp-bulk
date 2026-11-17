@@ -9,6 +9,7 @@ using WaBulk.Domain.Contacts;
 using WaBulk.Domain.Messaging;
 using WaBulk.Domain.Templates;
 using WaBulk.Infrastructure.Alerts;
+using WaBulk.Infrastructure.Capacity;
 using WaBulk.Infrastructure.Consent;
 using WaBulk.Infrastructure.Contacts;
 using WaBulk.Infrastructure.Persistence;
@@ -34,6 +35,7 @@ public sealed partial class WebhookInboxProcessor(
     IOptions<OptOutOptions> optOut,
     AlertService alerts,
     ContactDirectory contacts,
+    MessagingLimitService limits,
     TimeProvider clock,
     ILogger<WebhookInboxProcessor> logger)
 {
@@ -129,8 +131,11 @@ public sealed partial class WebhookInboxProcessor(
                     case "template_category_update":
                         outcomes.Add(await ApplyTemplateCategoryAsync(change.Value, EntryTime(entry), cancellationToken));
                         break;
+                    case "business_capability_update" or "phone_number_quality_update":
+                        outcomes.Add(await ApplyMessagingLimitAsync(change.Value, change.Field, cancellationToken));
+                        break;
                     default:
-                        outcomes.Add((Outcome.Ignored, null)); // account_update, calidad del número…: F1.7.
+                        outcomes.Add((Outcome.Ignored, null)); // account_update, account_alerts, security…
                         break;
                 }
 
@@ -554,6 +559,25 @@ public sealed partial class WebhookInboxProcessor(
         template.CategoryChangeUtc = eventUtc;
         LogTemplateCategory(logger, template.Name, template.PreviousCategory, newCategory);
         return (Outcome.Applied, null);
+    }
+
+    /// <summary>
+    /// Límite real de mensajería (F1.7, D-026): max_daily_conversations_per_business → tabla MessagingLimit. Sin el campo
+    /// (por ejemplo un ONBOARDING de phone_number_quality_update) o con TIER_NOT_SET, se ignora.
+    /// </summary>
+    private async Task<(Outcome Outcome, string? Note)> ApplyMessagingLimitAsync(
+        WebhookChangeValue? value, string? field, CancellationToken cancellationToken)
+    {
+        var raw = value?.MaxDailyConversationsPerBusiness switch
+        {
+            { ValueKind: JsonValueKind.String } s => s.GetString(),
+            { ValueKind: JsonValueKind.Number } n => n.GetRawText(),
+            _ => null,
+        };
+        var source = field == "business_capability_update" ? "WebhookCapacidad" : "WebhookCalidad";
+        return await limits.ApplyAsync(raw, source, cancellationToken)
+            ? (Outcome.Applied, null)
+            : (Outcome.Ignored, null);
     }
 
     /// <summary>Busca la plantilla por id de Meta y, si no, por nombre e idioma (el webhook trae "en-US"; la tabla, "en_US").</summary>

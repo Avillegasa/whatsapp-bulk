@@ -16,11 +16,14 @@ public sealed class CapacityOptions
     public string PortfolioId { get; set; } = "";
 
     /// <summary>
-    /// Límite del portafolio (destinatarios únicos / 24 h). Por ahora configurado a mano; Meta lo informa en
-    /// GET /{phone-number-id}?fields=whatsapp_business_manager_messaging_limit (TIER_250, TIER_2K…) y en el webhook
-    /// business_capability_update.
+    /// Límite del portafolio (destinatarios únicos / 24 h) mientras no se conozca el real. Desde F1.7 se usa el de Meta
+    /// (tabla MessagingLimit: GET whatsapp_business_manager_messaging_limit cada RefreshHours y webhook
+    /// business_capability_update) cuando existe.
     /// </summary>
     public int PortfolioLimit { get; set; } = 250;
+
+    /// <summary>Cada cuántas horas el Worker consulta el límite real a Meta (F1.7).</summary>
+    public int RefreshHours { get; set; } = 6;
 
     /// <summary>Porcentaje del límite que se usa (docs/ARQUITECTURA.md: hasta el 90 %).</summary>
     public int UsagePercent { get; set; } = 90;
@@ -96,7 +99,7 @@ public sealed class CapacityService(WaBulkDbContext db, IOptions<CapacityOptions
             command.Parameters.Add(new SqlParameter("@phone", SqlDbType.VarChar, 16) { Value = phoneE164 });
             command.Parameters.Add(new SqlParameter("@jobId", SqlDbType.BigInt) { Value = jobId });
             command.Parameters.Add(new SqlParameter("@now", SqlDbType.DateTime2) { Value = nowUtc });
-            command.Parameters.Add(new SqlParameter("@budget", SqlDbType.Int) { Value = Options.Budget });
+            command.Parameters.Add(new SqlParameter("@budget", SqlDbType.Int) { Value = await BudgetAsync(cancellationToken) });
 
             var result = Convert.ToInt32(await command.ExecuteScalarAsync(cancellationToken), System.Globalization.CultureInfo.InvariantCulture);
             return result switch
@@ -110,6 +113,16 @@ public sealed class CapacityService(WaBulkDbContext db, IOptions<CapacityOptions
         {
             await db.Database.CloseConnectionAsync();
         }
+    }
+
+    /// <summary>
+    /// Presupuesto con el límite real de Meta si ya se conoce (tabla MessagingLimit, F1.7); si no, Capacity:PortfolioLimit.
+    /// </summary>
+    public async Task<int> BudgetAsync(CancellationToken cancellationToken)
+    {
+        var real = await db.MessagingLimits.AsNoTracking().Where(m => m.PortfolioId == Options.PortfolioId)
+            .Select(m => (int?)m.Limit).FirstOrDefaultAsync(cancellationToken);
+        return CapacityBudget.Compute(real ?? Options.PortfolioLimit, Options.UsagePercent, Options.ManualQuota);
     }
 
     /// <summary>Libera la reserva en curso de un trabajo que no llegó a enviarse.</summary>

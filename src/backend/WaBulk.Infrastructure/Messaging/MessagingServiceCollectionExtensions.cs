@@ -23,6 +23,7 @@ public static class MessagingServiceCollectionExtensions
                 "InboxProcessor: valores fuera de rango")
             .ValidateOnStart();
         services.AddScoped<WebhookInboxProcessor>();
+        services.TryAddScoped<MessagingLimitService>(); // F1.7: límite real de Meta por webhook (usa Capacity:PortfolioId).
         services.TryAddScoped<ContactDirectory>();
         services.TryAddSingleton(TimeProvider.System);
         services.AddConsent(configuration);
@@ -74,6 +75,7 @@ public static class MessagingServiceCollectionExtensions
                 "Capacity: valores fuera de rango")
             .ValidateOnStart();
         services.AddScoped<CapacityService>();
+        services.TryAddScoped<MessagingLimitService>();
         services.TryAddScoped<AlertService>();
         services.AddCampaigns(configuration); // F1.6: ciclo de vida de las campañas en cada vuelta.
         return services;

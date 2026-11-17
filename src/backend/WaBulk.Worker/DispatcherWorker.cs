@@ -1,5 +1,7 @@
 using Microsoft.Extensions.Options;
+using WaBulk.Infrastructure.Capacity;
 using WaBulk.Infrastructure.Messaging;
+using WaBulk.Infrastructure.Meta;
 
 namespace WaBulk.Worker;
 
@@ -11,6 +13,7 @@ namespace WaBulk.Worker;
 public sealed partial class DispatcherWorker(
     IServiceScopeFactory scopeFactory,
     IOptions<DispatcherOptions> options,
+    IOptions<CapacityOptions> capacityOptions,
     DispatcherIdentity identity,
     TimeProvider clock,
     ILogger<DispatcherWorker> logger) : BackgroundService
@@ -27,10 +30,18 @@ public sealed partial class DispatcherWorker(
         var poll = TimeSpan.FromSeconds(options.Value.PollSeconds);
         var pausedLogged = false;
         var closedLogged = false;
+        var nextLimitRefresh = DateTime.MinValue;
 
         while (!stoppingToken.IsCancellationRequested)
         {
             var claimed = 0;
+            if (clock.GetUtcNow().UtcDateTime >= nextLimitRefresh)
+            {
+                // F1.7: límite real de Meta al arrancar y cada Capacity:RefreshHours (si falla, sigue con el último conocido).
+                nextLimitRefresh = clock.GetUtcNow().UtcDateTime.AddHours(capacityOptions.Value.RefreshHours);
+                await RefreshLimitAsync(stoppingToken);
+            }
+
             try
             {
                 await using var scope = scopeFactory.CreateAsyncScope();
@@ -85,6 +96,29 @@ public sealed partial class DispatcherWorker(
             }
         }
     }
+
+    private async Task RefreshLimitAsync(CancellationToken stoppingToken)
+    {
+        try
+        {
+            await using var scope = scopeFactory.CreateAsyncScope();
+            var value = await scope.ServiceProvider.GetRequiredService<MessagingLimitService>()
+                .RefreshFromApiAsync(scope.ServiceProvider.GetRequiredService<MetaWhatsAppClient>(), stoppingToken);
+            LogLimit(logger, value ?? "(sin dato)");
+        }
+        catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
+        {
+        }
+#pragma warning disable CA1031 // Leer el límite es un extra: un error no debe detener el despachador.
+        catch (Exception ex)
+#pragma warning restore CA1031
+        {
+            LogRoundFailed(logger, ex);
+        }
+    }
+
+    [LoggerMessage(Level = LogLevel.Information, Message = "Límite de mensajería de Meta: {Value}")]
+    private static partial void LogLimit(ILogger logger, string value);
 
     [LoggerMessage(Level = LogLevel.Information, Message = "Fuera del horario permitido ({From}–{Until}, {Zone}): no se envía hasta que abra")]
     private static partial void LogClosed(ILogger logger, string from, string until, string zone);

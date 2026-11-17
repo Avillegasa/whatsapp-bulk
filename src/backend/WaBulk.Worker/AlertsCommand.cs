@@ -10,6 +10,7 @@ namespace WaBulk.Worker;
 /// Comandos del freno de emergencia (F0.12), hasta que exista la pantalla de la Fase 1:
 ///   dotnet run --project src\backend\WaBulk.Worker -- alertas
 ///   dotnet run --project src\backend\WaBulk.Worker -- reanudar   (registra "windows:<usuario>" en LevantadaPor y en AuditLog)
+///   dotnet run --project src\backend\WaBulk.Worker -- limite     (F1.7: límite real de Meta y presupuesto de capacidad)
 ///   dotnet run --project src\backend\WaBulk.Worker -- revision   (F1.7: envíos inciertos sin webhook tras Dispatcher:NeedsReviewHours)
 /// </summary>
 public static class AlertsCommand
@@ -17,6 +18,20 @@ public static class AlertsCommand
     public const string ListName = "alertas";
     public const string ResumeName = "reanudar";
     public const string ReviewName = "revision";
+    public const string LimitName = "limite";
+
+    /// <summary>Consulta el límite real a Meta, lo guarda y muestra el presupuesto de capacidad que queda en uso (F1.7).</summary>
+    public static async Task<int> LimitAsync(IServiceProvider services, CancellationToken cancellationToken)
+    {
+        await using var scope = services.CreateAsyncScope();
+        var sp = scope.ServiceProvider;
+        var value = await sp.GetRequiredService<WaBulk.Infrastructure.Capacity.MessagingLimitService>()
+            .RefreshFromApiAsync(sp.GetRequiredService<WaBulk.Infrastructure.Meta.MetaWhatsAppClient>(), cancellationToken);
+        var budget = await sp.GetRequiredService<WaBulk.Infrastructure.Capacity.CapacityService>().BudgetAsync(cancellationToken);
+        Console.WriteLine($"Límite de Meta: {value ?? "no se pudo leer (ver el log)"}");
+        Console.WriteLine($"Presupuesto de capacidad en uso: {budget} destinatarios únicos por 24 h (límite × UsagePercent − ManualQuota).");
+        return value is null ? 1 : 0;
+    }
 
     /// <summary>Lista los NeedsReview vencidos. Código de salida 1 si hay alguno (para usarlo en un script).</summary>
     public static async Task<int> ReviewAsync(IServiceProvider services, CancellationToken cancellationToken)
