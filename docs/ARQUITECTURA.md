@@ -52,10 +52,10 @@ Angular nunca habla con Meta. La API nunca envía en masa de forma síncrona. To
 | `Template` | MetaTemplateId, Nombre, Idioma, Categoria, Estado, Calidad, Componentes (JSON) | Sincronizada con Meta |
 | `Campaign`, `CampaignVersion` | Version: plantilla, idioma, categoría, audiencia, parámetros, ProgramadaUtc, ExpiraUtc, Hash, AprobadaPor | Cambios → nueva versión y nueva aprobación |
 | `DispatchJob` | Id, CampaignVersionId, ContactId, PhoneE164, Parametros, Prioridad, ProgramadoUtc, ExpiraUtc, EstadoDespacho, Intentos, ProximoIntentoUtc, LockedBy, LeaseUntilUtc | Único (CampaignVersionId, ContactId) |
-| `SendAttempt` | AttemptId, DispatchJobId, InicioUtc, FinUtc, Estado, Wamid, HttpStatus, CodigoError, Detalle | Único filtrado en Wamid |
+| `SendAttempt` | AttemptId, DispatchJobId, InicioUtc, FinUtc, Estado, Wamid, HttpStatus, CodigoError, Detalle, EstadoEntrega | Único filtrado en Wamid; EstadoEntrega solo lo escribe el procesador (D-023) |
 | `CapacityReservation` | PortafolioId, PhoneE164, ReservadaUtc, ExpiraUtc, Estado | Destinatarios únicos, ventana móvil 24 h |
 | `MessageEvent` | Wamid, AttemptId, Estado, TimestampMeta, Pricing, Errores | Único (Wamid, Estado) |
-| `WebhookInbox` | Id, RecibidoUtc, Cuerpo, Estado (Pendiente/Procesado/EnEspera/Revision), Intentos, Error | Solo lo escribe el receptor |
+| `WebhookInbox` | Id, RecibidoUtc, Cuerpo, Estado (Pendiente/Procesado/EnEspera/Revision), Intentos, ProximoIntentoUtc, Error | Solo el receptor inserta; el procesador actualiza Estado, Intentos, ProximoIntentoUtc y Error (D-023) |
 | `AuditLog` | Usuario, Accion, Entidad, Antes, Despues, FechaUtc | Importaciones, aprobaciones, bajas, reenvíos manuales |
 
 ## Controles del despachador

@@ -1,7 +1,7 @@
 # Progreso
 
 **Fase actual:** Fase 0 — PoC
-**Siguiente tarea:** F0.7 (Claude Code) — en `C:\Users\avillegas\dev\whatsapp-bulk`: "Sigamos con la tarea F0.7" (antes: rotar App Secret y Verify Token, ver Pendientes)
+**Siguiente tarea:** F0.8 (Claude Code) — en `C:\Users\avillegas\dev\whatsapp-bulk`: "Sigamos con la tarea F0.8"
 **Última actualización:** 2026-11-17
 
 ## Estado de tareas
@@ -16,7 +16,7 @@ Estados: Pendiente · En curso · Hecho (sin verificar) · Verificado · Bloquea
 | F0.4 | SQL Server local y migración inicial | Claude Code | Verificado | Contenedor `wabulk-sqlserver` `Up (healthy)`; `dotnet ef database update` → `Done.` (InitialCreate, EF 10.0.15); `sys.tables` → DispatchJob, MessageEvent, SendAttempt, WebhookInbox; `sys.indexes` → `IX_SendAttempt_Wamid` filtro `([Wamid] IS NOT NULL)`; `dotnet test` 5/5; build 0 advertencias |
 | F0.5 | Cliente de Meta y envío con SendAttempt | Claude Code + Tú | Verificado | `dotnet test` 14/14 (200 → Accepted, 131026 → Rejected, timeout → SubmissionUnknown, intento confirmado antes del POST, un solo POST); envío real `send-test`: `SendAttempt` 01A1E617… `Accepted`, HTTP 200, `wamid.HBgL…` guardado (consulta SQL) y mensaje recibido (confirmación de Andrés); build 0 advertencias; sin versión literal, retry ni tokens |
 | F0.6 | Receptor de webhooks | Claude Code + Tú | Verificado | `dotnet test` 22/22 (firma válida → 200 y fila; inválida, ausente o cuerpo alterado → 401 sin fila; > límite → 413; GET token válido → challenge, inválido → 403); "Verify and save" en Meta OK (log "Handshake de webhook verificado"); webhook de prueba del panel → `WebhookInbox` Id=2 (555 bytes, confirmación de Andrés + SQL); además estados reales `delivered`/`sent` → Id=3/4 con AttemptId 01A1E975… (D-021); build 0 advertencias; sin secretos |
-| F0.7 | Procesador de eventos | Claude Code | Pendiente | |
+| F0.7 | Procesador de eventos | Claude Code | Verificado | `dotnet test` 36/36 (14 nuevas: duplicado en dos webhooks y en el mismo lote → 1 evento; `read` antes de `delivered` no retrocede; webhook antes de guardar el wamid → correlación por AttemptId; secuencia `sent`→`delivered`→`read` con payloads de la referencia oficial; lote con varias entry; EnEspera → Procesado y → Revision tras MaxAttempts; SubmissionUnknown resuelto); envío real (WebhookInbox Id=3 `delivered` e Id=4 `sent`, en desorden) → 2 `MessageEvent` con AttemptId 01A1E975… y `EstadoEntrega` = Delivered (`verificar-f0.7.sql`); build 0 advertencias; sin secretos |
 | F0.8 | Herramienta de replay firmado | Claude Code | Pendiente | |
 | F0.9 | Despachador con cola y lease | Claude Code | Pendiente | |
 | F0.10 | Bajas | Claude Code | Pendiente | |
@@ -25,18 +25,34 @@ Estados: Pendiente · En curso · Hecho (sin verificar) · Verificado · Bloquea
 
 ## Pendientes y bloqueos
 
-- **Rotar App Secret y Verify Token** (expuestos en el chat de Claude Code el 2026-11-17): restablecer la clave secreta de la app en Meta y generar un verify token nuevo; actualizar KeePass, `dotnet user-secrets` y el panel de Webhooks (Verify and save de nuevo).
-- Revisar con Claude desktop si la verificación de F0.7 en PLAN.md agrega el envío real `sent`/`delivered` (D-021).
 - Definir dónde corre SQL Server en producción (D-006).
 - Crear el portafolio de Meta de la empresa antes de F1.1 (D-015).
 - Actualizar la ruta de la carpeta (D-016) en las instrucciones del proyecto de claude.ai y en la skill `whatsapp-bulk-guia`; reconectar la carpeta en Claude desktop.
 - Confirmar con el área comercial o legal cómo consta el consentimiento de los clientes para promociones (antes de la Fase 2).
 - Agregar FK de `DispatchJob.CampaignVersionId` y `DispatchJob.ContactId` cuando existan `CampaignVersion` y `Contact` (Fase 1).
-- Índice de reclamo de la cola en `DispatchJob` (EstadoDespacho, ProximoIntentoUtc/ProgramadoUtc) en F0.9; índice por `Estado` en `WebhookInbox` en F0.7.
+- Índice de reclamo de la cola en `DispatchJob` (EstadoDespacho, ProximoIntentoUtc/ProgramadoUtc) en F0.9.
+- F0.9: al recuperar un intento en `Submitting`, si ya tiene `Wamid` o un `MessageEvent` con su AttemptId (lo puso el procesador), pasarlo a `Accepted` en vez de `SubmissionUnknown`; y pasar el `DispatchJob` de `NeedsReview` a `Submitted` cuando el procesador resuelve un `SubmissionUnknown` (hoy solo cambia el intento).
+- El procesador ignora (marca Procesado sin eventos) los cambios sin `statuses`: mensajes entrantes, `user_preferences`, `account_update`, plantillas, calidad. Se manejan en F0.10 (bajas) y Fase 1; el estado `played` también se ignora.
+- Estados de mensajes enviados fuera del sistema con el mismo número (sin AttemptId ni wamid conocido) terminan en `Revision` tras 8 intentos (~35 min): revisar si conviene descartarlos al conectar el número real (F1.1).
+- Un solo procesador del inbox por ahora; con varias instancias del Worker, reclamo con lease o `READPAST` (F0.11).
 - F0.9: actualizar `DispatchJob.EstadoDespacho` según el resultado del intento, verificar el lease antes de guardar y pasar a `SubmissionUnknown` los intentos que quedaron en `Submitting` (hoy `TemplateSendService` solo actualiza el `SendAttempt`).
 - Plantillas con parámetros (`components`) en `TemplateMessage`: con las campañas (F0.9 / Fase 1).
 
 ## Bitácora (lo más reciente arriba)
+
+### 2026-11-17 — F0.7 Procesador de eventos (Claude Code)
+- Hecho: `WebhookInboxProcessor` (Infrastructure/Messaging) toma filas `Pendiente` y `EnEspera` vencidas, separa entry/changes/statuses y correlaciona cada estado con su `SendAttempt`: primero por AttemptId (`biz_opaque_callback_data`), luego por wamid. Registra `MessageEvent` una sola vez por (wamid, estado) y hace avanzar `SendAttempt.EstadoEntrega` sin retroceder. Si el intento no tiene wamid se lo completa; un `SubmissionUnknown` pasa a `Accepted`. Sin correlación → `EnEspera` (30 s, 60 s… tope 10 min); tras 8 intentos, JSON inválido, wamid distinto o intento rechazado → `Revision` con el motivo en `Error`. Corre en el Worker (`InboxProcessorWorker`, cada 2 s, sección `InboxProcessor`). Migración `InboxProcessing`. Script `db/scripts/verificar-f0.7.sql`.
+- Verificación: `dotnet test` → 36/36 (14 del procesador); build 0 advertencias (salida aparte: el receptor de Andrés tenía bloqueadas las DLL de Webhooks); `dotnet ef database update` → Done; Worker contra la base real → WebhookInbox 1–4 `Procesado` (1 y 2 sin estados, ignorados); `MessageEvent` 1 `Delivered` y 2 `Sent` del intento 01A1E975…, mismo `TimestampMeta` 12:22:20; `SendAttempt.EstadoEntrega` = `Delivered` (no retrocedió con el `sent` posterior); git grep sin `EAA…`, versión literal ni Polly.
+- Fuentes: https://developers.facebook.com/documentation/business-messaging/whatsapp/webhooks/reference/messages/status (valores de `status` incluido `played`; `timestamp` en segundos Unix; `pricing` en uno solo de los webhooks; `delivered` puede omitirse si el mensaje se lee de inmediato).
+- Archivos: `src/backend/WaBulk.Infrastructure/Messaging/{WebhookInboxProcessor,WebhookPayload,InboxProcessorOptions,MessagingServiceCollectionExtensions}.cs`, `src/backend/WaBulk.Worker/{InboxProcessorWorker.cs,Program.cs,appsettings.json}`, `src/backend/WaBulk.Domain/Messaging/{SendAttempt,WebhookInbox}.cs`, migración `20261117123538_InboxProcessing`, `src/backend/WaBulk.Tests/Messaging/WebhookInboxProcessorTests.cs`, `db/scripts/verificar-f0.7.sql`.
+- Decisiones: D-023.
+- Pendientes: ver "Pendientes y bloqueos" (recuperación en F0.9, campos sin statuses, un solo procesador).
+- Siguiente: F0.8.
+
+### 2026-11-17 — F0.6 aceptada (Claude desktop)
+- CIERRE F0.6 revisado: commits 62b3d05 y 94d90af; `Meta:WabaId` = 2088365445132575; sin tokens en el repo.
+- D-022: no se rotan App Secret ni Verify Token (riesgo aceptado, app descartable).
+- PLAN.md: verificación de F0.7 incluye un envío real `sent`/`delivered` (D-021).
 
 ### 2026-11-17 — F0.6 Receptor de webhooks (Claude Code + Andrés)
 - Hecho: proyecto Webhooks en `http://localhost:5244`. GET `/webhooks/whatsapp` hace el handshake: responde con `hub.challenge` si el verify token coincide (comparación en tiempo constante), 403 si no. POST valida `X-Hub-Signature-256` (HMAC-SHA256 con el App Secret) sobre los bytes crudos con `FixedTimeEquals`, limita el cuerpo (5 MB, 413), guarda en `WebhookInbox` (Pendiente) y recién responde 200. Sin secretos configurados responde 503 para que Meta reintente. Corregido `Meta:WabaId` = 2088365445132575 (Worker y payload de prueba). Script `db/scripts/verificar-f0.6.sql`.

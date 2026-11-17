@@ -44,7 +44,7 @@ Objetivo: probar la cadena completa y los escenarios de falla que comprometen la
 ### F0.7 — Procesador de eventos
 - **Quién:** Claude Code · **Depende de:** F0.5, F0.6
 - **Entregables:** procesador del inbox; separación de lotes; correlación por `wamid` y por AttemptId; `MessageEvent` idempotente; estados que solo avanzan; estados `EnEspera` y `Revision` en el inbox.
-- **Verificación:** pruebas: evento duplicado no duplica; `read` antes de `delivered` no retrocede; webhook llegado antes de guardar el `wamid` se correlaciona por AttemptId; secuencia `sent` → `delivered` → `read` reproducida con payloads de replay basados en la referencia oficial (D-020; la prueba con estados reales pasa a F1.1).
+- **Verificación:** pruebas: evento duplicado no duplica; `read` antes de `delivered` no retrocede; webhook llegado antes de guardar el `wamid` se correlaciona por AttemptId; secuencia `sent` → `delivered` → `read` reproducida con payloads de replay basados en la referencia oficial (D-020); además, un envío real con el túnel activo deja `MessageEvent` `sent` y `delivered` correlacionados por `wamid` o AttemptId aunque lleguen en desorden (D-021). Respuestas entrantes y `user_preferences` reales: F1.1.
 
 ### F0.8 — Herramienta de replay firmado
 - **Quién:** Claude Code · **Depende de:** F0.6
