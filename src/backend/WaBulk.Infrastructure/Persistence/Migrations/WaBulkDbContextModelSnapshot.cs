@@ -85,6 +85,15 @@ namespace WaBulk.Infrastructure.Persistence.Migrations
                     b.HasIndex("CampaignVersionId", "ContactId")
                         .IsUnique();
 
+                    b.HasIndex(new[] { "LeaseUntilUtc" }, "IX_DispatchJob_Lease")
+                        .HasFilter("[EstadoDespacho] = 'Claimed'");
+
+                    b.HasIndex(new[] { "Priority", "Id" }, "IX_DispatchJob_Reclamo")
+                        .IsDescending(true, false)
+                        .HasFilter("[EstadoDespacho] IN ('Queued', 'RetryScheduled')");
+
+                    SqlServerIndexBuilderExtensions.IncludeProperties(b.HasIndex(new[] { "Priority", "Id" }, "IX_DispatchJob_Reclamo"), new[] { "ScheduledUtc", "NextAttemptUtc", "ExpiresUtc" });
+
                     b.ToTable("DispatchJob", (string)null);
                 });
 

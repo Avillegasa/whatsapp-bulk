@@ -197,6 +197,13 @@ public sealed partial class WebhookInboxProcessor(
             attempt.Status = SendAttemptStatus.Accepted;
             attempt.Detail = Truncate($"Resuelto por webhook {status.Status}. {attempt.Detail}");
             LogUnknownResolved(logger, attempt.AttemptId, status.Status);
+
+            // El trabajo que quedó en NeedsReview por este intento pasa a Submitted (F0.9).
+            var job = await db.DispatchJobs.FindAsync([attempt.DispatchJobId], cancellationToken);
+            if (job is { DispatchStatus: DispatchStatus.NeedsReview })
+            {
+                job.DispatchStatus = DispatchStatus.Submitted;
+            }
         }
 
         // Solo avanza: Sent < Delivered < Read < Failed (valores numéricos de DeliveryStatus).

@@ -62,11 +62,12 @@ docs/           Plan, progreso, decisiones, arquitectura, setup de Meta
 Mantener esta sección al día. Todos funcionan en cmd desde la raíz del repo.
 
 - SDK: `dotnet --version` (10.x)
-- Backend: `dotnet build src/backend/WaBulk.sln` · `dotnet test src/backend/WaBulk.sln`
+- Backend: `dotnet build src/backend/WaBulk.sln` · `dotnet test src/backend/WaBulk.sln` (las pruebas de integración de la cola necesitan SQL Server levantado: crean y borran una base `WaBulk_Test_<guid>`; sin SQL Server: `dotnet test src/backend/WaBulk.sln --filter Category!=Integration`)
 - Ejecutar Api: `dotnet run --project src/backend/WaBulk.Api` → `GET /health` responde `Healthy`
 - Ejecutar Webhooks: `dotnet run --project src/backend/WaBulk.Webhooks` → `http://localhost:5244`, `GET /health`; receptor en `/webhooks/whatsapp` (sin `Meta:AppSecret`/`Meta:VerifyToken` responde 503)
 - Túnel para webhooks (otra ventana, ya creado): `devtunnel host wabulk-k7m2p9x4` → URL `https://…-5244…devtunnels.ms`; apagar con Ctrl+C al terminar (META-SETUP.md sección B)
-- Ejecutar Worker: `dotnet run --project src/backend/WaBulk.Worker` (procesa `WebhookInbox` cada 2 s, sección `InboxProcessor`)
+- Ejecutar Worker: `dotnet run --project src/backend/WaBulk.Worker` (procesa `WebhookInbox` cada 2 s, sección `InboxProcessor`). El despachador está apagado por defecto (D-024); encenderlo en cmd: `set Dispatcher__Enabled=true` antes del `dotnet run` (envía de verdad lo que haya en cola)
+- Ver la cola (`DispatchJob`, leases, índices): ver comando en `db/scripts/verificar-f0.9.sql`. `sqlcmd` lleva `-I` para poder escribir en `DispatchJob` (índices filtrados)
 - Replay de webhooks firmados (receptor y Worker corriendo): `dotnet run --project tools\webhook-replay -- lista` · `dotnet run --project tools\webhook-replay -- desorden --intento ultimo` → resultado con `db/scripts/verificar-f0.8.sql`; escenarios en `tools/webhook-replay/README.md`
 - Herramientas locales (dotnet-ef): `dotnet tool restore`
 - SQL Server local: `docker compose -f deploy/docker/compose.dev.yml --env-file .env up -d sqlserver` (expuesto en `127.0.0.1,14333`; clave en `.env`)
@@ -92,6 +93,7 @@ Notas de la solución:
 - Las pruebas de integración usan `WebApplicationFactory<ApiAssemblyMarker>` / `<WebhooksAssemblyMarker>` (no `Program`, que se repite en Api y Webhooks).
 - Datos: entidades en `WaBulk.Domain/Messaging`, `WaBulkDbContext` y configuraciones en `WaBulk.Infrastructure/Persistence`. Propiedades en inglés, columnas con los nombres de `docs/ARQUITECTURA.md` (`HasColumnName`); enums guardados como texto.
 - Meta: `MetaWhatsAppClient` (Infrastructure/Meta) clasifica cada POST en Accepted/Rejected/SubmissionUnknown, sin retry; `TemplateSendService` (Infrastructure/Messaging) confirma el `SendAttempt` antes del POST. IDs y `GraphApiVersion` en `appsettings.json` del Worker; secretos solo en user-secrets.
+- Cola: `DispatchQueue` (Infrastructure/Messaging, SQL crudo con `UPDLOCK, READPAST`) reclama, verifica el lease y recupera leases vencidos; `Dispatcher` hace una vuelta y `DispatcherWorker` la repite. La regla de reintentos (regla 9) está en `WaBulk.Domain/Messaging/DispatchRetryPolicy.cs`.
 - Webhooks: el receptor solo guarda; `WebhookInboxProcessor` (Infrastructure/Messaging, corre en el Worker) correlaciona estados y escribe `MessageEvent` y `SendAttempt.EstadoEntrega` (solo avanza).
 - Si `dotnet build` falla con "archivo bloqueado por WaBulk.Webhooks", el receptor está corriendo: detenerlo con Ctrl+C o compilar con `-o` a otra carpeta.
 

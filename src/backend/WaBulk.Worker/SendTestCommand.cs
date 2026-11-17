@@ -56,6 +56,17 @@ public static partial class SendTestCommand
 
         var attempt = await sender.SendAsync(job, new TemplateMessage(templateName, language), cancellationToken);
 
+        // El trabajo de prueba no pasa por la cola: se deja en su estado final para que el despachador (F0.9)
+        // nunca lo reclame y reenvíe. Sin reintentos: un envío de prueba fallido se repite a mano.
+        job.Attempts++;
+        job.DispatchStatus = attempt.Status switch
+        {
+            SendAttemptStatus.Accepted => DispatchStatus.Submitted,
+            SendAttemptStatus.SubmissionUnknown => DispatchStatus.NeedsReview,
+            _ => DispatchStatus.Failed,
+        };
+        await db.SaveChangesAsync(CancellationToken.None);
+
         Console.WriteLine($"DispatchJobId : {job.Id}");
         Console.WriteLine($"AttemptId     : {attempt.AttemptId}");
         Console.WriteLine($"Estado        : {attempt.Status}");

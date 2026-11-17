@@ -14,6 +14,7 @@ builder.Services.AddWaBulkPersistence(
 builder.Services.AddMetaWhatsApp(builder.Configuration);
 builder.Services.AddScoped<TemplateSendService>();
 builder.Services.AddWebhookInboxProcessing(builder.Configuration);
+builder.Services.AddDispatcher(builder.Configuration);
 
 if (isSendTest)
 {
@@ -21,7 +22,7 @@ if (isSendTest)
     return await SendTestCommand.RunAsync(commandHost.Services, args[1..], CancellationToken.None);
 }
 
-builder.Services.AddHostedService<Worker>();
+builder.Services.AddHostedService<DispatcherWorker>();
 builder.Services.AddHostedService<InboxProcessorWorker>();
 
 using var host = builder.Build();

@@ -25,5 +25,17 @@ internal sealed class DispatchJobConfiguration : IEntityTypeConfiguration<Dispat
 
         // Un destinatario por versión de campaña.
         builder.HasIndex(x => new { x.CampaignVersionId, x.ContactId }).IsUnique();
+
+        // Reclamo (F0.9): en el mismo orden que el ORDER BY del reclamo, para que TOP (n) se detenga en n filas.
+        // Sin este orden, SQL Server lee y ordena todos los candidatos con UPDLOCK y los deja bloqueados hasta el fin
+        // de la sentencia: un segundo despachador (READPAST) se los salta todos y no reclama nada.
+        builder.HasIndex(x => new { x.Priority, x.Id }, "IX_DispatchJob_Reclamo")
+            .IsDescending(true, false)
+            .IncludeProperties(x => new { x.ScheduledUtc, x.NextAttemptUtc, x.ExpiresUtc })
+            .HasFilter("[EstadoDespacho] IN ('Queued', 'RetryScheduled')");
+
+        // Recuperación de leases vencidos.
+        builder.HasIndex(x => x.LeaseUntilUtc, "IX_DispatchJob_Lease")
+            .HasFilter("[EstadoDespacho] = 'Claimed'");
     }
 }

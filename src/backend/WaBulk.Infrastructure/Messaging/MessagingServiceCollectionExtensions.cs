@@ -1,5 +1,7 @@
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
+using WaBulk.Infrastructure.Meta;
 
 namespace WaBulk.Infrastructure.Messaging;
 
@@ -15,6 +17,24 @@ public static class MessagingServiceCollectionExtensions
                 "InboxProcessor: valores fuera de rango")
             .ValidateOnStart();
         services.AddScoped<WebhookInboxProcessor>();
+        return services;
+    }
+
+    /// <summary>Registra el despachador (F0.9) con la sección "Dispatcher". Requiere AddMetaWhatsApp.</summary>
+    public static IServiceCollection AddDispatcher(this IServiceCollection services, IConfiguration configuration)
+    {
+        services.AddOptions<DispatcherOptions>()
+            .Bind(configuration.GetSection(DispatcherOptions.SectionName))
+            .Validate(o => o.BatchSize > 0 && o.PollSeconds > 0 && o.RetryBaseSeconds > 0 && o.RetryMaxSeconds >= o.RetryBaseSeconds,
+                "Dispatcher: valores fuera de rango")
+            .Validate(o => o.MaxAttempts is >= 1 and <= 5, "Dispatcher:MaxAttempts debe estar entre 1 y 5 (regla 9)")
+            .Validate<IOptions<MetaOptions>>(
+                (o, meta) => o.LeaseSeconds >= 2 * meta.Value.RequestTimeoutSeconds,
+                "Dispatcher:LeaseSeconds debe ser al menos el doble de Meta:RequestTimeoutSeconds (el lease no puede vencer durante un POST)")
+            .ValidateOnStart();
+        services.AddSingleton<DispatcherIdentity>();
+        services.AddScoped<DispatchQueue>();
+        services.AddScoped<Dispatcher>();
         return services;
     }
 }
