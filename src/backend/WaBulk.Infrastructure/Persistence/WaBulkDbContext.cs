@@ -1,12 +1,18 @@
+using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 using WaBulk.Domain.Alerts;
 using WaBulk.Domain.Capacity;
 using WaBulk.Domain.Consent;
 using WaBulk.Domain.Messaging;
+using WaBulk.Infrastructure.Identity;
 
 namespace WaBulk.Infrastructure.Persistence;
 
-public class WaBulkDbContext(DbContextOptions<WaBulkDbContext> options) : DbContext(options)
+/// <summary>
+/// Contexto único: tablas del sistema + tablas de Identity (AspNet*) en la misma base, para que un cambio de usuario
+/// y su AuditLog (F1.3) se guarden en la misma transacción.
+/// </summary>
+public class WaBulkDbContext(DbContextOptions<WaBulkDbContext> options) : IdentityDbContext<AppUser>(options)
 {
     public DbSet<WebhookInbox> WebhookInbox => Set<WebhookInbox>();
     public DbSet<DispatchJob> DispatchJobs => Set<DispatchJob>();
@@ -20,6 +26,7 @@ public class WaBulkDbContext(DbContextOptions<WaBulkDbContext> options) : DbCont
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
+        base.OnModelCreating(modelBuilder); // tablas de Identity
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(WaBulkDbContext).Assembly);
     }
 
