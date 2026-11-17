@@ -1,0 +1,107 @@
+<h1>Usuarios</h1>
+
+@if (aviso(); as a) {
+  <p class="aviso" [class.error]="a.tipo === 'error'" role="status">{{ a.texto }}</p>
+}
+
+<section class="crear">
+  <h2>Nuevo usuario</h2>
+  <form (ngSubmit)="crear()" #f="ngForm">
+    <label>
+      Usuario
+      <input name="usuario" [(ngModel)]="nuevo.usuario" required autocomplete="off" />
+    </label>
+    <fieldset>
+      <legend>Roles</legend>
+      @for (rol of roles; track rol) {
+        <label class="check">
+          <input type="checkbox" [checked]="nuevo.roles.includes(rol)" (change)="alternarRolNuevo(rol)" />
+          {{ rol }}
+        </label>
+      }
+    </fieldset>
+    <label>
+      Clave temporal
+      <input name="clave" type="password" [(ngModel)]="nuevo.clave" required autocomplete="new-password" />
+    </label>
+    <button type="submit" [disabled]="ocupado() || f.invalid || nuevo.roles.length === 0">Crear</button>
+  </form>
+  <p class="ayuda">
+    Clave: 10 caracteres o más, con mayúscula, minúscula, número y símbolo. Entrégala en persona, nunca por chat.
+  </p>
+</section>
+
+@if (errorCarga()) {
+  <p class="aviso error" role="alert">{{ errorCarga() }}</p>
+} @else if (usuarios(); as lista) {
+  <table>
+    <thead>
+      <tr>
+        <th>Usuario</th>
+        <th>Roles</th>
+        <th>Estado</th>
+        <th>Acciones</th>
+      </tr>
+    </thead>
+    <tbody>
+      @for (u of lista; track u.id) {
+        <tr [class.inactivo]="!u.activo">
+          <td>
+            {{ u.usuario }}
+            @if (esYo(u)) {
+              <span class="yo">(tú)</span>
+            }
+          </td>
+          <td>
+            @for (rol of roles; track rol) {
+              <label class="check">
+                <input
+                  type="checkbox"
+                  [attr.aria-label]="rol + ' de ' + u.usuario"
+                  [checked]="rolesDe(u).includes(rol)"
+                  (change)="alternarRol(u, rol)"
+                />
+                {{ rol }}
+              </label>
+            }
+            @if (rolesCambiados(u)) {
+              <button type="button" class="chico" [disabled]="ocupado()" (click)="guardarRoles(u)">Guardar roles</button>
+            }
+          </td>
+          <td>
+            {{ u.activo ? 'Activo' : 'Desactivado' }}
+            @if (bloqueado(u)) {
+              <br /><span class="bloqueo">Bloqueado hasta {{ u.bloqueadoHasta | date: 'HH:mm' }}</span>
+            }
+          </td>
+          <td class="acciones">
+            @if (!esYo(u)) {
+              <button type="button" [disabled]="ocupado()" (click)="cambiarActivo(u)">
+                {{ u.activo ? 'Desactivar' : 'Activar' }}
+              </button>
+            }
+            <button type="button" [disabled]="ocupado()" (click)="abrirClave(u)">Restablecer clave</button>
+            @if (bloqueado(u)) {
+              <button type="button" [disabled]="ocupado()" (click)="desbloquear(u)">Desbloquear</button>
+            }
+            @if (claveAbierta() === u.id) {
+              <form class="clave" (ngSubmit)="restablecer(u)">
+                <input
+                  name="claveNueva"
+                  type="password"
+                  [(ngModel)]="claveNueva"
+                  placeholder="Clave temporal nueva"
+                  autocomplete="new-password"
+                  required
+                />
+                <button type="submit" [disabled]="ocupado() || !claveNueva">Guardar</button>
+              </form>
+            }
+          </td>
+        </tr>
+      }
+    </tbody>
+  </table>
+} @else {
+  <p>Cargando…</p>
+}

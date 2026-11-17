@@ -1,62 +1,132 @@
 import { DatePipe } from '@angular/common';
-import { HttpClient } from '@angular/common/http';
-import { Component, inject, signal } from '@angular/core';
-import { toSignal } from '@angular/core/rxjs-interop';
-import { catchError, of } from 'rxjs';
+import { Component, inject, OnInit, signal } from '@angular/core';
+import { FormsModule } from '@angular/forms';
+import { AuthService, Rol } from '../../core/auth.service';
+import { Resultado, Usuario, UsuariosService } from './usuarios.service';
 
-interface UsuarioResumen {
-  usuario: string;
-  roles: string[];
-  bloqueadoHasta: string | null;
-}
+const ROLES: Rol[] = ['Operador', 'Aprobador', 'Admin'];
 
-/** Lista de usuarios (solo Admin). Crear, desactivar, cambiar rol y restablecer clave: F1.3. */
+/** Pantalla de usuarios (solo Admin): crear, roles, activar/desactivar, restablecer clave y desbloquear. */
 @Component({
   selector: 'app-usuarios',
-  imports: [DatePipe],
-  template: `
-    <h1>Usuarios</h1>
-    @if (error()) {
-      <p class="error" role="alert">{{ error() }}</p>
-    } @else if (usuarios(); as lista) {
-      <table>
-        <thead>
-          <tr><th>Usuario</th><th>Roles</th><th>Bloqueado hasta</th></tr>
-        </thead>
-        <tbody>
-          @for (u of lista; track u.usuario) {
-            <tr>
-              <td>{{ u.usuario }}</td>
-              <td>{{ u.roles.join(', ') }}</td>
-              <td>{{ esFuturo(u.bloqueadoHasta) ? (u.bloqueadoHasta | date: 'dd/MM/yyyy HH:mm') : '—' }}</td>
-            </tr>
-          }
-        </tbody>
-      </table>
-    } @else {
-      <p>Cargando…</p>
-    }
-  `,
-  styles: `
-    table { border-collapse: collapse; width: 100%; }
-    th, td { text-align: left; padding: 0.5rem; border-bottom: 1px solid #ddd; }
-    .error { color: #b3261e; }
-  `,
+  imports: [DatePipe, FormsModule],
+  templateUrl: './usuarios.html',
+  styleUrl: './usuarios.css',
 })
-export class Usuarios {
-  protected readonly error = signal<string | null>(null);
-  protected readonly usuarios = toSignal(
-    inject(HttpClient)
-      .get<UsuarioResumen[]>('/api/usuarios')
-      .pipe(
-        catchError(() => {
-          this.error.set('No se pudo cargar la lista de usuarios.');
-          return of(null);
-        }),
-      ),
-  );
+export class Usuarios implements OnInit {
+  private readonly api = inject(UsuariosService);
+  protected readonly auth = inject(AuthService);
+  protected readonly roles = ROLES;
 
-  protected esFuturo(fecha: string | null): boolean {
-    return fecha !== null && new Date(fecha).getTime() > Date.now();
+  protected readonly usuarios = signal<Usuario[] | null>(null);
+  protected readonly errorCarga = signal<string | null>(null);
+  protected readonly aviso = signal<{ tipo: 'ok' | 'error'; texto: string } | null>(null);
+  protected readonly ocupado = signal(false);
+
+  /** Roles marcados en cada fila antes de guardar (id → roles). */
+  protected readonly rolesEditados = signal<Record<string, Rol[]>>({});
+  /** Fila con el formulario de clave abierto. */
+  protected readonly claveAbierta = signal<string | null>(null);
+  protected claveNueva = '';
+
+  protected nuevo = { usuario: '', roles: [] as Rol[], clave: '' };
+
+  async ngOnInit(): Promise<void> {
+    await this.cargar();
+  }
+
+  protected rolesDe(u: Usuario): Rol[] {
+    return this.rolesEditados()[u.id] ?? u.roles;
+  }
+
+  protected rolesCambiados(u: Usuario): boolean {
+    const editados = this.rolesEditados()[u.id];
+    return !!editados && [...editados].sort().join() !== [...u.roles].sort().join();
+  }
+
+  protected alternarRol(u: Usuario, rol: Rol): void {
+    const actuales = this.rolesDe(u);
+    const nuevos = actuales.includes(rol) ? actuales.filter((r) => r !== rol) : [...actuales, rol];
+    this.rolesEditados.update((m) => ({ ...m, [u.id]: nuevos }));
+  }
+
+  protected alternarRolNuevo(rol: Rol): void {
+    const r = this.nuevo.roles;
+    this.nuevo.roles = r.includes(rol) ? r.filter((x) => x !== rol) : [...r, rol];
+  }
+
+  protected bloqueado(u: Usuario): boolean {
+    return u.bloqueadoHasta !== null && new Date(u.bloqueadoHasta).getTime() > Date.now();
+  }
+
+  protected esYo(u: Usuario): boolean {
+    return u.usuario === this.auth.usuario();
+  }
+
+  protected async crear(): Promise<void> {
+    const { usuario, roles, clave } = this.nuevo;
+    const r = await this.accion(() => this.api.crear(usuario.trim(), roles, clave), `Usuario ${usuario.trim()} creado.`);
+    if (r) {
+      this.nuevo = { usuario: '', roles: [], clave: '' };
+    }
+  }
+
+  protected async guardarRoles(u: Usuario): Promise<void> {
+    await this.accion(() => this.api.cambiarRoles(u.id, this.rolesDe(u)), `Roles de ${u.usuario} actualizados.`);
+  }
+
+  protected async cambiarActivo(u: Usuario): Promise<void> {
+    if (u.activo && !confirm(`¿Desactivar a ${u.usuario}? No podrá entrar y su sesión abierta se cierra.`)) {
+      return;
+    }
+    await this.accion(
+      () => this.api.activar(u.id, !u.activo),
+      u.activo ? `${u.usuario} desactivado.` : `${u.usuario} activado.`,
+    );
+  }
+
+  protected async restablecer(u: Usuario): Promise<void> {
+    const ok = await this.accion(
+      () => this.api.restablecerClave(u.id, this.claveNueva),
+      `Clave de ${u.usuario} restablecida. Entrégasela en persona; sus sesiones abiertas se cerraron.`,
+    );
+    if (ok) {
+      this.claveAbierta.set(null);
+      this.claveNueva = '';
+    }
+  }
+
+  protected async desbloquear(u: Usuario): Promise<void> {
+    await this.accion(() => this.api.desbloquear(u.id), `${u.usuario} desbloqueado.`);
+  }
+
+  protected abrirClave(u: Usuario): void {
+    this.claveNueva = '';
+    this.claveAbierta.set(this.claveAbierta() === u.id ? null : u.id);
+  }
+
+  private async cargar(): Promise<void> {
+    try {
+      this.usuarios.set(await this.api.listar());
+      this.rolesEditados.set({});
+      this.errorCarga.set(null);
+    } catch {
+      this.errorCarga.set('No se pudo cargar la lista de usuarios.');
+    }
+  }
+
+  /** Ejecuta una acción, muestra el resultado y recarga la lista. Devuelve true si salió bien. */
+  private async accion(hacer: () => Promise<Resultado>, exito: string): Promise<boolean> {
+    this.ocupado.set(true);
+    this.aviso.set(null);
+    const r = await hacer();
+    this.ocupado.set(false);
+    if (!r.ok) {
+      this.aviso.set({ tipo: 'error', texto: r.mensaje });
+      return false;
+    }
+    this.aviso.set({ tipo: 'ok', texto: exito });
+    await this.cargar();
+    return true;
   }
 }
