@@ -71,7 +71,7 @@ Mantener esta sección al día. Todos funcionan en cmd desde la raíz del repo.
 - Ver capacidad (destinatarios únicos vigentes, reservas, trabajos pospuestos): ver comando en `db/scripts/verificar-f0.11.sql`
 - Alertas y pausa global: `dotnet run --project src\backend\WaBulk.Worker -- alertas` (estado y alertas abiertas) · `dotnet run --project src\backend\WaBulk.Worker -- reanudar` (levanta la pausa; sin argumentos, registra el usuario de Windows en `LevantadaPor`); historial en `db/scripts/verificar-f0.12.sql`
 - Ver la cola (`DispatchJob`, leases, índices): ver comando en `db/scripts/verificar-f0.9.sql`. `sqlcmd` lleva `-I` para poder escribir en `DispatchJob` (índices filtrados)
-- Replay de webhooks firmados (receptor y Worker corriendo): `dotnet run --project tools\webhook-replay -- lista` · `dotnet run --project tools\webhook-replay -- desorden --intento ultimo` → resultado con `db/scripts/verificar-f0.8.sql`; escenarios en `tools/webhook-replay/README.md`
+- Replay de webhooks firmados (receptor y Worker corriendo): `dotnet run --project tools\webhook-replay -- lista` · `dotnet run --project tools\webhook-replay -- desorden --intento ultimo` → resultado con `db/scripts/verificar-f0.8.sql`; plantillas: `dotnet run --project tools\webhook-replay -- plantilla-approved --plantilla <nombre>` (también `plantilla-rejected`, `plantilla-calidad`, `plantilla-categoria`) → `db/scripts/verificar-f1.5.sql`; escenarios en `tools/webhook-replay/README.md`
 - Herramientas locales (dotnet-ef): `dotnet tool restore`
 - SQL Server local: `docker compose -f deploy/docker/compose.dev.yml --env-file .env up -d sqlserver` (expuesto en `127.0.0.1,14333`; clave en `.env`)
 - Estado del contenedor: `docker compose -f deploy/docker/compose.dev.yml --env-file .env ps`
@@ -82,7 +82,8 @@ Mantener esta sección al día. Todos funcionan en cmd desde la raíz del repo.
   - Cadena de conexión: `dotnet user-secrets set "ConnectionStrings:WaBulk" "Server=127.0.0.1,14333;Database=WaBulk;User Id=sa;Password=<clave de .env>;Encrypt=True;TrustServerCertificate=True" --project src/backend/WaBulk.Api`
   - Token de Meta: `dotnet user-secrets set "Meta:AccessToken" "<token>" --project src/backend/WaBulk.Worker`
   - Webhooks: `dotnet user-secrets set "Meta:AppSecret" "<app secret>" --project src/backend/WaBulk.Webhooks` · `dotnet user-secrets set "Meta:VerifyToken" "<verify token>" --project src/backend/WaBulk.Webhooks`
-- Envío de prueba (plantilla a un número permitido): `dotnet run --project src\backend\WaBulk.Worker -- send-test --to +591XXXXXXXX [--template hello_world] [--lang en_US]`
+- Envío de prueba (plantilla a un número permitido): `dotnet run --project src\backend\WaBulk.Worker -- send-test --to +591XXXXXXXX [--template hello_world] [--lang en_US] [--param nombre=valor ...]` (F1.5: la plantilla debe estar en la tabla `Template`, sincronizada y `APPROVED`, y los `--param` deben coincidir con los parámetros de su cuerpo; con espacios: `--param "promocion=2x1 en cortes"`)
+- Ver plantillas, webhooks de plantillas, toques de botones (payload real) y bajas por botón: ver comando en `db/scripts/verificar-f1.5.sql`
 - Nueva migración: `dotnet ef migrations add <Nombre> --project src/backend/WaBulk.Infrastructure --startup-project src/backend/WaBulk.Api --output-dir Persistence/Migrations`
 - Aplicar migraciones: `dotnet ef database update --project src/backend/WaBulk.Infrastructure --startup-project src/backend/WaBulk.Api`
 - Verificar tablas e índices: ver comando en `db/scripts/verificar-f0.4.sql`
@@ -91,7 +92,7 @@ Mantener esta sección al día. Todos funcionan en cmd desde la raíz del repo.
 - Primer Admin (una sola vez; la clave se pide sin mostrarla): `dotnet run --project src\backend\WaBulk.Api -- crear-admin --usuario <nombre>`
 - Ver usuarios (roles, activo, bloqueo) y las últimas filas de `AuditLog`: ver comando en `db/scripts/verificar-f1.3.sql`
 - Ver contactos, mensajes entrantes, ofertas y consentimiento vigente: ver comando en `db/scripts/verificar-f1.4.sql`
-- Pantallas de contactos (Mensajes recientes, Contactos, Importar, Listas): solo con rol Operador; la oferta necesita el Worker corriendo (procesa la respuesta) y el receptor con el túnel
+- Pantallas de contactos (Mensajes recientes, Contactos, Importar, Listas) y Plantillas (F1.5): solo con rol Operador; la oferta necesita el Worker corriendo (procesa la respuesta) y el receptor con el túnel
 - Frontend: `cd src\frontend && npm ci` · `npx ng build` · `npx ng test --watch=false` (Vitest)
 - Intranet en desarrollo (dos ventanas): `dotnet run --project src\backend\WaBulk.Api --launch-profile http` (http://localhost:5047) y `cd src\frontend && npx ng serve` → http://localhost:4200 (el proxy manda `/api` a la Api)
 
@@ -108,8 +109,9 @@ Notas de la solución:
 - Usuarios (F1.2): `WaBulkDbContext` hereda de `IdentityDbContext<AppUser>` (tablas `AspNet*` en la misma base; roles como datos de la migración). La Api usa cookie `WaBulk.Auth` (401/403 sin redirección), política por defecto "con sesión" y `XsrfValidationFilter` en todo POST/PUT/PATCH/DELETE de `/api` (cookie `XSRF-TOKEN` + encabezado `X-XSRF-TOKEN`). Endpoints con políticas con nombre (`WaBulk.Domain/Users/Roles.cs`), no con nombres de rol; `EndpointPolicyTests` falla si un endpoint nuevo no tiene política.
 - Usuarios y auditoría (F1.3, D-030): `UserAdminService` (Infrastructure/Identity) hace cada cambio y su fila de `AuditLog` en una sola transacción (`AuditEntry.Create`); usuarios desactivados con `Activo` (no se borran), revalidados en cada petición por `AppSignInManager`. Toda acción nueva que cambie datos de negocio debe auditar igual. Actor de los comandos de consola: `windows:<usuario>`.
 - Contactos (F1.4, D-031, D-032): `Contact`/`InboundMessage`/`ConsentOffer`/`Segment` en `WaBulk.Domain/Contacts`; servicios en `WaBulk.Infrastructure/Contacts` (`ContactDirectory` mapea BSUID ↔ teléfono, `ConsentOfferService` revisa la ventana y hace un solo POST de botones tras guardar la oferta, `ContactImportService` CSV/Excel con ClosedXML). Texto de la oferta en la sección `OfertaPromociones` de la Api. La Api también envía por Meta (`AddMetaWhatsApp`): mismo token en user-secrets. Tras cambiar el procesador, reiniciar el Worker.
+- Plantillas (F1.5, D-033): `Template` en `WaBulk.Domain/Templates` (estados de Meta como texto + propios `CREANDO`/`INCIERTA`/`ERROR_CREACION`/`NO_ENCONTRADA`; reglas de Meta en `TemplateRules`); `MetaTemplateApiClient` (Infrastructure/Meta: listar y crear en `/{WABA_ID}/message_templates`, sin retry); `TemplateService` (Infrastructure/Templates) sincroniza y crea (fila + AuditLog antes del único POST); `TemplateMessageFactory` arma el envío con `components`. Botones fijos: `Plantillas:InterestButton` («Me interesa», Api) y el primero de `Bajas:ButtonTexts` («No recibir más»). Los webhooks de plantillas los aplica `WebhookInboxProcessor` (solo si `entry.time` ≥ `EstadoUtc`).
 - Webhooks: el receptor solo guarda; `WebhookInboxProcessor` (Infrastructure/Messaging, corre en el Worker) correlaciona estados y escribe `MessageEvent` y `SendAttempt.EstadoEntrega` (solo avanza).
-- Si `dotnet build` falla con "archivo bloqueado por WaBulk.Webhooks", el receptor está corriendo: detenerlo con Ctrl+C o compilar con `-o` a otra carpeta.
+- Si `dotnet build` falla con "archivo bloqueado por WaBulk.Webhooks" (o Worker), ese proceso está corriendo: detenerlo con Ctrl+C o compilar y probar en otra carpeta con `--artifacts-path` (por ejemplo `dotnet test src/backend/WaBulk.sln --artifacts-path %TEMP%\wabulk-build`).
 
 ## Estilo
 

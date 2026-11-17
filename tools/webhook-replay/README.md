@@ -21,6 +21,7 @@ dotnet run --project tools\webhook-replay -- <escenario> [--intento ultimo|<Atte
 - `--intento ultimo`: lee de SQL el último `SendAttempt` con wamid y usa su AttemptId, wamid y teléfono. Así el procesador correlaciona los estados como si vinieran de Meta. Con `--intento <AttemptId>` se usa ese intento.
 - Sin `--intento`: AttemptId y wamid sintéticos. Las filas de estado no se correlacionan: quedan `EnEspera` y, tras 8 intentos (~35 min), en `Revision`. Es el caso de un estado desconocido.
 - `--firma-mala`: firma con otra clave. El receptor debe responder 401 y no guardar nada.
+- `--plantilla <nombre>` (escenarios `plantilla-*`, F1.5): usa esa plantilla de la tabla `Template` (con su id de Meta; sincronizar antes). Sin la opción se usa `promo_prueba` / `es`, sintética.
 - Código de salida: 0 si el receptor respondió lo esperado (200, o 401 con `--firma-mala`), 2 si no y 1 por error de uso o de conexión.
 
 Ver el resultado:
@@ -41,6 +42,10 @@ docker exec -i wabulk-sqlserver sh -c "/opt/mssql-tools18/bin/sqlcmd -S localhos
 | Baja por palabra clave | `dotnet run --project tools\webhook-replay -- baja-palabra` | Mensaje entrante de texto `BAJA` del contacto | 1 fila `Procesado`; 1 `ConsentRecord` OptOut, Fuente `PalabraClave` |
 | Baja por botón | `dotnet run --project tools\webhook-replay -- baja-boton` | Mensaje `button` con payload `BAJA_PROMOCIONES` y texto "No recibir más" | 1 fila `Procesado`; 1 `ConsentRecord` OptOut, Fuente `Boton` |
 | Plantilla pausada | `dotnet run --project tools\webhook-replay -- plantilla-paused` | `message_template_status_update` con `event` = `PAUSED`, `other_info.title` = `FIRST_PAUSE` | 1 fila `Procesado`; 1 `Alert` PlantillaPausada (Origen Webhook) y pausa global (`DispatchPause`). Levantarla después con `dotnet run --project src\backend\WaBulk.Worker -- reanudar` (queda registrado el usuario de Windows) |
+| Plantilla aprobada (F1.5) | `dotnet run --project tools\webhook-replay -- plantilla-approved --plantilla promo_demo` | `message_template_status_update` con `event` = `APPROVED` | 1 fila `Procesado`; `Template.Estado` = APPROVED, `UltimoEvento` = APPROVED (ver `verificar-f1.5.sql`) |
+| Plantilla rechazada (F1.5) | `dotnet run --project tools\webhook-replay -- plantilla-rejected --plantilla promo_demo` | `event` = `REJECTED`, `reason` = `INVALID_FORMAT` con `rejection_info` | `Template.Estado` = REJECTED, motivo y recomendación en `MotivoEstado`. Volver con "Sincronizar con Meta" |
+| Calidad de plantilla (F1.5) | `dotnet run --project tools\webhook-replay -- plantilla-calidad --plantilla promo_demo` | `message_template_quality_update` GREEN → YELLOW | `Template.Calidad` = YELLOW |
+| Recategorización (F1.5) | `dotnet run --project tools\webhook-replay -- plantilla-categoria --plantilla promo_demo` | `template_category_update` completada MARKETING → UTILITY | `Template.Categoria` = UTILITY, `CategoriaAnterior` = MARKETING. Volver con "Sincronizar con Meta" |
 | Firma inválida | `dotnet run --project tools\webhook-replay -- lote --firma-mala` | El lote, firmado con otra clave | 401 en cada POST; ninguna fila nueva |
 
 Notas:
@@ -57,6 +62,7 @@ Notas:
 | `{{WA_ID}}` | Teléfono del `DispatchJob` sin `+` (con `--intento`) o `Replay:WaId` |
 | `{{WAMID}}`, `{{ATTEMPT_ID}}` | Del intento, o sintéticos |
 | `{{TS}}`, `{{TS1}}`, `{{TS2}}` | Hora actual en segundos Unix, +1 y +2 |
+| `{{TEMPLATE_ID}}`, `{{TEMPLATE_NAME}}`, `{{TEMPLATE_LANG}}` | Con `--plantilla`: id de Meta, nombre e idioma (con guion, como lo manda Meta) de la tabla `Template`; sin ella, `1689556908129832` / `promo_prueba` / `es` |
 
 `user_preferences` y `message_template_status_update` llevan `{{TS}}` sin comillas (son enteros en la referencia de Meta), por eso los archivos no son JSON válido hasta que se sustituyen los marcadores. Las pruebas (`WaBulk.Tests/Tools/WebhookReplayTests.cs`) comprueban que cada plantilla, ya con los valores sustituidos, es JSON válido y que su firma la acepta el receptor.
 
