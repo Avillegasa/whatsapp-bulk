@@ -1,7 +1,7 @@
 # Progreso
 
 **Fase actual:** Fase 1 — Demo interna (D-028)
-**Siguiente tarea:** F1.1 (Tú, Claude desktop: "Sigamos con WhatsApp") en paralelo con F1.2 (Claude Code: "Sigamos con la tarea F1.2")
+**Siguiente tarea:** F1.3 (Claude Code: "Sigamos con la tarea F1.3"); F1.1 sigue en curso con Andrés (Claude desktop)
 **Última actualización:** 2026-11-17
 
 ## Estado de tareas
@@ -23,7 +23,7 @@ Estados: Pendiente · En curso · Hecho (sin verificar) · Verificado · Bloquea
 | F0.11 | Concurrencia y capacidad | Claude Code | Verificado | `dotnet test` 140/140 (8 de integración de capacidad + 5 de presupuesto): 2 despachadores simultáneos (4 vueltas cada uno), 20 trabajos a 20 números, presupuesto 10 → 10 POST a 10 números distintos, 10 reservas vigentes, 1 intento por trabajo (ningún trabajo dos veces), 10 `Submitted` y 10 pospuestos, ninguno `Claimed`; 40 reservas en paralelo con presupuesto 10 → exactamente 10; corrido 5 veces seguidas sin fallas; mutación sin `sp_getapplock` → ambas pruebas fallan (la prueba detecta la carrera). Además: mismo destinatario no ocupa lugar nuevo, rechazo libera, sin respuesta consume, ventana de 24 h, caída tras reservar → la recuperación libera, omitido por baja no reserva. Migración `Capacity` aplicada; Worker arranca con `Capacity` y rechaza `PortfolioId` vacío; build 0 advertencias; sin secretos |
 | F0.12 | Alertas simuladas | Claude Code | Verificado | `dotnet test` 150/150 (9 de integración de alertas + 3 de la regla): un caso por código —190 (Token), 131042 (Facturacion), 132015 (PlantillaPausada)— al enviar: 1 solo POST, alerta registrada (Tipo, Clave, Origen Despachador), pausa global activa, los 3 trabajos en `Queued` y la vuelta siguiente no reclama; plantilla `PAUSED` por webhook (payload del replay) y 131042 en un estado `failed` → alerta (Origen Webhook) + pausa, sin POST; reanudar → pausa levantada, alerta resuelta y los trabajos salen; repetidas → suman `Ocurrencias` sin duplicar; 10 alertas simultáneas → 1 alerta (×10) y 1 pausa; 131026 → sin alerta. Real: replay `plantilla-paused` con receptor + Worker → log Critical "ALERTA PlantillaPausada" y "PAUSA GLOBAL", despachador "no se reclaman trabajos"; comando `alertas` → EN PAUSA; `reanudar --por claude-code` → ACTIVO. Build 0 advertencias; índices únicos filtrados; sin secretos |
 | F1.1 | Preparar la demo | Tú | Pendiente | |
-| F1.2 | Login y esqueleto Angular | Claude Code | En curso | |
+| F1.2 | Login y esqueleto Angular | Claude Code | Verificado | `dotnet test` 160/160 (10 de integración de login contra SQL Server: sin sesión → 401; Operador en `/api/usuarios` → 403; Admin → 200 con sus roles; 5 claves malas → `Bloqueado` aunque la 6.ª sea correcta y 4 no bloquean; POST sin encabezado XSRF o con token falso → 400 sin sesión; logout con el token renovado al entrar → 200; `crear-admin` solo la primera vez y rechaza clave débil); `ng build` OK y `ng test` 7/7 (encabezado `X-XSRF-TOKEN` desde la cookie, bloqueo, guardias, menú por rol, 401 cierra la sesión); real por el proxy de `ng serve`: 401 sin sesión, cookie `XSRF-TOKEN`, POST sin XSRF → 400; `crear-admin --usuario avillegas` → creado; login real en el navegador, menú Admin, salir y `/usuarios` → login, bloqueo tras 5 intentos (confirmación de Andrés; `verificar-f1.2.sql`: avillegas Admin, BloqueadoAhora SI); índices únicos de Identity filtrados; build 0 advertencias; sin secretos |
 | F1.3 | Usuarios, autorización y auditoría | Claude Code | Pendiente | |
 | F1.4 | Contactos, importación y consentimiento | Claude Code | Pendiente | |
 | F1.5 | Plantillas | Claude Code (+ Tú) | Pendiente | |
@@ -36,6 +36,8 @@ Estados: Pendiente · En curso · Hecho (sin verificar) · Verificado · Bloquea
 ## Pendientes y bloqueos
 
 - Definir dónde corre SQL Server en producción (D-006).
+- Desbloquear un usuario bloqueado (5 claves malas) desde la pantalla de usuarios, con auditoría (F1.3); hoy se espera 15 min.
+- Producción: nginx debe servir la app y `/api` bajo el mismo dominio (Angular solo envía el XSRF a URLs relativas, D-029) (F1.9).
 - Portafolio de Meta de la empresa, número dedicado y verificación: después de aprobar la PoC (D-028).
 - Actualizar la ruta de la carpeta (D-016) en las instrucciones del proyecto de claude.ai y en la skill `whatsapp-bulk-guia`; reconectar la carpeta en Claude desktop.
 - Confirmar con el área comercial o legal cómo consta el consentimiento de los clientes para promociones (antes de la Fase 2).
@@ -61,6 +63,14 @@ Estados: Pendiente · En curso · Hecho (sin verificar) · Verificado · Bloquea
 - Datos de desarrollo: los intentos 01A1E617… y 01A1E975… quedaron con `EstadoEntrega` = Read por el replay de F0.8 (no es una lectura real).
 
 ## Bitácora (lo más reciente arriba)
+
+### 2026-11-17 — F1.2 Login y esqueleto Angular (Claude Code)
+- Hecho: ASP.NET Core Identity con cookie en `WaBulk.Api` (`WaBulkDbContext` hereda de `IdentityDbContext<AppUser>`, migración `Identity` con los 3 roles); bloqueo a los 5 intentos (15 min); XSRF con cookie `XSRF-TOKEN` + encabezado `X-XSRF-TOKEN` validado en todo POST/PUT/PATCH/DELETE de `/api`, renovado al entrar y salir; todo endpoint exige sesión salvo `AllowAnonymous`; política con nombre `PuedeAdministrar`; endpoints `/api/auth/sesion|login|logout` y `/api/usuarios`; comando `crear-admin` (clave oculta, solo si no hay Admin). App Angular 21.2 en `src/frontend` (standalone, signals, zoneless, Vitest): login, cierre de sesión, guardias de sesión y de rol, interceptor de 401, menú por rol, pantalla de usuarios (solo lista), proxy de `ng serve` a la Api.
+- Verificación: `dotnet test` → 160/160; `npx ng build` → OK; `npx ng test --watch=false` → 7/7; curl por el proxy → 401 / cookie XSRF / 400 sin XSRF / 401 credenciales; Andrés: `crear-admin` → "Admin 'avillegas' creado", login real, salir y volver a `/usuarios` → login, bloqueo comprobado; `verificar-f1.2.sql` → roles, avillegas Admin bloqueado hasta 16:40 UTC, índices filtrados.
+- Archivos: `WaBulk.Api/Auth/*`, `WaBulk.Api/Program.cs`, `WaBulk.Domain/Users/Roles.cs`, `WaBulk.Infrastructure/Identity/*`, migración `*_Identity`, `WaBulk.Tests/Auth/AuthEndpointsTests.cs`, `src/frontend/**`, `db/scripts/verificar-f1.2.sql`.
+- Decisiones: D-029.
+- Pendientes: desbloquear usuario desde la pantalla (F1.3); nginx con app y `/api` en el mismo dominio (F1.9).
+- Siguiente: F1.3 (Claude Code) y F1.1 (Andrés, en curso).
 
 ### 2026-11-17 — F1.1 prueba 3: primer compañero como destinatario (Andrés)
 - Destinatario …7355 agregado en "Paso 1. Pruébalo" del panel (el botón "Enviar" del panel queda gris sin token temporal; se usa `send-test`).

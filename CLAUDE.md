@@ -88,7 +88,9 @@ Mantener esta sección al día. Todos funcionan en cmd desde la raíz del repo.
 - Verificar tablas e índices: ver comando en `db/scripts/verificar-f0.4.sql`
 - Ver webhooks guardados en `WebhookInbox`: ver comando en `db/scripts/verificar-f0.6.sql`
 - Ver inbox procesado, `MessageEvent` y `EstadoEntrega`: ver comando en `db/scripts/verificar-f0.7.sql`
-- Frontend (Fase 1): `cd src/frontend && npm ci && npx ng build` · `npx ng test`
+- Primer Admin (una sola vez; la clave se pide sin mostrarla): `dotnet run --project src\backend\WaBulk.Api -- crear-admin --usuario <nombre>`
+- Frontend: `cd src\frontend && npm ci` · `npx ng build` · `npx ng test --watch=false` (Vitest)
+- Intranet en desarrollo (dos ventanas): `dotnet run --project src\backend\WaBulk.Api --launch-profile http` (http://localhost:5047) y `cd src\frontend && npx ng serve` → http://localhost:4200 (el proxy manda `/api` a la Api)
 
 Notas de la solución:
 - `src/backend/Directory.Build.props` fija `net10.0`, nullable y warnings como errores para todos los proyectos.
@@ -100,6 +102,7 @@ Notas de la solución:
 - Capacidad: `CapacityService` (Infrastructure/Capacity) reserva con `sp_getapplock` por portafolio; presupuesto = `Capacity:PortfolioLimit` × `UsagePercent` − `ManualQuota` (`CapacityBudget` en Domain). Sin lugar, el trabajo queda `RetryScheduled` sin sumar intento.
 - Freno de emergencia: `AlertService` (Infrastructure/Alerts) registra `Alert` + `DispatchPause` global (190, 131042, 132015 al enviar; `PAUSED` y 131042 por webhook); con pausa activa el despachador no reclama. Códigos en `WaBulk.Domain/Alerts/Alert.cs` (`EmergencyBrake`).
 - Bajas: entidades y reglas en `WaBulk.Domain/Consent` (`MarketingEligibility`, `OptOutDetector`); `ConsentService` y `EnqueueService` en `WaBulk.Infrastructure/Consent`. Sin OptIn vigente no se envía (D-025). Palabras clave y botón de baja en la sección `Bajas` del Worker.
+- Usuarios (F1.2): `WaBulkDbContext` hereda de `IdentityDbContext<AppUser>` (tablas `AspNet*` en la misma base; roles como datos de la migración). La Api usa cookie `WaBulk.Auth` (401/403 sin redirección), política por defecto "con sesión" y `XsrfValidationFilter` en todo POST/PUT/PATCH/DELETE de `/api` (cookie `XSRF-TOKEN` + encabezado `X-XSRF-TOKEN`). Endpoints con políticas con nombre (`WaBulk.Domain/Users/Roles.cs`), no con nombres de rol.
 - Webhooks: el receptor solo guarda; `WebhookInboxProcessor` (Infrastructure/Messaging, corre en el Worker) correlaciona estados y escribe `MessageEvent` y `SendAttempt.EstadoEntrega` (solo avanza).
 - Si `dotnet build` falla con "archivo bloqueado por WaBulk.Webhooks", el receptor está corriendo: detenerlo con Ctrl+C o compilar con `-o` a otra carpeta.
 
