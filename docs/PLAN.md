@@ -78,19 +78,69 @@ Todos los anteriores en **Verificado**. No se exige `Read` en todos los mensajes
 
 ## Fase 1 — Pruebas internas (número de la empresa, solo personal con consentimiento)
 
-Las tareas se detallan (entregables y verificación) al terminar la Fase 0.
+Objetivo: el sistema completo, con el número real de la empresa, probado solo con empleados que dieron su consentimiento.
 
-- **F1.1** Tú: verificación del negocio, número dedicado, registro y método de pago (`META-SETUP.md` sección C).
-- **F1.2** Esqueleto Angular 21 y login.
-- **F1.3** Usuarios propios: ASP.NET Core Identity, roles, auditoría.
-- **F1.4** Contactos, importación CSV/Excel y consentimiento.
-- **F1.5** Plantillas: sincronización con Meta y webhooks de plantilla.
-- **F1.6** Campañas versionadas, aprobación de cuatro ojos y vencimiento.
-- **F1.7** Despacho completo: tasa, capacidad, cupo manual, fatiga, freno de emergencia, horario.
-- **F1.8** Monitor en vivo (SignalR) y tablero.
-- **F1.9** Docker: Dockerfiles, compose de producción, secretos por entorno.
-- **F1.10** Campañas a 20–50 empleados y conciliación de `pricing` contra facturación.
-- **Puerta F1:** cero duplicados, bajas aplicadas en menos de 1 minuto, calidad en verde.
+Orden: F1.1 depende de terceros (verificación del negocio, puede tardar días); se empieza primero y en paralelo con F1.2–F1.4. Las verificaciones "reales" de F1.5, F1.7 y F1.10 necesitan F1.1.
+
+### F1.1 — Activos de Meta de la empresa
+- **Quién:** Tú (+ Claude Code cambia IDs en configuración) · **Depende de:** portafolio de Meta de la empresa creado (D-015); número dedicado que no esté activo en la app de WhatsApp
+- **Pasos:** `docs/META-SETUP.md` sección C, uno a la vez en Claude desktop, confirmando cada paso en la documentación de Meta.
+- **Entregables:** negocio verificado; app de la empresa (la PoC no se reutiliza, D-022); WABA y número de la empresa con nombre visible aprobado; número registrado con `POST /{PHONE_NUMBER_ID}/register` y PIN de 6 dígitos (máximo 10 registros en 72 h, si no error 133016); método de pago; System User con token sin caducidad; webhooks suscritos con la WABA real (repite B.4–B.6); IDs en `META-SETUP.md`; `appsettings` con los IDs nuevos (`Meta:*`, `Capacity:PortfolioId`); token y PIN solo en el gestor de contraseñas y user-secrets.
+- **Verificación:** `GET /{PHONE_NUMBER_ID}?fields=whatsapp_business_manager_messaging_limit,throughput,quality_rating` responde con el límite y calidad `GREEN`; `send-test` desde el número de la empresa a tu teléfono → `Accepted` y estados `sent`/`delivered` en `WebhookInbox`; tu respuesta "Hola" llega como mensaje entrante; "BAJA" escrita por ti queda como `ConsentRecord` OptOut (y luego se revierte con opt-in manual); git grep sin `EAA…`.
+
+### F1.2 — Login y esqueleto Angular
+- **Quién:** Claude Code · **Depende de:** F0.3
+- **Entregables:** ASP.NET Core Identity con cookie en `WaBulk.Api` (tablas Identity en la misma base); roles Operador, Aprobador, Admin; bloqueo tras intentos fallidos; protección XSRF (cookie + encabezado que Angular envía); comando para crear el primer Admin sin clave en el repo; app Angular 21 en `src/frontend` (standalone, signals) con pantalla de login, cierre de sesión, guardia de rutas y menú por rol.
+- **Verificación:** pruebas: sin sesión → 401; rol incorrecto → 403; 5 claves malas → bloqueado; POST sin token XSRF → rechazado; `npx ng build` y `npx ng test` pasan; login real en el navegador.
+
+### F1.3 — Usuarios, autorización y auditoría
+- **Quién:** Claude Code · **Depende de:** F1.2
+- **Entregables:** pantalla de usuarios (Admin: crear, desactivar, cambiar rol, restablecer clave); autorización por políticas con nombre (`PuedeAprobar`, `PuedeEnviar`…) y no por nombre de rol en los endpoints, para sumar Entra ID después sin rehacerla; `AuditLog` (Usuario, Accion, Entidad, Antes, Despues, FechaUtc) escrito en la misma transacción que el cambio; `reanudar` del Worker también audita.
+- **Verificación:** pruebas: cada endpoint protegido por una política; cambio de rol → fila en `AuditLog` con antes/después; usuario desactivado no inicia sesión ni conserva su sesión abierta.
+
+### F1.4 — Contactos, importación y consentimiento
+- **Quién:** Claude Code · **Depende de:** F1.3
+- **Entregables:** `Contact` (PhoneE164 único, WaId, UserId/BSUID, Nombre, ClienteId, Activo); FK de `ConsentRecord.ContactId` y `DispatchJob.ContactId`; mapeo BSUID ↔ teléfono (las bajas sin teléfono que hoy van a `Revision` se resuelven si hay mapeo); importación CSV/Excel con vista previa, validación E.164 (591 + 8 dígitos) y reporte por fila; opt-in con evidencia obligatoria (fuente, fecha, documento o detalle); baja y opt-in manual desde la intranet (`Fuente` Intranet, auditados); listas estáticas (`Segment`, `SegmentMember`).
+- **Verificación:** pruebas: 100 filas con 5 inválidas → 95 contactos y 5 errores con su motivo; teléfono repetido → un contacto; importación con OptIn sobre un OptOut vigente → sigue OptOut; opt-in sin evidencia → rechazado; baja desde la intranet → el siguiente trabajo `Skipped`; todo en `AuditLog`.
+- **Antes de empezar:** confirmar con el área comercial o legal cómo consta el consentimiento (define los campos de evidencia).
+
+### F1.5 — Plantillas
+- **Quién:** Claude Code (+ Tú creas y pruebas la plantilla real) · **Depende de:** F1.3; verificación real con F1.1
+- **Entregables:** `Template` sincronizada con `GET /{WABA_ID}/message_templates`; creación de plantillas de marketing (D-009) desde la intranet con parámetros y botones "Me interesa" (D-012) y "No recibir más"; webhooks `message_template_status_update`, `message_template_quality_update` y `template_category_update` actualizan estado, calidad y categoría; el envío de prueba usa la plantilla y sus `components`.
+- **Verificación:** pruebas con payloads de replay por cada webhook; real: plantilla creada en la WABA de la empresa → `APPROVED` llega por webhook y se ve en la pantalla; tocar "No recibir más" en tu teléfono → baja registrada y payload real anotado en `Bajas:ButtonPayloads`/`ButtonTexts` (cierra el pendiente de D-025).
+
+### F1.6 — Campañas versionadas y aprobación
+- **Quién:** Claude Code · **Depende de:** F1.4, F1.5
+- **Entregables:** `Campaign` y `CampaignVersion` inmutable (plantilla, idioma, categoría, audiencia congelada, parámetros, `ProgramadaUtc`, `ExpiraUtc`, Hash); estados de campaña de ARQUITECTURA; aprobación de cuatro ojos (quien aprueba ≠ quien creó, validado en el backend); al aprobar, un `DispatchJob` por destinatario en una sola transacción (único `CampaignVersionId, ContactId`; FK `CampaignVersionId`); pausa, reanudación y cancelación por campaña; el despachador toma plantilla y parámetros de la versión (se retira `Dispatcher:TemplateName`, D-024).
+- **Verificación:** pruebas: el creador no puede aprobar (403); editar una versión aprobada → versión nueva que exige aprobación; dos aprobaciones simultáneas → los trabajos se crean una sola vez; vencida → `Expired` sin POST; cancelada → lo pendiente no sale.
+
+### F1.7 — Despacho completo
+- **Quién:** Claude Code · **Depende de:** F1.6
+- **Entregables:** tasa por número (token bucket, 10–20 msg/s configurable); límite real de Meta (campo `whatsapp_business_manager_messaging_limit` y webhook `business_capability_update`, D-026); mensajes entrantes guardados y envíos dentro de la ventana de 24 h descontados de la capacidad; fatiga (D-012) y 131049 (+24 h, un intento más); horario permitido (08:00–20:00 America/La_Paz); revalidación al enviar de campaña, vencimiento y plantilla `APPROVED`; resto del freno de emergencia (`phone_number_quality_update`, 131048/131031/368, fallos > 5 % en los últimos 200, 132000–132016 → pausa de campaña); aviso fuera del log (correo o Teams, a decidir); `NeedsReview` vencido (2 h) listado para revisión.
+- **Verificación:** una prueba por control (tasa medida, fuera de horario no envía, 3 promociones sin interacción → contacto pausado, 6 fallos de 100 → pausa, 132001 → pausa solo de esa campaña); real: campaña a 3 empleados respeta tasa y horario.
+
+### F1.8 — Monitor en vivo y tablero
+- **Quién:** Claude Code · **Depende de:** F1.7
+- **Entregables:** SignalR con contadores por campaña (en cola, enviados, entregados, leídos, fallidos, omitidos y su motivo); pantalla de alertas con "reanudar" auditado; pantalla de `NeedsReview` (marcar "llegó" o "no llegó", nunca reenvío automático); pantalla de bajas; consumo de capacidad del día.
+- **Verificación:** con un replay, el contador cambia en el navegador en menos de 5 s; reanudar desde la pantalla → pausa levantada y fila en `AuditLog`.
+
+### F1.9 — Docker y despliegue
+- **Quién:** Claude Code + Tú · **Depende de:** F1.2; decisión pendiente D-006 (dónde corre SQL Server en producción) y dónde se publica el receptor con HTTPS
+- **Entregables:** Dockerfiles de Api, Webhooks, Worker y frontend (nginx); `deploy/docker/compose.prod.yml`; secretos por variables de entorno o `.env` ignorado; health checks; migraciones aplicadas por un paso explícito (no al arrancar); solo el receptor expuesto a internet.
+- **Verificación:** desde cero, `docker compose … up -d` → todos `healthy`; webhook real llega al receptor publicado; `docker history` e imágenes sin secretos; git grep sin `EAA…`.
+
+### F1.10 — Campañas internas y conciliación
+- **Quién:** Tú + Claude Code · **Depende de:** F1.1–F1.9
+- **Entregables:** opt-in documentado de 20–50 empleados; 2–3 campañas reales; conciliación de `pricing` de `MessageEvent` contra la facturación de Meta (WhatsApp Manager).
+- **Verificación:** la puerta de la Fase 1.
+
+### Puerta de la Fase 1
+- Cero duplicados: ninguna consulta encuentra dos intentos `Accepted` para el mismo (versión de campaña, contacto).
+- Bajas aplicadas en menos de 1 minuto: medido entre el webhook de baja y el trabajo `Skipped`.
+- Calidad del número en `GREEN` al terminar; conciliación con diferencias explicadas.
+- Todas las tareas F1 en **Verificado**.
+
+---
 
 ## Fase 2 — Producción gradual
 
