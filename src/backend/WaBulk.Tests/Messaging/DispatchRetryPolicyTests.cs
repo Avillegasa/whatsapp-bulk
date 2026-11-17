@@ -26,7 +26,7 @@ public sealed class DispatchRetryPolicyTests
     [Theory]
     [InlineData(131026)] // no alcanzable
     [InlineData(131050)] // baja de marketing de la plataforma
-    [InlineData(131049)] // ecosistema: tratamiento propio fuera de F0.9
+    // 131049 (ecosistema) tiene su propio tratamiento desde F1.7: +24 h, un intento más (FatigueTests).
     [InlineData(132001)] // plantilla
     [InlineData(100)]
     public void No_transitorio_falla_sin_reintento(int code)

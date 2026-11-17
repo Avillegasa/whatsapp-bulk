@@ -472,8 +472,70 @@ public sealed class CampaignIntegrationTests(SqlServerTestDatabase database)
         Assert.Empty(await check.DispatchPauses.ToListAsync()); // No es una pausa global.
     }
 
+    [Fact]
+    public async Task Fatiga_omite_a_quien_no_interactuo_con_las_ultimas_tres()
+    {
+        await using (var db = database.CreateContext())
+        {
+            var ana = await db.Contacts.SingleAsync(c => c.PhoneE164 == "+59170000001");
+            var beto = await db.Contacts.SingleAsync(c => c.PhoneE164 == "+59170000002");
+            foreach (var days in new[] { 10, 17, 24 })
+            {
+                // Ana: entregadas, nunca leídas ni respondidas.
+                await SentAsync(db, ana, Start.AddDays(-days), SendAttemptStatus.Accepted, campaign: true, delivery: DeliveryStatus.Delivered);
+                await SentAsync(db, beto, Start.AddDays(-days), SendAttemptStatus.Accepted, campaign: true, delivery: DeliveryStatus.Delivered);
+            }
+
+            // Beto tocó «Me interesa» después de la última: interactuó.
+            var inbox = new WebhookInbox { ReceivedUtc = Start.AddDays(-9), Body = "{}", Status = WebhookInboxStatus.Procesado };
+            db.WebhookInbox.Add(inbox);
+            await db.SaveChangesAsync();
+            db.InboundMessages.Add(new InboundMessage
+            {
+                Wamid = "wamid.BETO", ContactId = beto.Id, PhoneE164 = beto.PhoneE164, Type = "button", Text = "Me interesa",
+                SentUtc = Start.AddDays(-9), ReceivedUtc = Start.AddDays(-9), WebhookInboxId = inbox.Id,
+            });
+            await db.SaveChangesAsync();
+        }
+
+        await ApprovedAsync();
+        var handler = Accepting();
+        var round = await DispatchAsync(handler);
+
+        Assert.Equal((1, 1), (round.Sent, round.Skipped));
+        await using var check = database.CreateContext();
+        var versionId = await check.CampaignVersions.Where(v => v.TemplateName == "promo_f15").Select(v => v.Id).SingleAsync();
+        var anaJob = await check.DispatchJobs.SingleAsync(j => j.PhoneE164 == "+59170000001" && j.CampaignVersionId == versionId);
+        Assert.Equal((DispatchStatus.Skipped, SkipReasons.Fatiga), (anaJob.DispatchStatus, anaJob.SkipReason));
+    }
+
+    [Fact]
+    public async Task Error_131049_reprograma_a_las_24_horas_y_el_segundo_falla()
+    {
+        await ApprovedAsync(expiresIn: TimeSpan.FromDays(3));
+        var handler = new FakeHttpHandler((_, _) => Task.FromResult(MetaWhatsAppClientTests.Json(HttpStatusCode.BadRequest,
+            """{"error":{"message":"(#131049) This message was not delivered to maintain healthy ecosystem engagement.","type":"OAuthException","code":131049,"error_data":{"details":"x"},"fbtrace_id":"T"}}""")));
+
+        await DispatchAsync(handler);
+        await using (var db = database.CreateContext())
+        {
+            var retried = await db.DispatchJobs.Where(j => j.DispatchStatus == DispatchStatus.RetryScheduled).ToListAsync();
+            Assert.Equal(2, retried.Count);
+            Assert.All(retried, j => Assert.Equal(Start.AddHours(24), j.NextAttemptUtc));
+        }
+
+        _clock.Advance(TimeSpan.FromHours(24));
+        await DispatchAsync(handler);
+
+        Assert.Equal(4, handler.Requests.Count); // Un solo intento más por trabajo.
+        await using var check = database.CreateContext();
+        Assert.Equal(2, await check.DispatchJobs.CountAsync(j => j.DispatchStatus == DispatchStatus.Failed));
+    }
+
     /// <summary>Un envío anterior al contacto: trabajo (de campaña o de send-test) con un intento en el estado dado.</summary>
-    private static async Task SentAsync(WaBulkDbContext db, Contact contact, DateTime when, SendAttemptStatus status, bool campaign)
+    private static async Task SentAsync(
+        WaBulkDbContext db, Contact contact, DateTime when, SendAttemptStatus status, bool campaign, DeliveryStatus? delivery = null,
+        int? errorCode = null)
     {
         var job = new DispatchJob
         {
@@ -483,7 +545,11 @@ public sealed class CampaignIntegrationTests(SqlServerTestDatabase database)
         };
         db.DispatchJobs.Add(job);
         await db.SaveChangesAsync();
-        db.SendAttempts.Add(new SendAttempt { AttemptId = Guid.CreateVersion7(), DispatchJobId = job.Id, StartedUtc = when, Status = status });
+        db.SendAttempts.Add(new SendAttempt
+        {
+            AttemptId = Guid.CreateVersion7(), DispatchJobId = job.Id, StartedUtc = when, Status = status, DeliveryStatus = delivery,
+            ErrorCode = errorCode,
+        });
         await db.SaveChangesAsync();
     }
 

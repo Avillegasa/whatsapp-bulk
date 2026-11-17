@@ -201,6 +201,16 @@ public sealed partial class Dispatcher(
             return capped ? BeginOutcome.Skipped : BeginOutcome.LeaseLost;
         }
 
+        // Fatiga (F1.7, D-012): sin interacción en las últimas promociones, o dos 131049 seguidos.
+        var fatigue = Fatigue.Evaluate(await PromotionHistoryAsync(job), Now, Options.Fatigue);
+        if (fatigue.State != FatigueState.Ok)
+        {
+            var reason = fatigue.State == FatigueState.Excluded ? SkipReasons.FatigaExcluido : SkipReasons.Fatiga;
+            var tired = await queue.SkipAsync(job.Id, Owner, reason, cancellationToken);
+            LogSkipped(logger, job.Id, reason);
+            return tired ? BeginOutcome.Skipped : BeginOutcome.LeaseLost;
+        }
+
         // Tasa por número (F1.7): espera su turno antes de reservar y enviar.
         await rateLimiter.WaitAsync(cancellationToken);
 
@@ -238,8 +248,11 @@ public sealed partial class Dispatcher(
             status = SendAttemptStatus.Accepted;
         }
 
+        var previous131049 = result.ErrorCode == DispatchRetryPolicy.EcosystemCode
+            && await db.SendAttempts.AsNoTracking().AnyAsync(a => a.DispatchJobId == job.Id && a.AttemptId != attempt.AttemptId
+                                                              && a.ErrorCode == DispatchRetryPolicy.EcosystemCode, CancellationToken.None);
         var transition = DispatchRetryPolicy.After(
-            status, result.ErrorCode, job.Attempts + 1, job.ExpiresUtc, Now, Options.Retry, Jitter());
+            status, result.ErrorCode, job.Attempts + 1, job.ExpiresUtc, Now, Options.Retry, Jitter(), previous131049);
 
         PlatformPreference? platformStop = result.ErrorCode == PlatformStopErrorCode
             ? new PlatformPreference
@@ -307,6 +320,43 @@ public sealed partial class Dispatcher(
                 $"{failures} fallos en los últimos {recent.Count} envíos (umbral {Options.FailureThresholdPercent} %)", null,
                 "Despachador", cancellationToken);
         }
+    }
+
+    /// <summary>
+    /// Historial para la fatiga (D-012): intentos de campañas del contacto aceptados o rechazados con 131049 (los 20 más
+    /// recientes, sin el trabajo actual). Interactuó si leyó el mensaje o si escribió (texto o botón) antes de la
+    /// siguiente promoción.
+    /// </summary>
+    private async Task<IReadOnlyList<PromotionRecord>> PromotionHistoryAsync(DispatchJob job)
+    {
+        var attempts = await (from a in db.SendAttempts.AsNoTracking()
+                              join j in db.DispatchJobs.AsNoTracking() on a.DispatchJobId equals j.Id
+                              where j.ContactId == job.ContactId && j.Id != job.Id && j.CampaignVersionId != null
+                                    && (a.Status == SendAttemptStatus.Accepted
+                                        || (a.Status == SendAttemptStatus.Rejected && a.ErrorCode == DispatchRetryPolicy.EcosystemCode))
+                              orderby a.StartedUtc descending
+                              select new { a.StartedUtc, a.Status, a.DeliveryStatus })
+            .Take(20).ToListAsync(CancellationToken.None);
+        if (attempts.Count == 0)
+        {
+            return [];
+        }
+
+        var oldest = attempts[^1].StartedUtc;
+        var inbound = await db.InboundMessages.AsNoTracking()
+            .Where(m => m.ContactId == job.ContactId && m.SentUtc >= oldest)
+            .Select(m => m.SentUtc).ToListAsync(CancellationToken.None);
+
+        var records = new List<PromotionRecord>(attempts.Count);
+        for (var i = 0; i < attempts.Count; i++)
+        {
+            var a = attempts[i];
+            var until = i == 0 ? DateTime.MaxValue : attempts[i - 1].StartedUtc;
+            var interacted = a.DeliveryStatus == DeliveryStatus.Read || inbound.Any(t => t >= a.StartedUtc && t < until);
+            records.Add(new PromotionRecord(a.StartedUtc, interacted, a.Status == SendAttemptStatus.Rejected));
+        }
+
+        return records;
     }
 
     /// <summary>

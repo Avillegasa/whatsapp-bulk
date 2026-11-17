@@ -24,11 +24,17 @@ public static class DispatchRetryPolicy
 
     public static bool IsTransient(int? errorCode) => errorCode is { } code && TransientCodes.Contains(code);
 
+    /// <summary>131049: Meta no lo entregó "para mantener un ecosistema sano"; esperar al menos 24 h antes de reenviar.</summary>
+    public const int EcosystemCode = 131049;
+
+    public static readonly TimeSpan EcosystemDelay = TimeSpan.FromHours(24);
+
     /// <param name="attempts">Intentos hechos, incluido el que acaba de terminar.</param>
     /// <param name="jitter">Valor en [0, 1): la espera real queda entre la mitad y el total del backoff.</param>
+    /// <param name="previous131049">El trabajo ya tuvo un 131049: no hay otro intento (F1.7).</param>
     public static DispatchTransition After(
         SendAttemptStatus result, int? errorCode, int attempts, DateTime expiresUtc, DateTime nowUtc,
-        RetrySettings settings, double jitter)
+        RetrySettings settings, double jitter, bool previous131049 = false)
     {
         ArgumentNullException.ThrowIfNull(settings);
         switch (result)
@@ -41,6 +47,13 @@ public static class DispatchRetryPolicy
                 // 190, 131042, 132015: el problema es nuestro (token, pago, plantilla), no del destinatario. El trabajo
                 // vuelve a la cola y el despacho queda en pausa global hasta que una persona la levante (F0.12).
                 return new(DispatchStatus.Queued, null);
+            case SendAttemptStatus.Rejected when errorCode == EcosystemCode:
+                // 131049 (F1.7, docs/ARQUITECTURA.md "Errores"): +24 h mínimo, un intento más, solo si sigue vigente.
+                // https://developers.facebook.com/documentation/business-messaging/whatsapp/support/error-codes
+                var retry = nowUtc + EcosystemDelay;
+                return previous131049 || attempts >= settings.MaxAttempts ? new(DispatchStatus.Failed, null)
+                    : retry < expiresUtc ? new(DispatchStatus.RetryScheduled, retry)
+                    : new(DispatchStatus.Expired, null);
             case SendAttemptStatus.Rejected when IsTransient(errorCode) && attempts < settings.MaxAttempts:
                 var next = nowUtc + Backoff(attempts, settings, jitter);
                 return next < expiresUtc

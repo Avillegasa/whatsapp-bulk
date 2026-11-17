@@ -52,6 +52,10 @@ public static class MessagingServiceCollectionExtensions
                 "Dispatcher:LeaseSeconds debe ser al menos el doble de Meta:RequestTimeoutSeconds (el lease no puede vencer durante un POST)")
             .Validate(o => o.MessagesPerSecond is >= 1 and <= 80 && o.RateBurst is >= 1 and <= 80,
                 "Dispatcher:MessagesPerSecond y RateBurst deben estar entre 1 y 80 (techo de Meta por número)")
+            .Validate(o => o.FatigueStreak >= 1 && o.FatiguePauseDays >= 1 && o.FatigueConsecutive131049 >= 1,
+                "Dispatcher: valores de fatiga fuera de rango")
+            .Validate(o => o.FailureWindow >= 1 && o.FailureMinSample >= 1 && o.FailureThresholdPercent is > 0 and < 100,
+                "Dispatcher: valores del freno por tasa de fallos fuera de rango")
             .Validate(o => TryWindow(o), "Dispatcher:AllowedFrom/AllowedUntil (HH:mm) o TimeZone (IANA, ej. America/La_Paz) inválidos")
             .ValidateOnStart();
         services.AddOptions<FrequencyOptions>()

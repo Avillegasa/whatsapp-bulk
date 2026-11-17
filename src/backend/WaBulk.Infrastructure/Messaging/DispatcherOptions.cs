@@ -1,3 +1,4 @@
+using WaBulk.Domain.Consent;
 using WaBulk.Domain.Messaging;
 
 namespace WaBulk.Infrastructure.Messaging;
@@ -60,6 +61,17 @@ public sealed class DispatcherOptions
 
     /// <summary>Porcentaje de fallos que pausa todo (docs/ARQUITECTURA.md: 5 %).</summary>
     public int FailureThresholdPercent { get; set; } = 5;
+
+    /// <summary>Fatiga (F1.7, D-012): promociones seguidas sin interacción que pausan al contacto.</summary>
+    public int FatigueStreak { get; set; } = 3;
+
+    /// <summary>Días de pausa por fatiga.</summary>
+    public int FatiguePauseDays { get; set; } = 60;
+
+    /// <summary>131049 seguidos que pausan al contacto.</summary>
+    public int FatigueConsecutive131049 { get; set; } = 2;
+
+    public FatigueSettings Fatigue => new(FatigueStreak, FatiguePauseDays, FatigueConsecutive131049);
 
     public SendingWindow Window => SendingWindow.Parse(AllowedFrom, AllowedUntil, TimeZone);
 

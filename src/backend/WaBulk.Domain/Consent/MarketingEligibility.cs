@@ -22,6 +22,12 @@ public static class SkipReasons
 
     /// <summary>F1.7 (D-031): el contacto ya recibió el máximo de promociones de los últimos 7 días.</summary>
     public const string LimiteFrecuencia = "LimiteFrecuencia";
+
+    /// <summary>F1.7 (D-012): pausa de promociones por fatiga (3 sin interacción o dos 131049 seguidos).</summary>
+    public const string Fatiga = "Fatiga";
+
+    /// <summary>F1.7 (D-012): después de la pausa, la siguiente tampoco tuvo interacción: excluido de promociones.</summary>
+    public const string FatigaExcluido = "FatigaExcluido";
 }
 
 public sealed record EligibilityResult(bool Eligible, string? SkipReason)
