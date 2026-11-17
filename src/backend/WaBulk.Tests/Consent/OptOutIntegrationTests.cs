@@ -30,7 +30,6 @@ public sealed class OptOutIntegrationTests(SqlServerTestDatabase database)
 
     private readonly ManualClock _clock = new(Start);
     private int _wamidCounter;
-    private long _campaignVersion;
 
     public Task InitializeAsync() => database.ResetAsync();
 
@@ -162,7 +161,7 @@ public sealed class OptOutIntegrationTests(SqlServerTestDatabase database)
     {
         await using var db = database.CreateContext();
         return await new EnqueueService(db, new ConsentService(db, _clock)).EnqueueAsync(
-            new EnqueueRequest(++_campaignVersion, await TestServices.ContactIdAsync(db, Phone), Phone, Start, Start.AddDays(1)), CancellationToken.None);
+            new EnqueueRequest(await TestServices.CampaignVersionAsync(db), await TestServices.ContactIdAsync(db, Phone), Phone, Start, Start.AddDays(1)), CancellationToken.None);
     }
 
     private async Task ProcessInboxAsync(params string[] bodies)
@@ -188,7 +187,7 @@ public sealed class OptOutIntegrationTests(SqlServerTestDatabase database)
     {
         await using var db = database.CreateContext();
         var options = Options.Create(new DispatcherOptions { WorkerId = "W", LeaseSeconds = 120 });
-        var dispatcher = new Dispatcher(db, new DispatchQueue(db), new ConsentService(db, _clock), TestCapacity.Unlimited(db), new AlertService(db, _clock, NullLogger<AlertService>.Instance),
+        var dispatcher = new Dispatcher(db, new DispatchQueue(db), new ConsentService(db, _clock), TestCapacity.Unlimited(db), new AlertService(db, _clock, NullLogger<AlertService>.Instance), TestServices.Lifecycle(db),
             MetaWhatsAppClientTests.CreateClient(handler), options, new DispatcherIdentity(options), _clock,
             NullLogger<Dispatcher>.Instance);
         return await dispatcher.RunOnceAsync(CancellationToken.None);

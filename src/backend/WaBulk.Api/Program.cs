@@ -1,7 +1,9 @@
 using WaBulk.Api.Auth;
+using WaBulk.Api.Campaigns;
 using WaBulk.Api.Contacts;
 using WaBulk.Api.Templates;
 using WaBulk.Api.Users;
+using WaBulk.Infrastructure.Campaigns;
 using WaBulk.Infrastructure.Contacts;
 using WaBulk.Infrastructure.Meta;
 using WaBulk.Infrastructure.Persistence;
@@ -24,6 +26,8 @@ builder.Services.AddMetaWhatsApp(builder.Configuration);
 builder.Services.AddContacts(builder.Configuration);
 // F1.5: plantillas (lista, sincronización con Meta y creación).
 builder.Services.AddTemplates(builder.Configuration);
+// F1.6: campañas versionadas y aprobación (los trabajos se crean al aprobar; los envía el Worker).
+builder.Services.AddCampaigns(builder.Configuration);
 
 var app = builder.Build();
 
@@ -44,7 +48,8 @@ app.MapGroup("/api")
     .MapAuthEndpoints()
     .MapUsersEndpoints()
     .MapContactsEndpoints()
-    .MapTemplatesEndpoints();
+    .MapTemplatesEndpoints()
+    .MapCampaignsEndpoints();
 
 await app.RunAsync();
 return 0;

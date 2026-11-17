@@ -49,10 +49,10 @@ public sealed class PersistenceModelTests
 
         // F0.4 + F0.10 (ConsentRecord, PlatformPreference) + F0.11 (CapacityReservation) + F0.12 (Alert, DispatchPause)
         // + F1.2 (tablas AspNet* de Identity) + F1.3 (AuditLog) + F1.4 (Contact, InboundMessage, ConsentOffer, Segment, SegmentMember)
-        // + F1.5 (Template).
+        // + F1.5 (Template) + F1.6 (Campaign, CampaignVersion).
         Assert.Equal<string>(
             ["Alert", "AspNetRoleClaims", "AspNetRoles", "AspNetUserClaims", "AspNetUserLogins", "AspNetUserRoles",
-             "AspNetUsers", "AspNetUserTokens", "AuditLog", "CapacityReservation", "ConsentOffer", "ConsentRecord", "Contact",
+             "AspNetUsers", "AspNetUserTokens", "AuditLog", "Campaign", "CampaignVersion", "CapacityReservation", "ConsentOffer", "ConsentRecord", "Contact",
              "DispatchJob", "DispatchPause", "InboundMessage", "MessageEvent", "PlatformPreference", "Segment", "SegmentMember",
              "SendAttempt", "Template", "WebhookInbox"],
             tables);

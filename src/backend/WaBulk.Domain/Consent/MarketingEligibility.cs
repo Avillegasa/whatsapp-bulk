@@ -10,6 +10,15 @@ public static class SkipReasons
     public const string BajaEmpresa = "BajaEmpresa";
     public const string NoContactar = "NoContactar";
     public const string BajaPlataforma = "BajaPlataforma";
+
+    // F1.6: campañas.
+    public const string SinCampania = "SinCampania";
+    public const string CampanaCancelada = "CampanaCancelada";
+    public const string VersionReemplazada = "VersionReemplazada";
+    public const string ContactoInactivo = "ContactoInactivo";
+
+    /// <summary>Ya tiene un envío de una versión anterior de la misma campaña: no se le manda dos veces.</summary>
+    public const string YaEnviado = "YaEnviado";
 }
 
 public sealed record EligibilityResult(bool Eligible, string? SkipReason)

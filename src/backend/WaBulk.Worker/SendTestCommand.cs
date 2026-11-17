@@ -15,13 +15,12 @@ namespace WaBulk.Worker;
 ///      [--param nombre=Andrés --param promocion=…]
 /// F1.5: la plantilla se toma de la tabla Template (sincronizada con Meta): debe estar APPROVED y los --param deben
 /// coincidir con los parámetros de su cuerpo; se envían como components.
-/// Usa un DispatchJob de prueba con CampaignVersionId = 0 (no existe campaña 0) y el Contact del número (se crea si no
+/// Usa un DispatchJob de prueba sin campaña (CampaignVersionId NULL, F1.6) y el Contact del número (se crea si no
 /// existe, F1.4), reutilizado en cada ejecución; cada ejecución crea un SendAttempt nuevo.
 /// </summary>
 public static partial class SendTestCommand
 {
     public const string Name = "send-test";
-    private const long TestCampaignVersionId = 0;
 
     public static async Task<int> RunAsync(IServiceProvider services, string[] args, CancellationToken cancellationToken)
     {
@@ -57,12 +56,12 @@ public static partial class SendTestCommand
         var now = DateTime.UtcNow;
 
         var job = await db.DispatchJobs.SingleOrDefaultAsync(
-            j => j.CampaignVersionId == TestCampaignVersionId && j.ContactId == contactId, cancellationToken);
+            j => j.CampaignVersionId == null && j.ContactId == contactId, cancellationToken);
         if (job is null)
         {
             job = new DispatchJob
             {
-                CampaignVersionId = TestCampaignVersionId,
+                CampaignVersionId = null,
                 ContactId = contactId,
                 PhoneE164 = phone,
                 ScheduledUtc = now,

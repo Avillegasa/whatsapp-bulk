@@ -4,6 +4,7 @@ using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Options;
 using WaBulk.Infrastructure.Alerts;
 using WaBulk.Infrastructure.Capacity;
+using WaBulk.Infrastructure.Campaigns;
 using WaBulk.Infrastructure.Consent;
 using WaBulk.Infrastructure.Contacts;
 using WaBulk.Infrastructure.Meta;
@@ -62,6 +63,7 @@ public static class MessagingServiceCollectionExtensions
             .ValidateOnStart();
         services.AddScoped<CapacityService>();
         services.TryAddScoped<AlertService>();
+        services.AddCampaigns(configuration); // F1.6: ciclo de vida de las campañas en cada vuelta.
         return services;
     }
 }

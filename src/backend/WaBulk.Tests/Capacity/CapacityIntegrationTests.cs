@@ -26,7 +26,6 @@ public sealed class CapacityIntegrationTests(SqlServerTestDatabase database)
 {
     private static readonly DateTime Start = new(2026, 11, 17, 12, 0, 0, DateTimeKind.Utc);
     private readonly ManualClock _clock = new(Start);
-    private long _campaignVersion;
 
     public Task InitializeAsync() => database.ResetAsync();
 
@@ -78,7 +77,7 @@ public sealed class CapacityIntegrationTests(SqlServerTestDatabase database)
             }
 
             var job = await new EnqueueService(db, new ConsentService(db, _clock)).EnqueueAsync(
-                new EnqueueRequest(Interlocked.Increment(ref _campaignVersion), await TestServices.ContactIdAsync(db, phone), phone, Start, Start.AddDays(3)), CancellationToken.None);
+                new EnqueueRequest(await TestServices.CampaignVersionAsync(db), await TestServices.ContactIdAsync(db, phone), phone, Start, Start.AddDays(3)), CancellationToken.None);
             ids.Add(job.Id);
         }
 
@@ -89,7 +88,7 @@ public sealed class CapacityIntegrationTests(SqlServerTestDatabase database)
     {
         await using var db = database.CreateContext();
         var options = Options.Create(new DispatcherOptions { WorkerId = owner, BatchSize = batch, LeaseSeconds = 120 });
-        var dispatcher = new Dispatcher(db, new DispatchQueue(db), new ConsentService(db, _clock), TestCapacity.With(db, budget), new AlertService(db, _clock, NullLogger<AlertService>.Instance),
+        var dispatcher = new Dispatcher(db, new DispatchQueue(db), new ConsentService(db, _clock), TestCapacity.With(db, budget), new AlertService(db, _clock, NullLogger<AlertService>.Instance), TestServices.Lifecycle(db),
             MetaWhatsAppClientTests.CreateClient(handler, httpTimeout), options, new DispatcherIdentity(options), _clock,
             NullLogger<Dispatcher>.Instance);
         return await dispatcher.RunOnceAsync(CancellationToken.None);

@@ -23,7 +23,7 @@ public sealed partial class DispatcherWorker(
             return;
         }
 
-        LogStarted(logger, identity.Owner, options.Value.PollSeconds, options.Value.TemplateName);
+        LogStarted(logger, identity.Owner, options.Value.PollSeconds);
         var poll = TimeSpan.FromSeconds(options.Value.PollSeconds);
         var pausedLogged = false;
 
@@ -75,8 +75,8 @@ public sealed partial class DispatcherWorker(
     [LoggerMessage(Level = LogLevel.Information, Message = "Despachador apagado (Dispatcher:Enabled = false)")]
     private static partial void LogDisabled(ILogger logger);
 
-    [LoggerMessage(Level = LogLevel.Information, Message = "Despachador {Owner} iniciado (cada {PollSeconds} s, plantilla {Template})")]
-    private static partial void LogStarted(ILogger logger, string owner, int pollSeconds, string template);
+    [LoggerMessage(Level = LogLevel.Information, Message = "Despachador {Owner} iniciado (cada {PollSeconds} s; plantilla y parámetros de cada versión de campaña)")]
+    private static partial void LogStarted(ILogger logger, string owner, int pollSeconds);
 
     [LoggerMessage(Level = LogLevel.Information,
         Message = "Vuelta: recuperados={Recovered} vencidos={Expired} reclamados={Claimed} enviados={Sent} omitidos={Skipped} sin capacidad={NoCapacity} sin lease={LeaseLost}")]

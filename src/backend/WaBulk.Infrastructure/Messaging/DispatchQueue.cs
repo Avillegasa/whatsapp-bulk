@@ -23,6 +23,8 @@ public enum BeginOutcome
     Skipped,
     /// <summary>Sin capacidad del portafolio (F0.11): el trabajo se reprograma sin POST y sin sumar intento.</summary>
     NoCapacity,
+    /// <summary>La campaña no está enviando (en pausa): el trabajo queda OnHold sin POST (F1.6).</summary>
+    Held,
 }
 
 public sealed record RecoveredJob(long JobId, DispatchStatus Status);
@@ -109,7 +111,7 @@ public sealed class DispatchQueue(WaBulkDbContext db)
     private const string ExpireSql = """
         UPDATE DispatchJob
         SET EstadoDespacho = 'Expired'
-        WHERE EstadoDespacho IN ('Queued', 'RetryScheduled') AND ExpiraUtc <= @now;
+        WHERE EstadoDespacho IN ('Queued', 'RetryScheduled', 'OnHold') AND ExpiraUtc <= @now;
         """;
 
     /// <summary>Reclama hasta <paramref name="batchSize"/> trabajos listos en una sola sentencia (transacción corta).</summary>
@@ -131,7 +133,10 @@ public sealed class DispatchQueue(WaBulkDbContext db)
             cancellationToken,
             ("@now", nowUtc, DbType.DateTime2));
 
-    /// <summary>Marca Expired los trabajos en cola cuyo ExpiraUtc ya pasó (nunca se envían ni reintentan después).</summary>
+    /// <summary>
+    /// Marca Expired los trabajos en cola o en espera (campaña en pausa, F1.6) cuyo ExpiraUtc ya pasó: nunca se envían ni
+    /// reintentan después (regla 9).
+    /// </summary>
     public Task<int> ExpireOverdueAsync(DateTime nowUtc, CancellationToken cancellationToken) =>
         db.Database.ExecuteSqlRawAsync(ExpireSql, [Parameter("@now", nowUtc, DbType.DateTime2)], cancellationToken);
 
@@ -197,6 +202,15 @@ public sealed class DispatchQueue(WaBulkDbContext db)
             .ExecuteUpdateAsync(s => s
                 .SetProperty(j => j.DispatchStatus, DispatchStatus.RetryScheduled)
                 .SetProperty(j => j.NextAttemptUtc, nextAttemptUtc)
+                .SetProperty(j => j.LockedBy, (string?)null)
+                .SetProperty(j => j.LeaseUntilUtc, (DateTime?)null), cancellationToken) == 1;
+
+    /// <summary>Deja OnHold un trabajo reclamado por este worker cuya campaña está en pausa (F1.6). Sin POST ni intento.</summary>
+    public async Task<bool> HoldAsync(long jobId, string owner, CancellationToken cancellationToken) =>
+        await db.DispatchJobs
+            .Where(j => j.Id == jobId && j.LockedBy == owner && j.DispatchStatus == DispatchStatus.Claimed)
+            .ExecuteUpdateAsync(s => s
+                .SetProperty(j => j.DispatchStatus, DispatchStatus.OnHold)
                 .SetProperty(j => j.LockedBy, (string?)null)
                 .SetProperty(j => j.LeaseUntilUtc, (DateTime?)null), cancellationToken) == 1;
 

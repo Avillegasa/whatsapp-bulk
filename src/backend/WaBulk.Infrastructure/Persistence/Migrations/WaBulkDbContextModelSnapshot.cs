@@ -353,6 +353,191 @@ namespace WaBulk.Infrastructure.Persistence.Migrations
                     b.ToTable("AuditLog", (string)null);
                 });
 
+            modelBuilder.Entity("WaBulk.Domain.Campaigns.Campaign", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
+
+                    b.Property<DateTime?>("CompletedUtc")
+                        .HasColumnType("datetime2")
+                        .HasColumnName("DespachoCompletoUtc");
+
+                    b.Property<string>("CreatedBy")
+                        .IsRequired()
+                        .HasMaxLength(256)
+                        .HasColumnType("nvarchar(256)")
+                        .HasColumnName("CreadaPor");
+
+                    b.Property<DateTime>("CreatedUtc")
+                        .HasColumnType("datetime2")
+                        .HasColumnName("CreadaUtc");
+
+                    b.Property<long?>("CurrentVersionId")
+                        .HasColumnType("bigint")
+                        .HasColumnName("VersionActualId");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)")
+                        .HasColumnName("Nombre");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(20)")
+                        .HasColumnName("Estado");
+
+                    b.Property<string>("StatusReason")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)")
+                        .HasColumnName("MotivoEstado");
+
+                    b.Property<DateTime>("StatusUtc")
+                        .HasColumnType("datetime2")
+                        .HasColumnName("EstadoUtc");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Status");
+
+                    b.ToTable("Campaign", (string)null);
+                });
+
+            modelBuilder.Entity("WaBulk.Domain.Campaigns.CampaignVersion", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
+
+                    b.Property<string>("ApprovedBy")
+                        .HasMaxLength(256)
+                        .HasColumnType("nvarchar(256)")
+                        .HasColumnName("AprobadaPor");
+
+                    b.Property<DateTime?>("ApprovedUtc")
+                        .HasColumnType("datetime2")
+                        .HasColumnName("AprobadaUtc");
+
+                    b.Property<string>("Audience")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)")
+                        .HasColumnName("Audiencia");
+
+                    b.Property<int>("AudienceCount")
+                        .HasColumnType("int")
+                        .HasColumnName("Destinatarios");
+
+                    b.Property<long>("CampaignId")
+                        .HasColumnType("bigint");
+
+                    b.Property<string>("Category")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(30)")
+                        .HasColumnName("Categoria");
+
+                    b.Property<string>("CreatedBy")
+                        .IsRequired()
+                        .HasMaxLength(256)
+                        .HasColumnType("nvarchar(256)")
+                        .HasColumnName("CreadaPor");
+
+                    b.Property<DateTime>("CreatedUtc")
+                        .HasColumnType("datetime2")
+                        .HasColumnName("CreadaUtc");
+
+                    b.Property<int>("ExcludedCount")
+                        .HasColumnType("int")
+                        .HasColumnName("Excluidos");
+
+                    b.Property<DateTime>("ExpiresUtc")
+                        .HasColumnType("datetime2")
+                        .HasColumnName("ExpiraUtc");
+
+                    b.Property<string>("Hash")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(64)");
+
+                    b.Property<string>("Language")
+                        .IsRequired()
+                        .HasMaxLength(15)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(15)")
+                        .HasColumnName("Idioma");
+
+                    b.Property<int>("Number")
+                        .HasColumnType("int")
+                        .HasColumnName("Numero");
+
+                    b.Property<string>("ParameterFormat")
+                        .IsRequired()
+                        .HasMaxLength(15)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(15)")
+                        .HasColumnName("FormatoParametros");
+
+                    b.Property<string>("Parameters")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)")
+                        .HasColumnName("Parametros");
+
+                    b.Property<string>("RejectedBy")
+                        .HasMaxLength(256)
+                        .HasColumnType("nvarchar(256)")
+                        .HasColumnName("RechazadaPor");
+
+                    b.Property<DateTime?>("RejectedUtc")
+                        .HasColumnType("datetime2")
+                        .HasColumnName("RechazadaUtc");
+
+                    b.Property<string>("RejectionReason")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)")
+                        .HasColumnName("MotivoRechazo");
+
+                    b.Property<DateTime>("ScheduledUtc")
+                        .HasColumnType("datetime2")
+                        .HasColumnName("ProgramadaUtc");
+
+                    b.Property<long?>("SegmentId")
+                        .HasColumnType("bigint");
+
+                    b.Property<DateTime?>("SubmittedUtc")
+                        .HasColumnType("datetime2")
+                        .HasColumnName("EnviadaAprobacionUtc");
+
+                    b.Property<long>("TemplateId")
+                        .HasColumnType("bigint");
+
+                    b.Property<string>("TemplateName")
+                        .IsRequired()
+                        .HasMaxLength(512)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(512)")
+                        .HasColumnName("NombrePlantilla");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("SegmentId");
+
+                    b.HasIndex("TemplateId");
+
+                    b.HasIndex("CampaignId", "Number")
+                        .IsUnique();
+
+                    b.ToTable("CampaignVersion", (string)null);
+                });
+
             modelBuilder.Entity("WaBulk.Domain.Capacity.CapacityReservation", b =>
                 {
                     b.Property<long>("Id")
@@ -830,7 +1015,7 @@ namespace WaBulk.Infrastructure.Persistence.Migrations
                         .HasColumnType("int")
                         .HasColumnName("Intentos");
 
-                    b.Property<long>("CampaignVersionId")
+                    b.Property<long?>("CampaignVersionId")
                         .HasColumnType("bigint");
 
                     b.Property<long>("ContactId")
@@ -887,7 +1072,8 @@ namespace WaBulk.Infrastructure.Persistence.Migrations
                     b.HasIndex("ContactId");
 
                     b.HasIndex("CampaignVersionId", "ContactId")
-                        .IsUnique();
+                        .IsUnique()
+                        .HasFilter("[CampaignVersionId] IS NOT NULL");
 
                     b.HasIndex(new[] { "LeaseUntilUtc" }, "IX_DispatchJob_Lease")
                         .HasFilter("[EstadoDespacho] = 'Claimed'");
@@ -1295,6 +1481,26 @@ namespace WaBulk.Infrastructure.Persistence.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("WaBulk.Domain.Campaigns.CampaignVersion", b =>
+                {
+                    b.HasOne("WaBulk.Domain.Campaigns.Campaign", null)
+                        .WithMany()
+                        .HasForeignKey("CampaignId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("WaBulk.Domain.Contacts.Segment", null)
+                        .WithMany()
+                        .HasForeignKey("SegmentId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("WaBulk.Domain.Templates.Template", null)
+                        .WithMany()
+                        .HasForeignKey("TemplateId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("WaBulk.Domain.Consent.ConsentRecord", b =>
                 {
                     b.HasOne("WaBulk.Domain.Contacts.Contact", null)
@@ -1344,6 +1550,11 @@ namespace WaBulk.Infrastructure.Persistence.Migrations
 
             modelBuilder.Entity("WaBulk.Domain.Messaging.DispatchJob", b =>
                 {
+                    b.HasOne("WaBulk.Domain.Campaigns.CampaignVersion", null)
+                        .WithMany()
+                        .HasForeignKey("CampaignVersionId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
                     b.HasOne("WaBulk.Domain.Contacts.Contact", null)
                         .WithMany()
                         .HasForeignKey("ContactId")

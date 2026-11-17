@@ -4,10 +4,11 @@ namespace WaBulk.Domain.Messaging;
 public class DispatchJob
 {
     public long Id { get; set; }
-    public long CampaignVersionId { get; set; }
+    /// <summary>Versión de campaña (FK, F1.6). NULL solo en los trabajos de send-test, que nunca pasan por la cola.</summary>
+    public long? CampaignVersionId { get; set; }
     public long ContactId { get; set; }
     public required string PhoneE164 { get; set; }
-    /// <summary>Parámetros de la plantilla en JSON.</summary>
+    /// <summary>Valores de los parámetros para este contacto: JSON [{"Name":"nombre","Value":"Ana"}…] en el orden del cuerpo.</summary>
     public string? Parameters { get; set; }
     public int Priority { get; set; }
     public DateTime ScheduledUtc { get; set; }

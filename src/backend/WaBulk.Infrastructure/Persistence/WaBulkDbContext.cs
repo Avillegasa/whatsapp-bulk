@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 using WaBulk.Domain.Alerts;
 using WaBulk.Domain.Audit;
+using WaBulk.Domain.Campaigns;
 using WaBulk.Domain.Capacity;
 using WaBulk.Domain.Consent;
 using WaBulk.Domain.Contacts;
@@ -33,6 +34,8 @@ public class WaBulkDbContext(DbContextOptions<WaBulkDbContext> options) : Identi
     public DbSet<Segment> Segments => Set<Segment>();
     public DbSet<SegmentMember> SegmentMembers => Set<SegmentMember>();
     public DbSet<Template> Templates => Set<Template>();
+    public DbSet<Campaign> Campaigns => Set<Campaign>();
+    public DbSet<CampaignVersion> CampaignVersions => Set<CampaignVersion>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
+using WaBulk.Domain.Campaigns;
 using WaBulk.Domain.Messaging;
 
 namespace WaBulk.Infrastructure.Persistence.Configurations;
@@ -11,7 +12,9 @@ internal sealed class DispatchJobConfiguration : IEntityTypeConfiguration<Dispat
         builder.ToTable("DispatchJob");
         builder.HasKey(x => x.Id);
 
-        // ContactId tiene FK a Contact (F1.4, Contacts/ContactConfiguration.cs); CampaignVersionId, cuando exista CampaignVersion (F1.6).
+        // ContactId tiene FK a Contact (F1.4, Contacts/ContactConfiguration.cs). CampaignVersionId tiene FK a CampaignVersion
+        // (F1.6); es NULL solo en los trabajos de send-test.
+        builder.HasOne<CampaignVersion>().WithMany().HasForeignKey(x => x.CampaignVersionId).OnDelete(DeleteBehavior.Restrict);
         builder.Property(x => x.PhoneE164).HasMaxLength(16).IsUnicode(false);
         builder.Property(x => x.Parameters).HasColumnName("Parametros");
         builder.Property(x => x.Priority).HasColumnName("Prioridad");
@@ -24,8 +27,8 @@ internal sealed class DispatchJobConfiguration : IEntityTypeConfiguration<Dispat
         builder.Property(x => x.LockedBy).HasMaxLength(100);
         builder.Property(x => x.SkipReason).HasColumnName("MotivoOmision").HasMaxLength(40).IsUnicode(false);
 
-        // Un destinatario por versión de campaña.
-        builder.HasIndex(x => new { x.CampaignVersionId, x.ContactId }).IsUnique();
+        // Un destinatario por versión de campaña. Regla 11: CampaignVersionId admite NULL (send-test), índice filtrado.
+        builder.HasIndex(x => new { x.CampaignVersionId, x.ContactId }).IsUnique().HasFilter("[CampaignVersionId] IS NOT NULL");
 
         // Reclamo (F0.9): en el mismo orden que el ORDER BY del reclamo, para que TOP (n) se detenga en n filas.
         // Sin este orden, SQL Server lee y ordena todos los candidatos con UPDLOCK y los deja bloqueados hasta el fin

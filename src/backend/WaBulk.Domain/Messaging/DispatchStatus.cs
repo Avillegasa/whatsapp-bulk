@@ -11,4 +11,10 @@ public enum DispatchStatus
     Failed,
     Skipped,
     Expired,
+
+    /// <summary>
+    /// F1.6: campaña en pausa. Fuera del filtro del reclamo (Queued/RetryScheduled), así el despachador no lo vuelve a
+    /// tomar en cada vuelta; al reanudar vuelve a Queued (o RetryScheduled si tenía ProximoIntentoUtc).
+    /// </summary>
+    OnHold,
 }

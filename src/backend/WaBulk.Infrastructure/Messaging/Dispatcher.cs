@@ -3,10 +3,12 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using WaBulk.Domain.Alerts;
+using WaBulk.Domain.Campaigns;
 using WaBulk.Domain.Capacity;
 using WaBulk.Domain.Consent;
 using WaBulk.Domain.Messaging;
 using WaBulk.Infrastructure.Alerts;
+using WaBulk.Infrastructure.Campaigns;
 using WaBulk.Infrastructure.Capacity;
 using WaBulk.Infrastructure.Consent;
 using WaBulk.Infrastructure.Meta;
@@ -16,7 +18,7 @@ namespace WaBulk.Infrastructure.Messaging;
 
 /// <summary>Resumen de una vuelta del despachador.</summary>
 public sealed record DispatchRound(
-    int Recovered, int Expired, int Claimed, int Sent, int LeaseLost, int Skipped, int NoCapacity = 0, bool Paused = false);
+    int Recovered, int Expired, int Claimed, int Sent, int LeaseLost, int Skipped, int NoCapacity = 0, bool Paused = false, int Held = 0);
 
 /// <summary>
 /// Despachador (F0.9). Una vuelta: recupera leases vencidos → marca vencidos → reclama un lote →
@@ -26,7 +28,10 @@ public sealed record DispatchRound(
 /// Después reserva capacidad del portafolio (F0.11): sin lugar, el trabajo se pospone (RetryScheduled, sin sumar intento)
 /// y la vuelta sigue con el resto del lote, porque un trabajo a un número ya contado no necesita lugar nuevo.
 /// Freno de emergencia (F0.12): con una pausa global activa no reclama; si un envío recibe 190, 131042 o 132015,
-/// alerta, pausa y devuelve a la cola lo que quedaba del lote. Las revalidaciones de campaña y fatiga llegan en la Fase 1.
+/// alerta, pausa y devuelve a la cola lo que quedaba del lote.
+/// Campañas (F1.6): al inicio de cada vuelta avanza el ciclo de vida de las campañas; antes de cada envío revisa la
+/// campaña del trabajo (cancelada o versión reemplazada → Skipped; en pausa → OnHold) y toma la plantilla y los
+/// parámetros de la versión. Revalidaciones de plantilla APPROVED, fatiga y horario: F1.7.
 /// </summary>
 public sealed partial class Dispatcher(
     WaBulkDbContext db,
@@ -34,6 +39,7 @@ public sealed partial class Dispatcher(
     ConsentService consent,
     CapacityService capacity,
     AlertService alerts,
+    CampaignLifecycle lifecycle,
     MetaWhatsAppClient meta,
     IOptions<DispatcherOptions> options,
     DispatcherIdentity identity,
@@ -53,6 +59,7 @@ public sealed partial class Dispatcher(
         }
 
         var expired = await queue.ExpireOverdueAsync(Now, cancellationToken);
+        await lifecycle.AdvanceAsync(Now, cancellationToken);
 
         if (await alerts.IsPausedAsync(cancellationToken))
         {
@@ -61,7 +68,7 @@ public sealed partial class Dispatcher(
 
         var ids = await queue.ClaimBatchAsync(Owner, Options.BatchSize, Now, Options.Lease, cancellationToken);
 
-        int sent = 0, lost = 0, skipped = 0, noCapacity = 0;
+        int sent = 0, lost = 0, skipped = 0, noCapacity = 0, held = 0;
         var paused = false;
         for (var i = 0; i < ids.Count; i++)
         {
@@ -89,6 +96,7 @@ public sealed partial class Dispatcher(
                 case BeginOutcome.LeaseLost: lost++; break;
                 case BeginOutcome.Skipped: skipped++; break;
                 case BeginOutcome.NoCapacity: noCapacity++; break;
+                case BeginOutcome.Held: held++; break;
             }
         }
 
@@ -97,13 +105,44 @@ public sealed partial class Dispatcher(
             LogNoCapacity(logger, noCapacity, Options.NoCapacityRetryMinutes);
         }
 
-        return new DispatchRound(recovered.Count, expired, ids.Count, sent, lost, skipped, noCapacity, paused);
+        return new DispatchRound(recovered.Count, expired, ids.Count, sent, lost, skipped, noCapacity, paused, held);
     }
 
     /// <summary>Procesa un trabajo ya reclamado por este despachador.</summary>
     public async Task<BeginOutcome> ProcessJobAsync(long jobId, CancellationToken cancellationToken)
     {
         var job = await db.DispatchJobs.AsNoTracking().SingleAsync(j => j.Id == jobId, cancellationToken);
+
+        // Campaña del trabajo (F1.6): una cancelación, una versión nueva o una pausa que llegó después de encolar gana.
+        var campaign = await (from v in db.CampaignVersions.AsNoTracking()
+                              join c in db.Campaigns.AsNoTracking() on v.CampaignId equals c.Id
+                              where v.Id == job.CampaignVersionId
+                              select new { Version = v, c.Status, c.CurrentVersionId }).SingleOrDefaultAsync(cancellationToken);
+        var campaignSkip = campaign switch
+        {
+            null => SkipReasons.SinCampania,
+            { Status: CampaignStatus.Cancelled } => SkipReasons.CampanaCancelada,
+            _ when campaign.CurrentVersionId != campaign.Version.Id => SkipReasons.VersionReemplazada,
+            _ => null,
+        };
+        if (campaignSkip is not null)
+        {
+            var skippedByCampaign = await queue.SkipAsync(job.Id, Owner, campaignSkip, cancellationToken);
+            LogSkipped(logger, job.Id, campaignSkip);
+            return skippedByCampaign ? BeginOutcome.Skipped : BeginOutcome.LeaseLost;
+        }
+
+        if (!CampaignRules.IsSending(campaign!.Status))
+        {
+            var held = await queue.HoldAsync(job.Id, Owner, cancellationToken);
+            LogHeld(logger, job.Id, campaign.Status);
+            return held ? BeginOutcome.Held : BeginOutcome.LeaseLost;
+        }
+
+        var version = campaign.Version;
+        var message = new TemplateMessage(version.TemplateName, version.Language,
+            [.. CampaignRules.DeserializeJobParameters(job.Parameters).Select(p => new TemplateParameter(p.Name, p.Value))],
+            !string.Equals(version.ParameterFormat, "POSITIONAL", StringComparison.OrdinalIgnoreCase));
 
         // Revisión de bajas al enviar: una baja que llegó después de encolar gana (regla 8).
         var eligibility = await consent.EvaluateAsync(job.PhoneE164, cancellationToken);
@@ -138,8 +177,7 @@ public sealed partial class Dispatcher(
         }
 
         // Desde aquí el POST pudo ocurrir: nada de lo que sigue se cancela (el resultado se guarda siempre).
-        var result = await meta.SendTemplateAsync(
-            job.PhoneE164, new TemplateMessage(Options.TemplateName, Options.TemplateLanguage), attempt.AttemptId, cancellationToken);
+        var result = await meta.SendTemplateAsync(job.PhoneE164, message, attempt.AttemptId, cancellationToken);
 
         var status = result.Status;
         if (status == SendAttemptStatus.SubmissionUnknown
@@ -168,7 +206,7 @@ public sealed partial class Dispatcher(
 
         if (status == SendAttemptStatus.Rejected && EmergencyBrake.ForErrorCode(result.ErrorCode) is { } alertType)
         {
-            var key = alertType == AlertType.PlantillaPausada ? $"{Options.TemplateName}:{Options.TemplateLanguage}" : "global";
+            var key = alertType == AlertType.PlantillaPausada ? $"{version.TemplateName}:{version.Language}" : "global";
             await alerts.RaiseAsync(alertType, key, $"Error {result.ErrorCode} al enviar el trabajo {job.Id}", result.Detail,
                 "Despachador", CancellationToken.None);
         }
@@ -200,6 +238,9 @@ public sealed partial class Dispatcher(
 
     [LoggerMessage(Level = LogLevel.Information, Message = "Trabajo {JobId} omitido sin POST: {Reason}")]
     private static partial void LogSkipped(ILogger logger, long jobId, string? reason);
+
+    [LoggerMessage(Level = LogLevel.Information, Message = "Trabajo {JobId} en espera: su campaña está {Status}")]
+    private static partial void LogHeld(ILogger logger, long jobId, CampaignStatus status);
 
     [LoggerMessage(Level = LogLevel.Information, Message = "Trabajo {JobId} no enviado: {Outcome}")]
     private static partial void LogNotStarted(ILogger logger, long jobId, BeginOutcome outcome);

@@ -48,4 +48,14 @@ public static class AuditActions
     // F1.5: plantillas.
     public const string CrearPlantilla = "CrearPlantilla";
     public const string SincronizarPlantillas = "SincronizarPlantillas";
+
+    // F1.6: campañas.
+    public const string CrearCampana = "CrearCampana";
+    public const string NuevaVersionCampana = "NuevaVersionCampana";
+    public const string EnviarAprobacionCampana = "EnviarAprobacionCampana";
+    public const string AprobarCampana = "AprobarCampana";
+    public const string RechazarCampana = "RechazarCampana";
+    public const string PausarCampana = "PausarCampana";
+    public const string ReanudarCampana = "ReanudarCampana";
+    public const string CancelarCampana = "CancelarCampana";
 }

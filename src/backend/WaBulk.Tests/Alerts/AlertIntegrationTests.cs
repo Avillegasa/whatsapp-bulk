@@ -47,7 +47,7 @@ public sealed class AlertIntegrationTests(SqlServerTestDatabase database)
             });
             await db.SaveChangesAsync();
             var job = await new EnqueueService(db, new ConsentService(db, _clock)).EnqueueAsync(
-                new EnqueueRequest(n + 1, await TestServices.ContactIdAsync(db, Phone(n)), Phone(n), Start, Start.AddDays(1)), CancellationToken.None);
+                new EnqueueRequest(await TestServices.CampaignVersionAsync(db), await TestServices.ContactIdAsync(db, Phone(n)), Phone(n), Start, Start.AddDays(1)), CancellationToken.None);
             ids.Add(job.Id);
         }
 
@@ -66,10 +66,10 @@ public sealed class AlertIntegrationTests(SqlServerTestDatabase database)
         await using var db = database.CreateContext();
         var options = Options.Create(new DispatcherOptions
         {
-            WorkerId = "W", LeaseSeconds = 120, TemplateName = "promo_prueba", TemplateLanguage = "es",
+            WorkerId = "W", LeaseSeconds = 120,
         });
         var dispatcher = new Dispatcher(db, new DispatchQueue(db), new ConsentService(db, _clock), TestCapacity.Unlimited(db),
-            new AlertService(db, _clock, NullLogger<AlertService>.Instance), MetaWhatsAppClientTests.CreateClient(handler),
+            new AlertService(db, _clock, NullLogger<AlertService>.Instance), TestServices.Lifecycle(db), MetaWhatsAppClientTests.CreateClient(handler),
             options, new DispatcherIdentity(options), _clock, NullLogger<Dispatcher>.Instance);
         return await dispatcher.RunOnceAsync(CancellationToken.None);
     }
