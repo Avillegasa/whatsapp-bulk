@@ -51,6 +51,20 @@ export const routes: Routes = [
         title: 'Plantillas · WhatsApp Bulk',
       },
       {
+        path: 'campanias',
+        canActivate: [rolGuard],
+        data: { roles: ['Operador'] },
+        loadComponent: () => import('./pages/campanias/campanias').then((m) => m.Campanias),
+        title: 'Campañas · WhatsApp Bulk',
+      },
+      {
+        path: 'aprobaciones',
+        canActivate: [rolGuard],
+        data: { roles: ['Aprobador'] },
+        loadComponent: () => import('./pages/aprobaciones/aprobaciones').then((m) => m.Aprobaciones),
+        title: 'Aprobaciones · WhatsApp Bulk',
+      },
+      {
         path: 'usuarios',
         canActivate: [rolGuard],
         data: { roles: ['Admin'] },

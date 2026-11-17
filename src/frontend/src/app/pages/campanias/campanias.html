@@ -1,0 +1,205 @@
+<h1>Campañas</h1>
+
+@if (aviso(); as a) {
+  <p class="aviso" [class.error]="a.tipo === 'error'" role="status">{{ a.texto }}</p>
+}
+
+<div class="barra">
+  <button type="button" class="principal" [disabled]="ocupado()" (click)="nueva()">Nueva campaña</button>
+  <button type="button" [disabled]="ocupado()" (click)="cargar()">Actualizar</button>
+</div>
+<p class="ayuda">
+  Cada cambio crea una versión nueva que otra persona con rol Aprobador debe aprobar. Al aprobarla, cada contacto de la
+  lista queda en la cola (los que no aceptan promociones quedan omitidos).
+</p>
+
+@if (editando() !== null) {
+  <section class="caja" aria-label="Campaña">
+    <h2>{{ editando() === 0 ? 'Nueva campaña' : 'Nueva versión' }}</h2>
+    <form class="formulario" (ngSubmit)="guardar()">
+      @if (editando() === 0) {
+        <label>
+          Nombre
+          <input name="nombre" [(ngModel)]="form.nombre" required maxlength="200" />
+        </label>
+      }
+      <label>
+        Plantilla (solo de marketing)
+        <select name="plantilla" [(ngModel)]="form.plantillaId" (ngModelChange)="form.plantillaId = $event; elegirPlantilla()" required>
+          <option [ngValue]="null" disabled>Elige una plantilla</option>
+          @for (p of opciones()?.plantillas ?? []; track p.id) {
+            <option [ngValue]="p.id">{{ p.nombre }} ({{ p.idioma }}){{ p.estado !== 'APPROVED' ? ' — ' + p.estado : '' }}</option>
+          }
+        </select>
+        @if (plantilla(); as p) {
+          @if (p.estado !== 'APPROVED') {
+            <span class="sec">Puedes preparar el borrador, pero solo se envía a aprobación cuando Meta la apruebe.</span>
+          }
+        }
+      </label>
+      <label>
+        Lista de contactos
+        <select name="lista" [(ngModel)]="form.listaId" required>
+          <option [ngValue]="null" disabled>Elige una lista</option>
+          @for (l of opciones()?.listas ?? []; track l.id) {
+            <option [ngValue]="l.id">{{ l.nombre }} ({{ l.miembros }})</option>
+          }
+        </select>
+      </label>
+      @for (p of form.parametros; track p.nombre) {
+        <fieldset class="parametro">
+          <legend>{{ '{{' }}{{ p.nombre }}{{ '}}' }}</legend>
+          <label>
+            <input type="radio" [name]="'fuente-' + p.nombre" value="Fijo" [(ngModel)]="p.fuente" /> Mismo texto para todos
+          </label>
+          <label>
+            <input type="radio" [name]="'fuente-' + p.nombre" value="NombreContacto" [(ngModel)]="p.fuente" /> Nombre del contacto
+          </label>
+          <input
+            [name]="'valor-' + p.nombre"
+            [(ngModel)]="p.valor"
+            required
+            maxlength="500"
+            [placeholder]="p.fuente === 'NombreContacto' ? 'Si no tiene nombre (ej.: cliente)' : 'Texto'"
+          />
+        </fieldset>
+      }
+      <label>
+        Enviar desde
+        <input type="datetime-local" name="programada" [(ngModel)]="form.programada" required />
+      </label>
+      <label>
+        Vence (lo que no salió antes no se envía)
+        <input type="datetime-local" name="expira" [(ngModel)]="form.expira" required />
+      </label>
+      <div class="barra">
+        <button type="submit" [disabled]="ocupado()">Guardar borrador</button>
+        <button type="button" (click)="editando.set(null)">Cancelar</button>
+      </div>
+    </form>
+  </section>
+}
+
+@if (campanias(); as cs) {
+  @if (cs.length === 0) {
+    <p>Todavía no hay campañas.</p>
+  } @else {
+    <div class="tabla">
+      <table>
+        <thead>
+          <tr>
+            <th>Campaña</th>
+            <th>Estado</th>
+            <th>Plantilla</th>
+            <th>Destinatarios</th>
+            <th>Envío</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (c of cs; track c.id) {
+            <tr [class.elegida]="abierta()?.campana?.id === c.id">
+              <td>
+                {{ c.nombre }} <span class="sec">v{{ c.version }}</span>
+                @if (c.motivo) {
+                  <br /><span class="sec">{{ c.motivo }}</span>
+                }
+              </td>
+              <td><span class="estado {{ c.estado }}">{{ estado(c.estado) }}</span></td>
+              <td>{{ c.plantilla }}</td>
+              <td>{{ c.destinatarios }}</td>
+              <td>
+                {{ fecha(c.programadaUtc) | date: 'dd/MM HH:mm' }}
+                <br /><span class="sec">vence {{ fecha(c.expiraUtc) | date: 'dd/MM HH:mm' }}</span>
+              </td>
+              <td><button type="button" class="chico" (click)="ver(c.id)">Ver</button></td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  }
+} @else {
+  <p>Cargando…</p>
+}
+
+@if (abierta(); as d) {
+  <section class="detalle" aria-label="Detalle de la campaña">
+    <h2>{{ d.campana.nombre }} · {{ estado(d.campana.estado) }}</h2>
+    <div class="barra">
+      @switch (d.campana.estado) {
+        @case ('Draft') {
+          <button type="button" class="principal" [disabled]="ocupado()" (click)="accion(d.campana, 'enviar')">
+            Enviar a aprobación
+          </button>
+        }
+        @case ('Scheduled') {
+          <button type="button" [disabled]="ocupado()" (click)="accion(d.campana, 'pausar')">Pausar</button>
+        }
+        @case ('Running') {
+          <button type="button" [disabled]="ocupado()" (click)="accion(d.campana, 'pausar')">Pausar</button>
+        }
+        @case ('Paused') {
+          <button type="button" [disabled]="ocupado()" (click)="accion(d.campana, 'reanudar')">Reanudar</button>
+        }
+      }
+      @if (['Draft', 'PendingApproval', 'Scheduled', 'Running', 'Paused'].includes(d.campana.estado)) {
+        <button type="button" [disabled]="ocupado()" (click)="editar(d)">Editar (nueva versión)</button>
+        <button type="button" [disabled]="ocupado()" (click)="accion(d.campana, 'cancelar')">Cancelar campaña</button>
+      }
+    </div>
+
+    <div class="previa">
+      @if (d.encabezado) {
+        <strong>{{ d.encabezado }}</strong>
+      }
+      <p>{{ previa(d) }}</p>
+      @if (d.pie) {
+        <span class="sec">{{ d.pie }}</span>
+      }
+      @if (d.botones.length > 0) {
+        <div class="botones-previa">
+          @for (b of d.botones; track $index) {
+            <span>{{ b }}</span>
+          }
+        </div>
+      }
+    </div>
+
+    @if (d.envios.length > 0) {
+      <h2>Envíos de la versión vigente</h2>
+      <div class="resumen">
+        @for (e of d.envios; track e.estado + (e.motivo ?? '')) {
+          <div>
+            <strong>{{ e.cantidad }}</strong>{{ envio(e.estado) }}{{ e.motivo ? ' · ' + e.motivo : '' }}
+          </div>
+        }
+      </div>
+    }
+
+    <h2>Versiones</h2>
+    <table>
+      <tbody>
+        @for (v of d.versiones; track v.id) {
+          <tr>
+            <td>
+              <strong>v{{ v.numero }}</strong> {{ v.plantilla }} ({{ v.idioma }}) · lista {{ v.lista ?? '—' }} ·
+              {{ v.destinatarios }} destinatarios{{ v.excluidos > 0 ? ' (' + v.excluidos + ' sin teléfono o inactivos)' : '' }}
+              <br />
+              <span class="sec">
+                Creada por {{ v.creadaPor }} el {{ fecha(v.creadaUtc) | date: 'dd/MM HH:mm' }}
+                @if (v.aprobadaPor) {
+                  · aprobada por {{ v.aprobadaPor }} el {{ fecha(v.aprobadaUtc) | date: 'dd/MM HH:mm' }}
+                }
+                @if (v.rechazadaPor) {
+                  · rechazada por {{ v.rechazadaPor }}: {{ v.motivoRechazo }}
+                }
+                · hash {{ v.hash.substring(0, 12) }}…
+              </span>
+            </td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  </section>
+}
