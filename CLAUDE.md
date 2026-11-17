@@ -65,11 +65,14 @@ Mantener esta sección al día. Todos funcionan en cmd desde la raíz del repo.
 - Backend: `dotnet build src/backend/WaBulk.sln` · `dotnet test src/backend/WaBulk.sln`
 - Ejecutar Api: `dotnet run --project src/backend/WaBulk.Api` → `GET /health` responde `Healthy`
 - Ejecutar Webhooks: `dotnet run --project src/backend/WaBulk.Webhooks` → `http://localhost:5244`, `GET /health`; receptor en `/webhooks/whatsapp` (sin `Meta:AppSecret`/`Meta:VerifyToken` responde 503)
-- Túnel para webhooks (otra ventana, ya creado): `devtunnel host` → URL `https://…-5244…devtunnels.ms`; apagar con Ctrl+C al terminar (META-SETUP.md sección B)
+- Túnel para webhooks (otra ventana, ya creado): `devtunnel host wabulk-k7m2p9x4` → URL `https://…-5244…devtunnels.ms`; apagar con Ctrl+C al terminar (META-SETUP.md sección B)
 - Ejecutar Worker: `dotnet run --project src/backend/WaBulk.Worker` (procesa `WebhookInbox` cada 2 s, sección `InboxProcessor`)
 - Herramientas locales (dotnet-ef): `dotnet tool restore`
 - SQL Server local: `docker compose -f deploy/docker/compose.dev.yml --env-file .env up -d sqlserver` (expuesto en `127.0.0.1,14333`; clave en `.env`)
 - Estado del contenedor: `docker compose -f deploy/docker/compose.dev.yml --env-file .env ps`
+- Usar el token en cmd sin mostrarlo (nunca pegar secretos en el chat; si se pegan, rotarlos):
+  `for /f "tokens=2 delims== " %A in ('dotnet user-secrets list --project src\backend\WaBulk.Worker ^| findstr /b /c:"Meta:AccessToken"') do @set "WA_TOKEN=%A"` → usar `%WA_TOKEN%` → `set WA_TOKEN=`
+- En los comandos de ejemplo, `<valor>` es un marcador: en cmd no se escriben `<` ni `>` (son redirecciones).
 - Secretos de desarrollo: un solo almacén de user-secrets compartido por Api, Webhooks y Worker (D-018); `--project` puede ser cualquiera de ellos.
   - Cadena de conexión: `dotnet user-secrets set "ConnectionStrings:WaBulk" "Server=127.0.0.1,14333;Database=WaBulk;User Id=sa;Password=<clave de .env>;Encrypt=True;TrustServerCertificate=True" --project src/backend/WaBulk.Api`
   - Token de Meta: `dotnet user-secrets set "Meta:AccessToken" "<token>" --project src/backend/WaBulk.Worker`
