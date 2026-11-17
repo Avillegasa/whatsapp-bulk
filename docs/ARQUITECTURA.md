@@ -55,6 +55,7 @@ Angular nunca habla con Meta. La API nunca envía en masa de forma síncrona. To
 | `Campaign`, `CampaignVersion` | Campaign: Nombre, Estado, VersionActualId, MotivoEstado, EstadoUtc, DespachoCompletoUtc, CreadaPor · Version: Numero, TemplateId, NombrePlantilla, Idioma, Categoria, FormatoParametros, SegmentId, Audiencia (Ids congelados), Destinatarios, Excluidos, Parametros (fijo o nombre del contacto), ProgramadaUtc, ExpiraUtc, Hash, CreadaPor, EnviadaAprobacionUtc, AprobadaPor/Utc, RechazadaPor/Utc, MotivoRechazo | Cambios → nueva versión y nueva aprobación; quien creó no aprueba (D-034) |
 | `DispatchJob` | Id, CampaignVersionId (FK; NULL solo en send-test), ContactId, PhoneE164, Parametros (valores resueltos), Prioridad, ProgramadoUtc, ExpiraUtc, EstadoDespacho, Intentos, ProximoIntentoUtc, LockedBy, LeaseUntilUtc, MotivoOmision | Único filtrado (CampaignVersionId, ContactId); MotivoOmision solo en `Skipped` (SinConsentimiento, BajaEmpresa, NoContactar, BajaPlataforma, SinCampania, CampanaCancelada, VersionReemplazada, ContactoInactivo, YaEnviado) |
 | `SendAttempt` | AttemptId, DispatchJobId, InicioUtc, FinUtc, Estado, Wamid, HttpStatus, CodigoError, Detalle, EstadoEntrega | Único filtrado en Wamid; EstadoEntrega solo lo escribe el procesador (D-023) |
+| `MessagingLimit` | PortafolioId (PK), Limite, ValorMeta (TIER_*), Origen (Api/WebhookCapacidad/WebhookCalidad), ActualizadoUtc | Límite real de Meta; la capacidad lo usa en lugar de `Capacity:PortfolioLimit` (D-035) |
 | `CapacityReservation` | PortafolioId, PhoneE164, DispatchJobId, ReservadaUtc, ExpiraUtc, Estado (Reservada/Consumida/Liberada) | Una fila por trabajo; cuenta destinatarios únicos vigentes (ventana móvil 24 h); reserva con `sp_getapplock` por portafolio (D-026) |
 | `MessageEvent` | Wamid, AttemptId, Estado, TimestampMeta, Pricing, Errores | Único (Wamid, Estado) |
 | `WebhookInbox` | Id, RecibidoUtc, Cuerpo, Estado (Pendiente/Procesado/EnEspera/Revision), Intentos, ProximoIntentoUtc, Error | Solo el receptor inserta; el procesador actualiza Estado, Intentos, ProximoIntentoUtc y Error (D-023) |
@@ -70,6 +71,8 @@ Angular nunca habla con Meta. La API nunca envía en masa de forma síncrona. To
 - **Fatiga por contacto:** 3 promociones seguidas sin interacción (respuesta, botón o lectura) → pausa de promociones 60 días; si la siguiente tampoco tiene interacción → excluido de promociones. Dos 131049 seguidos → misma pausa. Valores configurables.
 - **Freno de emergencia:** pausa global ante baja de calidad del número, plantilla `PAUSED`, error de token o facturación, o fallos > 5 % en los últimos 200.
 - **Horario permitido:** configurable (inicial 08:00–20:00, America/La_Paz).
+- **Tope semanal por contacto:** `OfertaPromociones:MaxPromotionsPerWeek` en 7 días móviles → `Skipped` `LimiteFrecuencia` (D-031, D-035).
+- **Ventana de atención:** un envío a quien escribió en las últimas 24 h no ocupa capacidad (D-035).
 
 ## Errores
 
