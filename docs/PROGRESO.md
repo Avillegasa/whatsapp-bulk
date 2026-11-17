@@ -1,7 +1,7 @@
 # Progreso
 
 **Fase actual:** Fase 1 — Demo interna (D-028)
-**Siguiente tarea:** F1.5 (Claude Code + Andrés: "Sigamos con la tarea F1.5"); F1.1 sigue en curso con Andrés (Claude desktop)
+**Siguiente tarea:** F1.6 (Claude Code), empezada con F1.5 en espera de la aprobación de Meta (excepción, ver bitácora); terminar F1.5 pasos 6–9 cuando Meta apruebe `promo_f15` o `promo_demo`; F1.1 sigue en curso con Andrés (Claude desktop)
 **Última actualización:** 2026-11-17
 
 ## Estado de tareas
@@ -66,6 +66,16 @@ Estados: Pendiente · En curso · Hecho (sin verificar) · Verificado · Bloquea
 - Datos de desarrollo: los intentos 01A1E617… y 01A1E975… quedaron con `EstadoEntrega` = Read por el replay de F0.8 (no es una lectura real).
 
 ## Bitácora (lo más reciente arriba)
+
+### 2026-11-17 — F1.5 Plantillas: avance parcial, en espera de Meta (Claude Code)
+- Hecho: tabla `Template` (migración `Plantillas`) sincronizada con `GET /{WABA_ID}/message_templates`; creación de plantillas de marketing desde la intranet (parámetros con nombre, botones «Me interesa» / «No recibir más»), con fila y AuditLog confirmados antes del único POST; webhooks `message_template_status_update`, `message_template_quality_update` y `template_category_update` actualizan estado, calidad y categoría sin retroceder (`entry.time` ≥ `EstadoUtc`); `send-test` usa la plantilla de la tabla (APPROVED) y manda `components` con `--param`; pantalla Plantillas; escenarios de replay `plantilla-approved/-rejected/-calidad/-categoria` con `--plantilla`; script `db/scripts/verificar-f1.5.sql`.
+- Verificación: `dotnet build` → 0 advertencias; `dotnet test` → 253/253 (creación con fila+auditoría antes del POST, rechazo → ERROR_CREACION reintentable, sin respuesta → INCIERTA resuelta por sincronización, webhooks repetidos y desordenados no retroceden, calidad, recategorización anunciada y completada, plantilla desconocida); `npx ng build` → OK; `npx ng test --watch=false` → 21/21. Real (Andrés): Webhook fields con los 3 campos de plantillas suscritos; "Sincronizar con Meta" → 7 plantillas; `promo_f15` creada desde la intranet → id 1696871368624750, PENDING, AuditLog `CrearPlantilla`; el panel de Meta muestra `promo_f15` y `promo_demo` "En revisión".
+- Fuentes: https://developers.facebook.com/documentation/business-messaging/whatsapp/reference/whatsapp-business-account/message-template-api · https://developers.facebook.com/documentation/business-messaging/whatsapp/templates/components · https://developers.facebook.com/documentation/business-messaging/whatsapp/templates/marketing-templates/custom-marketing-templates · webhooks/reference/{message_template_status_update, message_template_quality_update, template_category_update, messages/button}
+- Archivos: `WaBulk.Domain/Templates/*`, `WaBulk.Infrastructure/Templates/*`, `WaBulk.Infrastructure/Meta/{MetaTemplateApiClient,MetaWhatsAppClient,TemplateMessage}.cs`, `WaBulk.Infrastructure/Messaging/{WebhookInboxProcessor,WebhookPayload}.cs`, `WaBulk.Api/Templates/TemplatesEndpoints.cs`, `WaBulk.Worker/SendTestCommand.cs`, `WaBulk.Tests/Templates/*`, `src/frontend/src/app/pages/plantillas/*`, `tools/webhook-replay/*`, `db/scripts/verificar-f1.5.sql`.
+- Decisiones: D-033.
+- Pendientes: pasos reales 6–9 (APPROVED por webhook, `send-test` con parámetros, toque de «No recibir más» y payload real en `Bajas:ButtonPayloads`).
+- Excepción (decisión de Andrés): F1.6 empieza aunque F1.5 no está Verificado; lo pendiente de F1.5 es solo evidencia real que depende de la revisión de Meta. F1.6 no se marca Verificado antes que F1.5.
+- Siguiente: F1.6 (Claude Code); volver a F1.5 cuando Meta apruebe.
 
 ### 2026-11-17 — F1.4 Contactos y consentimiento por WhatsApp (Claude Code)
 - Hecho: tablas `Contact` (teléfono y BSUID únicos filtrados), `InboundMessage`, `ConsentOffer`, `Segment`, `SegmentMember`; FK de `ConsentRecord.ContactId` y `DispatchJob.ContactId` (la migración `Contactos` crea un contacto por teléfono existente y reenlaza). El procesador guarda cada mensaje entrante con su contacto (`ContactDirectory`, mapeo BSUID ↔ teléfono) y registra la respuesta a la oferta. `ConsentOfferService`: ventana de 24 h (margen 10 min), plazo de 30 días tras «Ahora no», oferta y AuditLog confirmados antes de un solo POST del mensaje interactivo (`biz_opaque_callback_data` = `oferta:{Id}`). Baja manual (Fuente Intranet), importación CSV/Excel (ClosedXML 0.105.0; E.164, reporte por fila, nunca levanta una baja), listas; todo auditado. Endpoints `/api/mensajes`, `/api/contactos`, `/api/listas` con `PuedeEnviar`. Pantallas Mensajes recientes, Contactos, Importar y Listas (Operador). `send-test` usa un `Contact` real. Script `db/scripts/verificar-f1.4.sql`.
