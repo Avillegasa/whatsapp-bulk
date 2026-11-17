@@ -22,13 +22,14 @@ describe('Shell: menú por rol', () => {
     expect(menuPara({ autenticado: true, usuario: 'andres', roles: ['Admin'] })).toEqual(['Inicio', 'Usuarios']);
   });
 
-  it('Operador ve las pantallas de contactos (F1.4) y no Usuarios', () => {
+  it('Operador ve las pantallas de contactos (F1.4) y plantillas (F1.5), y no Usuarios', () => {
     expect(menuPara({ autenticado: true, usuario: 'x', roles: ['Operador', 'Aprobador'] })).toEqual([
       'Inicio',
       'Mensajes recientes',
       'Contactos',
       'Importar',
       'Listas',
+      'Plantillas',
     ]);
   });
 

@@ -1,0 +1,164 @@
+<h1>Plantillas</h1>
+
+@if (aviso(); as a) {
+  <p class="aviso" [class.error]="a.tipo === 'error'" role="status">{{ a.texto }}</p>
+}
+
+<div class="barra">
+  <button type="button" class="principal" [disabled]="ocupado()" (click)="sincronizar()">Sincronizar con Meta</button>
+  <button type="button" [disabled]="ocupado()" (click)="cargar()">Actualizar</button>
+  <button type="button" [disabled]="ocupado()" (click)="creando.set(!creando())">
+    {{ creando() ? 'Cerrar' : 'Nueva plantilla' }}
+  </button>
+</div>
+<p class="ayuda">
+  Meta revisa cada plantilla nueva; el resultado (Aprobada o Rechazada) llega solo por webhook en unos minutos. Pulsa
+  "Actualizar" para verlo.
+</p>
+
+@if (creando()) {
+  <section class="caja" aria-label="Nueva plantilla">
+    <h2>Nueva plantilla de promociones</h2>
+    <form class="formulario" (ngSubmit)="crear()">
+      <label>
+        Nombre
+        <input name="nombre" [(ngModel)]="nueva.nombre" required maxlength="512" placeholder="promo_diciembre" />
+        <span class="sec">Solo minúsculas, números y guion bajo.</span>
+      </label>
+      <label>
+        Idioma
+        <input name="idioma" [(ngModel)]="nueva.idioma" required maxlength="6" />
+      </label>
+      <label>
+        Encabezado (opcional, hasta 60)
+        <input name="encabezado" [(ngModel)]="nueva.encabezado" maxlength="60" />
+      </label>
+      <label>
+        Cuerpo (hasta 1024). Usa parámetros con nombre: {{ '{{' }}nombre{{ '}}' }}
+        <textarea
+          name="cuerpo"
+          rows="5"
+          maxlength="1024"
+          required
+          [ngModel]="nueva.cuerpo"
+          (ngModelChange)="cambiarCuerpo($event)"
+        ></textarea>
+      </label>
+      @for (p of params(); track p) {
+        <label>
+          Ejemplo de {{ '{{' }}{{ p }}{{ '}}' }}
+          <input [name]="'ej-' + p" [(ngModel)]="nueva.ejemplos[p]" required maxlength="200" />
+        </label>
+      }
+      <label>
+        Pie (opcional, hasta 60)
+        <input name="pie" [(ngModel)]="nueva.pie" maxlength="60" />
+      </label>
+
+      @if (botones(); as b) {
+        <div class="previa" aria-label="Vista previa">
+          @if (nueva.encabezado) {
+            <strong>{{ nueva.encabezado }}</strong>
+          }
+          <p>{{ vistaPrevia() || 'El cuerpo del mensaje aparecerá aquí.' }}</p>
+          @if (nueva.pie) {
+            <span class="sec">{{ nueva.pie }}</span>
+          }
+          <div class="botones-previa">
+            <span>{{ b.interes }}</span>
+            <span>{{ b.baja }}</span>
+          </div>
+        </div>
+        <p class="ayuda">
+          Los dos botones van siempre: «{{ b.interes }}» es la señal de interés y «{{ b.baja }}» registra la baja de
+          promociones.
+        </p>
+      }
+
+      <div>
+        <button type="submit" [disabled]="ocupado() || !nueva.nombre.trim() || !nueva.cuerpo.trim()">Enviar a Meta</button>
+      </div>
+    </form>
+  </section>
+}
+
+@if (plantillas(); as ps) {
+  @if (ps.length === 0) {
+    <p>Todavía no hay plantillas. Pulsa "Sincronizar con Meta" para traer las de la cuenta.</p>
+  } @else {
+    <div class="tabla">
+      <table>
+        <thead>
+          <tr>
+            <th>Plantilla</th>
+            <th>Categoría</th>
+            <th>Estado</th>
+            <th>Calidad</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (p of ps; track p.id) {
+            <tr [class.elegida]="abierta()?.plantilla?.id === p.id">
+              <td>
+                {{ p.nombre }} <span class="sec">{{ p.idioma }}</span>
+                @if (p.motivo) {
+                  <br /><span class="sec">{{ p.motivo }}</span>
+                }
+              </td>
+              <td>
+                {{ p.categoria }}
+                @if (p.categoriaNueva) {
+                  <br /><span class="sec">Pasará a {{ p.categoriaNueva }}</span>
+                }
+              </td>
+              <td>
+                <span class="estado {{ claseEstado(p.estado) }}">{{ estado(p.estado) }}</span>
+                <br /><span class="sec">{{ p.estadoUtc | date: 'dd/MM HH:mm' }}</span>
+              </td>
+              <td>{{ p.calidad ?? '—' }}</td>
+              <td><button type="button" class="chico" (click)="ver(p)">Ver</button></td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  }
+} @else {
+  <p>Cargando…</p>
+}
+
+@if (abierta(); as d) {
+  <section class="detalle" aria-label="Detalle de la plantilla">
+    <h2>{{ d.plantilla.nombre }} ({{ d.plantilla.idioma }})</h2>
+    <p class="sec">
+      Id de Meta: {{ d.plantilla.metaId ?? '—' }} · Parámetros: {{ d.formatoParametros ?? '—' }} · Creada por
+      {{ d.plantilla.creadaPor }}
+      @if (d.plantilla.ultimoEvento) {
+        · Último evento: {{ d.plantilla.ultimoEvento }}
+      }
+      @if (d.plantilla.sincronizadaUtc) {
+        · Sincronizada {{ d.plantilla.sincronizadaUtc | date: 'dd/MM HH:mm' }}
+      }
+    </p>
+    <div class="previa">
+      @if (d.encabezado) {
+        <strong>{{ d.encabezado }}</strong>
+      }
+      <p>{{ d.cuerpo ?? '(sin cuerpo; sincroniza para traerlo)' }}</p>
+      @if (d.pie) {
+        <span class="sec">{{ d.pie }}</span>
+      }
+      @if (d.botones.length > 0) {
+        <div class="botones-previa">
+          @for (b of d.botones; track $index) {
+            <span>{{ b }}</span>
+          }
+        </div>
+      }
+    </div>
+    @if (d.parametros.length > 0) {
+      <p class="sec">Parámetros del cuerpo: {{ d.parametros.join(', ') }}</p>
+    }
+  </section>
+}

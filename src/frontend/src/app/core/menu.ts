@@ -14,5 +14,6 @@ export const MENU: OpcionMenu[] = [
   { ruta: '/contactos', texto: 'Contactos', roles: ['Operador'] },
   { ruta: '/importar', texto: 'Importar', roles: ['Operador'] },
   { ruta: '/listas', texto: 'Listas', roles: ['Operador'] },
+  { ruta: '/plantillas', texto: 'Plantillas', roles: ['Operador'] },
   { ruta: '/usuarios', texto: 'Usuarios', roles: ['Admin'] },
 ];

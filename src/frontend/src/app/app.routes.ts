@@ -44,6 +44,13 @@ export const routes: Routes = [
         title: 'Listas · WhatsApp Bulk',
       },
       {
+        path: 'plantillas',
+        canActivate: [rolGuard],
+        data: { roles: ['Operador'] },
+        loadComponent: () => import('./pages/plantillas/plantillas').then((m) => m.Plantillas),
+        title: 'Plantillas · WhatsApp Bulk',
+      },
+      {
         path: 'usuarios',
         canActivate: [rolGuard],
         data: { roles: ['Admin'] },
