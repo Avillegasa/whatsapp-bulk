@@ -76,17 +76,17 @@ Todos los anteriores en **Verificado**. No se exige `Read` en todos los mensajes
 
 ---
 
-## Fase 1 — Pruebas internas (número de la empresa, solo personal con consentimiento)
+## Fase 1 — Demo interna (número de prueba de Meta, hasta 5 destinatarios, D-028)
 
-Objetivo: el sistema completo, con el número real de la empresa, probado solo con empleados que dieron su consentimiento.
+Objetivo: el sistema completo funcionando de punta a punta y mostrado en la oficina a ~4 compañeros con consentimiento, usando el número de prueba. Los activos de la empresa quedan para la etapa "Paso a la empresa" (después de aprobar la PoC).
 
-Orden: F1.1 depende de terceros (verificación del negocio, puede tardar días); se empieza primero y en paralelo con F1.2–F1.4. Las verificaciones "reales" de F1.5, F1.7 y F1.10 necesitan F1.1.
+Orden: F1.1 primero (pruebas cortas que definen qué puede mostrar la demo) y en paralelo F1.2–F1.4.
 
-### F1.1 — Activos de Meta de la empresa
-- **Quién:** Tú (+ Claude Code cambia IDs en configuración) · **Depende de:** portafolio de Meta de la empresa creado (D-015); número dedicado que no esté activo en la app de WhatsApp
-- **Pasos:** `docs/META-SETUP.md` sección C, uno a la vez en Claude desktop, confirmando cada paso en la documentación de Meta.
-- **Entregables:** negocio verificado; app de la empresa (la PoC no se reutiliza, D-022); WABA y número de la empresa con nombre visible aprobado; número registrado con `POST /{PHONE_NUMBER_ID}/register` y PIN de 6 dígitos (máximo 10 registros en 72 h, si no error 133016); método de pago; System User con token sin caducidad; webhooks suscritos con la WABA real (repite B.4–B.6); IDs en `META-SETUP.md`; `appsettings` con los IDs nuevos (`Meta:*`, `Capacity:PortfolioId`); token y PIN solo en el gestor de contraseñas y user-secrets.
-- **Verificación:** `GET /{PHONE_NUMBER_ID}?fields=whatsapp_business_manager_messaging_limit,throughput,quality_rating` responde con el límite y calidad `GREEN`; `send-test` desde el número de la empresa a tu teléfono → `Accepted` y estados `sent`/`delivered` en `WebhookInbox`; tu respuesta "Hola" llega como mensaje entrante; "BAJA" escrita por ti queda como `ConsentRecord` OptOut (y luego se revierte con opt-in manual); git grep sin `EAA…`.
+### F1.1 — Preparar la demo
+- **Quién:** Tú · **Depende de:** F0 completa
+- **Pasos:** en Claude desktop, uno a la vez.
+- **Entregables:** (1) prueba de mensajes entrantes con la app sin publicar: escribir "Hola" y "BAJA" al número de prueba y ver si llegan a `WebhookInbox`; (2) prueba de crear una plantilla de marketing propia en la WABA de prueba (con botones "Me interesa" y "No recibir más") y ver si se aprueba; (3) 4 compañeros agregados como destinatarios permitidos (cada uno confirma su código) y su consentimiento anotado; resultados y limitaciones en `META-SETUP.md`.
+- **Verificación:** salida de `verificar-f0.6.sql` con el mensaje entrante (o constancia de que no llegó y la demo usa replay para las bajas por palabra); estado de la plantilla en el panel; lista de destinatarios con 5 números verificados (sin anotar números completos en el repo: solo los últimos 4 dígitos).
 
 ### F1.2 — Login y esqueleto Angular
 - **Quién:** Claude Code · **Depende de:** F0.3
@@ -107,7 +107,7 @@ Orden: F1.1 depende de terceros (verificación del negocio, puede tardar días);
 ### F1.5 — Plantillas
 - **Quién:** Claude Code (+ Tú creas y pruebas la plantilla real) · **Depende de:** F1.3; verificación real con F1.1
 - **Entregables:** `Template` sincronizada con `GET /{WABA_ID}/message_templates`; creación de plantillas de marketing (D-009) desde la intranet con parámetros y botones "Me interesa" (D-012) y "No recibir más"; webhooks `message_template_status_update`, `message_template_quality_update` y `template_category_update` actualizan estado, calidad y categoría; el envío de prueba usa la plantilla y sus `components`.
-- **Verificación:** pruebas con payloads de replay por cada webhook; real: plantilla creada en la WABA de la empresa → `APPROVED` llega por webhook y se ve en la pantalla; tocar "No recibir más" en tu teléfono → baja registrada y payload real anotado en `Bajas:ButtonPayloads`/`ButtonTexts` (cierra el pendiente de D-025).
+- **Verificación:** pruebas con payloads de replay por cada webhook; real: plantilla creada en la WABA de prueba (D-028) → `APPROVED` llega por webhook y se ve en la pantalla; tocar "No recibir más" en tu teléfono → baja registrada y payload real anotado en `Bajas:ButtonPayloads`/`ButtonTexts` (cierra el pendiente de D-025).
 
 ### F1.6 — Campañas versionadas y aprobación
 - **Quién:** Claude Code · **Depende de:** F1.4, F1.5
@@ -129,16 +129,18 @@ Orden: F1.1 depende de terceros (verificación del negocio, puede tardar días);
 - **Entregables:** Dockerfiles de Api, Webhooks, Worker y frontend (nginx); `deploy/docker/compose.prod.yml`; secretos por variables de entorno o `.env` ignorado; health checks; migraciones aplicadas por un paso explícito (no al arrancar); solo el receptor expuesto a internet.
 - **Verificación:** desde cero, `docker compose … up -d` → todos `healthy`; webhook real llega al receptor publicado; `docker history` e imágenes sin secretos; git grep sin `EAA…`.
 
-### F1.10 — Campañas internas y conciliación
+### F1.10 — Demo en la oficina
 - **Quién:** Tú + Claude Code · **Depende de:** F1.1–F1.9
-- **Entregables:** opt-in documentado de 20–50 empleados; 2–3 campañas reales; conciliación de `pricing` de `MessageEvent` contra la facturación de Meta (WhatsApp Manager).
+- **Entregables:** consentimiento de los 4 compañeros registrado en el sistema (opt-in con evidencia); 2–3 campañas a los 5 destinatarios con la plantilla propia; guion de la demo (envío, monitor, baja, freno de emergencia con replay).
 - **Verificación:** la puerta de la Fase 1.
 
 ### Puerta de la Fase 1
 - Cero duplicados: ninguna consulta encuentra dos intentos `Accepted` para el mismo (versión de campaña, contacto).
 - Bajas aplicadas en menos de 1 minuto: medido entre el webhook de baja y el trabajo `Skipped`.
-- Calidad del número en `GREEN` al terminar; conciliación con diferencias explicadas.
-- Todas las tareas F1 en **Verificado**.
+- Demo hecha y PoC presentada; todas las tareas F1 en **Verificado**.
+
+### Paso a la empresa (solo si la PoC se aprueba)
+Portafolio de Meta de la empresa y verificación del negocio, app nueva, número dedicado registrado (`POST /{PHONE_NUMBER_ID}/register`, máximo 10 registros en 72 h, error 133016), método de pago, plantillas creadas de nuevo, webhooks con la WABA real (`META-SETUP.md` sección C), calidad `GREEN` y conciliación de `pricing` contra la facturación de Meta. Se detalla al llegar.
 
 ---
 

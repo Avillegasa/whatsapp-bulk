@@ -1,6 +1,6 @@
 # Progreso
 
-**Fase actual:** Fase 1 — Pruebas internas
+**Fase actual:** Fase 1 — Demo interna (D-028)
 **Siguiente tarea:** F1.1 (Tú, Claude desktop: "Sigamos con WhatsApp") en paralelo con F1.2 (Claude Code: "Sigamos con la tarea F1.2")
 **Última actualización:** 2026-11-17
 
@@ -22,7 +22,7 @@ Estados: Pendiente · En curso · Hecho (sin verificar) · Verificado · Bloquea
 | F0.10 | Bajas | Claude Code | Verificado | `dotnet test` 127/127 (15 de integración de bajas contra SQL Server + 30 de reglas): para cada tipo de baja —palabra clave, botón de plantilla, botón interactivo, intranet, `user_preferences` stop, 131050 por webhook y 131050 al enviar— el trabajo ya encolado queda `Skipped` al enviar y uno nuevo queda `Skipped` al encolar, sin POST y con su `MotivoOmision` (`BajaEmpresa`/`BajaPlataforma`); `resume` no levanta una baja de la empresa (sigue `BajaEmpresa`) y sí un stop de plataforma (1 POST, `Submitted`); preferencias en desorden → vale la de hora de Meta más reciente; sin OptIn → `SinConsentimiento`; webhook repetido → 1 registro; importación no levanta una baja y un opt-in manual sí; baja sin teléfono → `Revision`. Replay real con receptor + Worker: `baja-palabra`, `baja-boton` → 2 `ConsentRecord` OptOut (PalabraClave, Boton); `stop`, `resume` → 2 `PlatformPreference`; vigente +59170000000 = empresa OptOut / plataforma Resume (`verificar-f0.10.sql`). Build 0 advertencias; índice único con NULL filtrado; sin secretos |
 | F0.11 | Concurrencia y capacidad | Claude Code | Verificado | `dotnet test` 140/140 (8 de integración de capacidad + 5 de presupuesto): 2 despachadores simultáneos (4 vueltas cada uno), 20 trabajos a 20 números, presupuesto 10 → 10 POST a 10 números distintos, 10 reservas vigentes, 1 intento por trabajo (ningún trabajo dos veces), 10 `Submitted` y 10 pospuestos, ninguno `Claimed`; 40 reservas en paralelo con presupuesto 10 → exactamente 10; corrido 5 veces seguidas sin fallas; mutación sin `sp_getapplock` → ambas pruebas fallan (la prueba detecta la carrera). Además: mismo destinatario no ocupa lugar nuevo, rechazo libera, sin respuesta consume, ventana de 24 h, caída tras reservar → la recuperación libera, omitido por baja no reserva. Migración `Capacity` aplicada; Worker arranca con `Capacity` y rechaza `PortfolioId` vacío; build 0 advertencias; sin secretos |
 | F0.12 | Alertas simuladas | Claude Code | Verificado | `dotnet test` 150/150 (9 de integración de alertas + 3 de la regla): un caso por código —190 (Token), 131042 (Facturacion), 132015 (PlantillaPausada)— al enviar: 1 solo POST, alerta registrada (Tipo, Clave, Origen Despachador), pausa global activa, los 3 trabajos en `Queued` y la vuelta siguiente no reclama; plantilla `PAUSED` por webhook (payload del replay) y 131042 en un estado `failed` → alerta (Origen Webhook) + pausa, sin POST; reanudar → pausa levantada, alerta resuelta y los trabajos salen; repetidas → suman `Ocurrencias` sin duplicar; 10 alertas simultáneas → 1 alerta (×10) y 1 pausa; 131026 → sin alerta. Real: replay `plantilla-paused` con receptor + Worker → log Critical "ALERTA PlantillaPausada" y "PAUSA GLOBAL", despachador "no se reclaman trabajos"; comando `alertas` → EN PAUSA; `reanudar --por claude-code` → ACTIVO. Build 0 advertencias; índices únicos filtrados; sin secretos |
-| F1.1 | Activos de Meta de la empresa | Tú (+ Claude Code) | Pendiente | |
+| F1.1 | Preparar la demo | Tú | Pendiente | |
 | F1.2 | Login y esqueleto Angular | Claude Code | Pendiente | |
 | F1.3 | Usuarios, autorización y auditoría | Claude Code | Pendiente | |
 | F1.4 | Contactos, importación y consentimiento | Claude Code | Pendiente | |
@@ -31,12 +31,12 @@ Estados: Pendiente · En curso · Hecho (sin verificar) · Verificado · Bloquea
 | F1.7 | Despacho completo | Claude Code | Pendiente | |
 | F1.8 | Monitor en vivo y tablero | Claude Code | Pendiente | |
 | F1.9 | Docker y despliegue | Claude Code + Tú | Pendiente | |
-| F1.10 | Campañas internas y conciliación | Tú + Claude Code | Pendiente | |
+| F1.10 | Demo en la oficina | Tú + Claude Code | Pendiente | |
 
 ## Pendientes y bloqueos
 
 - Definir dónde corre SQL Server en producción (D-006).
-- Crear el portafolio de Meta de la empresa antes de F1.1 (D-015).
+- Portafolio de Meta de la empresa, número dedicado y verificación: después de aprobar la PoC (D-028).
 - Actualizar la ruta de la carpeta (D-016) en las instrucciones del proyecto de claude.ai y en la skill `whatsapp-bulk-guia`; reconectar la carpeta en Claude desktop.
 - Confirmar con el área comercial o legal cómo consta el consentimiento de los clientes para promociones (antes de la Fase 2).
 - Agregar FK de `DispatchJob.CampaignVersionId` y `DispatchJob.ContactId` cuando existan `CampaignVersion` y `Contact` (Fase 1).
@@ -61,6 +61,11 @@ Estados: Pendiente · En curso · Hecho (sin verificar) · Verificado · Bloquea
 - Datos de desarrollo: los intentos 01A1E617… y 01A1E975… quedaron con `EstadoEntrega` = Read por el replay de F0.8 (no es una lectura real).
 
 ## Bitácora (lo más reciente arriba)
+
+### 2026-11-17 — D-028: la Fase 1 es una demo con el número de prueba (Andrés)
+- La empresa no tiene portafolio de Meta ni número dedicado; Andrés elige seguir con el número de prueba (5 destinatarios) y mostrar la PoC en su oficina. Los activos de la empresa pasan a "Paso a la empresa" en `PLAN.md`.
+- `PLAN.md`: F1.1 = "Preparar la demo" (prueba de entrantes, plantilla propia, destinatarios); F1.10 = demo en la oficina sin conciliación.
+- Siguiente: F1.1 (Tú) y F1.2 (Claude Code).
 
 ### 2026-11-17 — Puerta de la Fase 0 y detalle de la Fase 1 (Claude desktop)
 - Puerta F0: F0.1–F0.12 en Verificado; `git status` limpio en 1bbebf2.
