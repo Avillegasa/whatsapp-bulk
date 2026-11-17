@@ -1,10 +1,12 @@
 using WaBulk.Api.Auth;
 using WaBulk.Api.Campaigns;
 using WaBulk.Api.Contacts;
+using WaBulk.Api.Monitoring;
 using WaBulk.Api.Templates;
 using WaBulk.Api.Users;
 using WaBulk.Infrastructure.Campaigns;
 using WaBulk.Infrastructure.Contacts;
+using WaBulk.Infrastructure.Monitoring;
 using WaBulk.Infrastructure.Meta;
 using WaBulk.Infrastructure.Persistence;
 using WaBulk.Infrastructure.Templates;
@@ -28,6 +30,10 @@ builder.Services.AddContacts(builder.Configuration);
 builder.Services.AddTemplates(builder.Configuration);
 // F1.6: campañas versionadas y aprobación (los trabajos se crean al aprobar; los envía el Worker).
 builder.Services.AddCampaigns(builder.Configuration);
+// F1.8: monitor en vivo (SignalR) y tablero: capacidad (sección Capacity, igual que el Worker), alertas y revisión.
+builder.Services.AddMonitoring(builder.Configuration);
+builder.Services.AddSignalR();
+builder.Services.AddHostedService<MonitorBroadcaster>();
 
 var app = builder.Build();
 
@@ -49,7 +55,11 @@ app.MapGroup("/api")
     .MapUsersEndpoints()
     .MapContactsEndpoints()
     .MapTemplatesEndpoints()
-    .MapCampaignsEndpoints();
+    .MapCampaignsEndpoints()
+    .MapMonitorEndpoints();
+
+// El hub queda bajo /api (mismo proxy y mismo dominio que la Api, D-029) y exige sesión de Operador.
+app.MapHub<MonitorHub>(MonitorHub.Path).RequireAuthorization(WaBulk.Domain.Users.Policies.PuedeEnviar);
 
 await app.RunAsync();
 return 0;

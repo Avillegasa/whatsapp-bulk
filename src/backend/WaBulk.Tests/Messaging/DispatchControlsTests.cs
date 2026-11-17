@@ -88,6 +88,29 @@ public sealed class DispatchControlsTests
         Assert.Equal(Read("WaBulk.Api"), Read("WaBulk.Worker"));
     }
 
+    [Fact]
+    public void Capacidad_igual_en_la_Api_y_en_el_Worker()
+    {
+        // F1.8: el tablero de la Api muestra la capacidad con la misma configuración que usa el despachador del Worker.
+        var dir = new DirectoryInfo(Path.GetDirectoryName(SourceFile())!);
+        while (dir is not null && !File.Exists(Path.Combine(dir.FullName, "WaBulk.sln")))
+        {
+            dir = dir.Parent;
+        }
+
+        Assert.NotNull(dir);
+        string Read(string project, string key)
+        {
+            using var doc = System.Text.Json.JsonDocument.Parse(File.ReadAllText(Path.Combine(dir!.FullName, project, "appsettings.json")));
+            return doc.RootElement.GetProperty("Capacity").GetProperty(key).ToString();
+        }
+
+        foreach (var key in new[] { "PortfolioId", "PortfolioLimit", "UsagePercent", "ManualQuota" })
+        {
+            Assert.Equal(Read("WaBulk.Worker", key), Read("WaBulk.Api", key));
+        }
+    }
+
     /// <summary>Ruta de este archivo al compilar: sirve aunque las pruebas corran desde otra carpeta (--artifacts-path).</summary>
     private static string SourceFile([System.Runtime.CompilerServices.CallerFilePath] string path = "") => path;
 

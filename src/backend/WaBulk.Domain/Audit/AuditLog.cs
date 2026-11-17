@@ -58,4 +58,7 @@ public static class AuditActions
     public const string PausarCampana = "PausarCampana";
     public const string ReanudarCampana = "ReanudarCampana";
     public const string CancelarCampana = "CancelarCampana";
+
+    // F1.8: monitor.
+    public const string RevisarEnvio = "RevisarEnvio";
 }

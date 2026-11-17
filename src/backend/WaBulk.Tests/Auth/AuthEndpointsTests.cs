@@ -212,8 +212,16 @@ internal sealed class ApiSession(HttpClient client)
             _xsrf = ReadXsrfCookie(await Client.GetAsync(new Uri("/api/auth/sesion", UriKind.Relative)));
         }
 
-        return await PostAsync("/api/auth/login", new LoginRequest(userName, password));
+        var response = await PostAsync("/api/auth/login", new LoginRequest(userName, password));
+        AuthCookie = ReadAuthCookie(response) ?? AuthCookie;
+        return response;
     }
+
+    /// <summary>Valor de la cookie de sesión tras el login (F1.8: para conectar SignalR, que no usa este HttpClient).</summary>
+    public string? AuthCookie { get; private set; }
+
+    /// <summary>Encabezado Cookie con la sesión.</summary>
+    public string CookieHeader => $"{AuthServiceCollectionExtensions.AuthCookieName}={AuthCookie}";
 
     public Task<HttpResponseMessage> PostAsync(string path, object? body = null) => SendAsync(HttpMethod.Post, path, body);
 
