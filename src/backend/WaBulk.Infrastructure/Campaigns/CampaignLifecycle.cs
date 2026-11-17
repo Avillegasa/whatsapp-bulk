@@ -1,7 +1,10 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
+using System.Globalization;
+using WaBulk.Domain.Audit;
 using WaBulk.Domain.Campaigns;
 using WaBulk.Domain.Messaging;
+using WaBulk.Infrastructure.Audit;
 using WaBulk.Infrastructure.Persistence;
 
 namespace WaBulk.Infrastructure.Campaigns;
@@ -68,5 +71,42 @@ public sealed class CampaignLifecycle(WaBulkDbContext db, IOptions<CampaignOptio
                 cancellationToken);
 
         return new LifecycleRound(running, completed, expired + expiredUnsent, closed);
+    }
+
+    /// <summary>Actor de los cambios que hace el despachador (aparece en AuditLog).</summary>
+    public const string SystemActor = "sistema:despachador";
+
+    /// <summary>
+    /// Pausa una campaña que está enviando por un problema de su plantilla (F1.7): plantilla que dejó de estar APPROVED o
+    /// error 132000–132016 al enviar. Lo pendiente queda OnHold y se audita; una persona revisa y reanuda (o crea una
+    /// versión nueva con otra plantilla). Devuelve false si la campaña ya no estaba enviando.
+    /// </summary>
+    public async Task<bool> PauseForTemplateAsync(long campaignId, string reason, DateTime nowUtc, CancellationToken cancellationToken)
+    {
+        var text = reason.Length <= 1000 ? reason : reason[..1000];
+        await using var tx = await db.Database.BeginTransactionAsync(cancellationToken);
+        var versionId = await db.Campaigns.Where(c => c.Id == campaignId).Select(c => c.CurrentVersionId).SingleAsync(cancellationToken);
+        var paused = await db.Campaigns
+            .Where(c => c.Id == campaignId && (c.Status == CampaignStatus.Scheduled || c.Status == CampaignStatus.Running))
+            .ExecuteUpdateAsync(s => s
+                .SetProperty(c => c.Status, CampaignStatus.Paused)
+                .SetProperty(c => c.StatusReason, text)
+                .SetProperty(c => c.StatusUtc, nowUtc), cancellationToken);
+        if (paused == 0)
+        {
+            await tx.RollbackAsync(cancellationToken);
+            return false;
+        }
+
+        var held = await db.DispatchJobs
+            .Where(j => j.CampaignVersionId == versionId
+                        && (j.DispatchStatus == DispatchStatus.Queued || j.DispatchStatus == DispatchStatus.RetryScheduled))
+            .ExecuteUpdateAsync(s => s.SetProperty(j => j.DispatchStatus, DispatchStatus.OnHold), cancellationToken);
+        db.AuditLogs.Add(AuditEntry.Create(SystemActor, AuditActions.PausarCampana, "Campana",
+            campaignId.ToString(CultureInfo.InvariantCulture), null, new { estado = CampaignStatus.Paused.ToString(), motivo = text, enEspera = held },
+            nowUtc));
+        await db.SaveChangesAsync(cancellationToken);
+        await tx.CommitAsync(cancellationToken);
+        return true;
     }
 }

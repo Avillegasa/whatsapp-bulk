@@ -7,6 +7,7 @@ using WaBulk.Domain.Campaigns;
 using WaBulk.Domain.Capacity;
 using WaBulk.Domain.Consent;
 using WaBulk.Domain.Messaging;
+using WaBulk.Domain.Templates;
 using WaBulk.Infrastructure.Alerts;
 using WaBulk.Infrastructure.Campaigns;
 using WaBulk.Infrastructure.Capacity;
@@ -34,7 +35,8 @@ public sealed record DispatchRound(
 /// campaña del trabajo (cancelada o versión reemplazada → Skipped; en pausa → OnHold) y toma la plantilla y los
 /// parámetros de la versión.
 /// F1.7: fuera del horario permitido no reclama (y suelta lo que quedaba del lote); tope de promociones por contacto en
-/// 7 días (Skipped LimiteFrecuencia, D-031); tasa por número (SendRateLimiter) antes de cada POST.
+/// 7 días (Skipped LimiteFrecuencia, D-031); tasa por número (SendRateLimiter) antes de cada POST; plantilla APPROVED
+/// al enviar y errores 132000–132016 (salvo 132015) → pausa de la campaña.
 /// </summary>
 public sealed partial class Dispatcher(
     WaBulkDbContext db,
@@ -134,8 +136,10 @@ public sealed partial class Dispatcher(
         // Campaña del trabajo (F1.6): una cancelación, una versión nueva o una pausa que llegó después de encolar gana.
         var campaign = await (from v in db.CampaignVersions.AsNoTracking()
                               join c in db.Campaigns.AsNoTracking() on v.CampaignId equals c.Id
+                              join t in db.Templates.AsNoTracking() on v.TemplateId equals t.Id
                               where v.Id == job.CampaignVersionId
-                              select new { Version = v, c.Status, c.CurrentVersionId }).SingleOrDefaultAsync(cancellationToken);
+                              select new { Version = v, c.Status, c.CurrentVersionId, TemplateStatus = t.Status })
+            .SingleOrDefaultAsync(cancellationToken);
         var campaignSkip = campaign switch
         {
             null => SkipReasons.SinCampania,
@@ -158,6 +162,19 @@ public sealed partial class Dispatcher(
         }
 
         var version = campaign.Version;
+
+        // Plantilla APPROVED al enviar (F1.7): si Meta la rechazó, pausó o desactivó después de aprobar la campaña, la
+        // campaña se pausa (lo pendiente queda OnHold) y este trabajo espera sin POST.
+        if (campaign.TemplateStatus != TemplateStatuses.Approved)
+        {
+            await lifecycle.PauseForTemplateAsync(version.CampaignId,
+                $"La plantilla {version.TemplateName} ({version.Language}) está {campaign.TemplateStatus}: revisar antes de reanudar.",
+                Now, CancellationToken.None);
+            var heldByTemplate = await queue.HoldAsync(job.Id, Owner, cancellationToken);
+            LogHeld(logger, job.Id, CampaignStatus.Paused);
+            return heldByTemplate ? BeginOutcome.Held : BeginOutcome.LeaseLost;
+        }
+
         var message = new TemplateMessage(version.TemplateName, version.Language,
             [.. CampaignRules.DeserializeJobParameters(job.Parameters).Select(p => new TemplateParameter(p.Name, p.Value))],
             !string.Equals(version.ParameterFormat, "POSITIONAL", StringComparison.OrdinalIgnoreCase));
@@ -240,6 +257,16 @@ public sealed partial class Dispatcher(
                 "Despachador", CancellationToken.None);
         }
 
+        // 132000–132016 (salvo 132015, que pausa todo): problema de esta plantilla → pausa solo de esta campaña (F1.7).
+        // 132016 = plantilla desactivada para siempre: hay que crear otra y una versión nueva de la campaña.
+        if (status == SendAttemptStatus.Rejected && IsCampaignTemplateError(result.ErrorCode))
+        {
+            await lifecycle.PauseForTemplateAsync(version.CampaignId,
+                $"Error {result.ErrorCode} de la plantilla {version.TemplateName} al enviar: {result.Detail}"
+                + (result.ErrorCode == 132016 ? " La plantilla quedó desactivada: crear otra y una versión nueva." : ""),
+                Now, CancellationToken.None);
+        }
+
         if (owned)
         {
             LogCompleted(logger, job.Id, attempt.AttemptId, status, result.ErrorCode, transition.Status, transition.NextAttemptUtc);
@@ -266,6 +293,12 @@ public sealed partial class Dispatcher(
                           || a.Status == SendAttemptStatus.Submitting)
                 select j.Id).Distinct().CountAsync(CancellationToken.None);
     }
+
+    /// <summary>
+    /// Errores de plantilla que pausan la campaña (docs/ARQUITECTURA.md "Errores": 132000–132016 → pausar campaña). 132015
+    /// queda en el freno global (F0.12).
+    /// </summary>
+    public static bool IsCampaignTemplateError(int? code) => code is >= 132000 and <= 132016 and not 132015;
 
     /// <summary>131050: "This recipient has chosen to stop receiving marketing messages" (no reintentar).</summary>
     public const int PlatformStopErrorCode = 131050;

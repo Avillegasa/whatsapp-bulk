@@ -433,6 +433,45 @@ public sealed class CampaignIntegrationTests(SqlServerTestDatabase database)
         Assert.Equal(2, morning.Sent);
     }
 
+    [Fact]
+    public async Task Plantilla_que_deja_de_estar_aprobada_pausa_la_campania_sin_POST()
+    {
+        var id = await ApprovedAsync();
+        await using (var db = database.CreateContext())
+        {
+            await db.Templates.ExecuteUpdateAsync(s => s.SetProperty(t => t.Status, "DISABLED"));
+        }
+
+        var handler = Accepting();
+        var round = await DispatchAsync(handler);
+
+        Assert.Empty(handler.Requests);
+        Assert.Equal(2, round.Held);
+        await using var check = database.CreateContext();
+        var campaign = await check.Campaigns.SingleAsync(c => c.Id == id);
+        Assert.Equal(CampaignStatus.Paused, campaign.Status);
+        Assert.Contains("DISABLED", campaign.StatusReason, StringComparison.Ordinal);
+        Assert.Equal(2, await check.DispatchJobs.CountAsync(j => j.DispatchStatus == DispatchStatus.OnHold));
+        Assert.Equal(CampaignLifecycle.SystemActor, (await check.AuditLogs.SingleAsync(a => a.Action == AuditActions.PausarCampana)).User);
+    }
+
+    [Fact]
+    public async Task Error_132001_pausa_solo_esa_campania_y_lo_demas_no_sale()
+    {
+        var id = await ApprovedAsync();
+        var handler = new FakeHttpHandler((_, _) => Task.FromResult(MetaWhatsAppClientTests.Json(HttpStatusCode.BadRequest,
+            """{"error":{"message":"(#132001) Template name does not exist in the translation","type":"OAuthException","code":132001,"error_data":{"details":"template name (promo_f15) does not exist in es"},"fbtrace_id":"T"}}""")));
+
+        await DispatchAsync(handler);
+
+        Assert.Single(handler.Requests); // El segundo trabajo ve la campaña en pausa y no hace POST.
+        await using var check = database.CreateContext();
+        Assert.Equal(CampaignStatus.Paused, (await check.Campaigns.SingleAsync(c => c.Id == id)).Status);
+        var states = await check.DispatchJobs.Where(j => j.SkipReason == null).Select(j => j.DispatchStatus).OrderBy(s => s).ToListAsync();
+        Assert.Equal([DispatchStatus.Failed, DispatchStatus.OnHold], states.OrderBy(s => s.ToString()));
+        Assert.Empty(await check.DispatchPauses.ToListAsync()); // No es una pausa global.
+    }
+
     /// <summary>Un envío anterior al contacto: trabajo (de campaña o de send-test) con un intento en el estado dado.</summary>
     private static async Task SentAsync(WaBulkDbContext db, Contact contact, DateTime when, SendAttemptStatus status, bool campaign)
     {
