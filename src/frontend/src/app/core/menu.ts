@@ -16,6 +16,10 @@ export const MENU: OpcionMenu[] = [
   { ruta: '/listas', texto: 'Listas', roles: ['Operador'] },
   { ruta: '/plantillas', texto: 'Plantillas', roles: ['Operador'] },
   { ruta: '/campanias', texto: 'Campañas', roles: ['Operador'] },
+  { ruta: '/monitor', texto: 'Monitor', roles: ['Operador'] },
+  { ruta: '/revision', texto: 'Envíos inciertos', roles: ['Operador'] },
+  { ruta: '/bajas', texto: 'Bajas', roles: ['Operador'] },
   { ruta: '/aprobaciones', texto: 'Aprobaciones', roles: ['Aprobador'] },
+  { ruta: '/alertas', texto: 'Alertas', roles: ['Aprobador'] },
   { ruta: '/usuarios', texto: 'Usuarios', roles: ['Admin'] },
 ];

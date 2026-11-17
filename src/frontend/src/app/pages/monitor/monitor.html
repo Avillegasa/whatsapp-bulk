@@ -1,0 +1,99 @@
+<h1>Monitor</h1>
+
+<div class="barra">
+  <span class="vivo" [class.activo]="enVivo()">{{ enVivo() ? '● En vivo' : '○ Sin conexión en vivo' }}</span>
+  @if (actualizadoUtc(); as a) {
+    <span class="sec">Actualizado {{ a | date: 'HH:mm:ss' }}</span>
+  }
+  <button type="button" class="chico" (click)="actualizar()">Actualizar</button>
+</div>
+
+@if (error(); as e) {
+  <p class="aviso error" role="status">{{ e }}</p>
+}
+
+@if (tablero(); as t) {
+  @if (t.pausa.enPausa) {
+    <p class="aviso error" role="alert">
+      Despacho EN PAUSA por {{ t.pausa.motivo }} desde {{ fecha(t.pausa.desdeUtc) | date: 'dd/MM HH:mm' }}
+      ({{ t.pausa.alertasAbiertas }} alertas abiertas). Lo revisa y reanuda una persona con rol Aprobador en "Alertas".
+    </p>
+  } @else {
+    <p class="aviso" role="status">Despacho activo.</p>
+  }
+
+  <div class="resumen">
+    <div>
+      <strong>{{ t.capacidad.disponibles }}</strong>destinatarios disponibles hoy
+    </div>
+    <div>
+      <strong>{{ t.capacidad.usados }} / {{ t.capacidad.presupuesto }}</strong>usados en 24 h
+    </div>
+    <div>
+      <strong>{{ t.capacidad.limite === 2147483647 ? 'Sin límite' : t.capacidad.limite }}</strong>límite ({{ t.capacidad.fuenteLimite }})
+    </div>
+  </div>
+  <p class="ayuda">
+    La capacidad cuenta destinatarios únicos fuera de la ventana de 24 h; el presupuesto es el 90 % del límite menos el cupo
+    de envíos manuales.
+  </p>
+
+  <h2>Campañas</h2>
+  @if (t.campanias.length === 0) {
+    <p>No hay campañas programadas, enviando, en pausa ni recién enviadas.</p>
+  } @else {
+    <div class="tabla">
+      <table>
+        <thead>
+          <tr>
+            <th>Campaña</th>
+            <th>En cola</th>
+            <th>Enviados</th>
+            <th>Entregados</th>
+            <th>Leídos</th>
+            <th>Fallidos</th>
+            <th>Omitidos</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (c of t.campanias; track c.campanaId) {
+            <tr>
+              <td>
+                {{ c.nombre }} <span class="sec">v{{ c.version }}</span><br />
+                <span class="estado {{ c.estado }}">{{ estado(c.estado) }}</span>
+                <span class="sec">{{ c.total }} destinatarios</span>
+                @if (c.revision > 0) {
+                  <br /><span class="estado PendingApproval">{{ c.revision }} inciertos: revisar</span>
+                }
+              </td>
+              <td>
+                {{ c.enCola + c.enviandose }}
+                @if (c.enEspera > 0) {
+                  <br /><span class="sec">{{ c.enEspera }} en espera (pausa)</span>
+                }
+              </td>
+              <td>{{ c.enviados }}</td>
+              <td>{{ c.entregados }} <span class="sec">{{ porcentaje(c.entregados, c.enviados) }} %</span></td>
+              <td>{{ c.leidos }} <span class="sec">{{ porcentaje(c.leidos, c.enviados) }} %</span></td>
+              <td>
+                {{ c.fallidos }}
+                @if (c.vencidos > 0) {
+                  <br /><span class="sec">{{ c.vencidos }} vencidos</span>
+                }
+              </td>
+              <td>
+                @for (o of c.omitidos | keyvalue; track o.key) {
+                  <span class="sec">{{ o.value }} {{ omision(o.key) }}</span><br />
+                } @empty {
+                  0
+                }
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  }
+} @else {
+  <p>Cargando…</p>
+}

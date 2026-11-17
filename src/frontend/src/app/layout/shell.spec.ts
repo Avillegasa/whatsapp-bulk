@@ -31,11 +31,15 @@ describe('Shell: menú por rol', () => {
       'Listas',
       'Plantillas',
       'Campañas',
+      'Monitor',
+      'Envíos inciertos',
+      'Bajas',
       'Aprobaciones',
+      'Alertas',
     ]);
   });
 
   it('Aprobador solo no ve contactos ni Usuarios', () => {
-    expect(menuPara({ autenticado: true, usuario: 'x', roles: ['Aprobador'] })).toEqual(['Inicio', 'Aprobaciones']);
+    expect(menuPara({ autenticado: true, usuario: 'x', roles: ['Aprobador'] })).toEqual(['Inicio', 'Aprobaciones', 'Alertas']);
   });
 });
