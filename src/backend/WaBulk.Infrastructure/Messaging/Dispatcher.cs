@@ -215,7 +215,12 @@ public sealed partial class Dispatcher(
         await rateLimiter.WaitAsync(cancellationToken);
 
         // Capacidad del portafolio (F0.11): reserva atómica antes del intento; un número ya contado no ocupa lugar.
-        if (await capacity.ReserveAsync(job.Id, job.PhoneE164, Now, cancellationToken) == ReserveOutcome.NoCapacity)
+        // F1.7: con la ventana de atención abierta (el contacto escribió en las últimas 24 h) el envío no cuenta para el
+        // límite de Meta: no se reserva. https://developers.facebook.com/documentation/business-messaging/whatsapp/messaging-limits
+        var windowFrom = Now.AddHours(-24).AddMinutes(Options.WindowMarginMinutes);
+        var serviceWindow = await db.InboundMessages.AsNoTracking()
+            .AnyAsync(m => m.ContactId == job.ContactId && m.SentUtc > windowFrom, cancellationToken);
+        if (!serviceWindow && await capacity.ReserveAsync(job.Id, job.PhoneE164, Now, cancellationToken) == ReserveOutcome.NoCapacity)
         {
             await queue.DeferAsync(job.Id, Owner, Now.AddMinutes(Options.NoCapacityRetryMinutes), cancellationToken);
             return BeginOutcome.NoCapacity;

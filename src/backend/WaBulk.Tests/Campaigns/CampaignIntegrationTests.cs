@@ -550,6 +550,34 @@ public sealed class CampaignIntegrationTests(SqlServerTestDatabase database)
         Assert.Equal("+59170000001", Assert.Single(overdue).PhoneE164); // El de hace 1 h todavía puede resolverse por webhook.
     }
 
+    [Fact]
+    public async Task Con_la_ventana_de_24_horas_abierta_no_ocupa_capacidad()
+    {
+        await using (var db = database.CreateContext())
+        {
+            // Ana escribió hace una hora: la ventana de atención está abierta.
+            var ana = await db.Contacts.SingleAsync(c => c.PhoneE164 == "+59170000001");
+            var inbox = new WebhookInbox { ReceivedUtc = Start.AddHours(-1), Body = "{}", Status = WebhookInboxStatus.Procesado };
+            db.WebhookInbox.Add(inbox);
+            await db.SaveChangesAsync();
+            db.InboundMessages.Add(new InboundMessage
+            {
+                Wamid = "wamid.ANA", ContactId = ana.Id, PhoneE164 = ana.PhoneE164, Type = "text", Text = "Hola",
+                SentUtc = Start.AddHours(-1), ReceivedUtc = Start.AddHours(-1), WebhookInboxId = inbox.Id,
+            });
+            await db.SaveChangesAsync();
+        }
+
+        await ApprovedAsync();
+        var handler = Accepting();
+        var round = await DispatchAsync(handler, capacityBudget: 0); // Sin capacidad disponible.
+
+        Assert.Equal((1, 1), (round.Sent, round.NoCapacity)); // Ana sale igual; Beto (fuera de ventana) espera capacidad.
+        Assert.Equal("+59170000001", JsonDocument.Parse(Assert.Single(handler.Requests).Body).RootElement.GetProperty("to").GetString());
+        await using var check = database.CreateContext();
+        Assert.Empty(await check.CapacityReservations.ToListAsync());
+    }
+
     /// <summary>Un envío anterior al contacto: trabajo (de campaña o de send-test) con un intento en el estado dado.</summary>
     private static async Task SentAsync(
         WaBulkDbContext db, Contact contact, DateTime when, SendAttemptStatus status, bool campaign, DeliveryStatus? delivery = null,
@@ -621,14 +649,16 @@ public sealed class CampaignIntegrationTests(SqlServerTestDatabase database)
     private FakeHttpHandler Accepting() => new((_, _) => Task.FromResult(MetaWhatsAppClientTests.Json(HttpStatusCode.OK,
         $$"""{"messaging_product":"whatsapp","messages":[{"id":"wamid.C{{Interlocked.Increment(ref _wamid)}}","message_status":"accepted"}]}""")));
 
-    private async Task<DispatchRound> DispatchAsync(FakeHttpHandler handler, DispatcherOptions? custom = null, int maxPerWeek = 1000)
+    private async Task<DispatchRound> DispatchAsync(
+        FakeHttpHandler handler, DispatcherOptions? custom = null, int maxPerWeek = 1000, int? capacityBudget = null)
     {
         await using var db = database.CreateContext();
         var opts = custom ?? new DispatcherOptions();
         opts.WorkerId = "W";
         opts.LeaseSeconds = 120;
         var options = Options.Create(opts);
-        var dispatcher = new Dispatcher(db, new DispatchQueue(db), new ConsentService(db, _clock), TestCapacity.Unlimited(db),
+        var dispatcher = new Dispatcher(db, new DispatchQueue(db), new ConsentService(db, _clock),
+            capacityBudget is { } budget ? TestCapacity.With(db, budget) : TestCapacity.Unlimited(db),
             new AlertService(db, _clock, NullLogger<AlertService>.Instance), TestServices.Lifecycle(db), TestServices.RateLimiter,
             TestServices.Frequency(maxPerWeek), MetaWhatsAppClientTests.CreateClient(handler),
             options, new DispatcherIdentity(options), _clock, NullLogger<Dispatcher>.Instance);

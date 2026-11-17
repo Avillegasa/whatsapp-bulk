@@ -62,6 +62,12 @@ public sealed class DispatcherOptions
     /// <summary>Porcentaje de fallos que pausa todo (docs/ARQUITECTURA.md: 5 %).</summary>
     public int FailureThresholdPercent { get; set; } = 5;
 
+    /// <summary>
+    /// Margen (min) para dar por abierta la ventana de atención de 24 h al descontar capacidad (F1.7). Igual que la oferta
+    /// (OfertaPromociones:WindowMarginMinutes): cerca del límite se cuenta como fuera de la ventana.
+    /// </summary>
+    public int WindowMarginMinutes { get; set; } = 10;
+
     /// <summary>Horas sin webhook tras las que un NeedsReview se lista para revisión manual (F1.7; inicial 2).</summary>
     public int NeedsReviewHours { get; set; } = 2;
 
