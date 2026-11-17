@@ -123,6 +123,12 @@ Orden: F1.1 primero (pruebas cortas que definen qué puede mostrar la demo) y en
 - **Entregables:** SignalR con contadores por campaña (en cola, enviados, entregados, leídos, fallidos, omitidos y su motivo); pantalla de alertas con "reanudar" auditado; pantalla de `NeedsReview` (marcar "llegó" o "no llegó", nunca reenvío automático); pantalla de bajas; consumo de capacidad del día.
 - **Verificación:** con un replay, el contador cambia en el navegador en menos de 5 s; reanudar desde la pantalla → pausa levantada y fila en `AuditLog`.
 
+### F1.8b — Diseño visual de la intranet (fuera del plan, pedida por Andrés)
+- **Quién:** Claude Code · **Depende de:** F1.2 (las pantallas ya existen)
+- **Alcance:** solo frontend (`src/frontend`), sin dependencias nuevas; no cambia rutas, guardias, permisos, servicios, llamadas a la Api, textos funcionales ni el backend.
+- **Entregables:** sistema de diseño en `src/styles.css` (variables de color, tipografía, espaciado, radios, sombras, foco visible, contraste AA y colores de estado: verde enviado/entregado, azul leído, ámbar en espera, rojo fallo/baja, gris omitido); layout con menú lateral por rol agrupado, encabezado con usuario y salir, responsive; piezas compartidas (botones, tabla, badge de estado, tarjeta, formulario con errores, estado vacío, carga y error); pantallas en este orden: Login, Monitor (contadores grandes y banner EN PAUSA), Campañas y Aprobaciones, Mensajes recientes ("Ofrecer promociones" destacado), Contactos, Plantillas y el resto.
+- **Verificación:** después de cada paso `npx ng build` y `npx ng test --watch=false` en verde; revisión en el navegador (escritorio y móvil) y visto bueno de Andrés.
+
 ### F1.9 — Docker y despliegue
 - **Quién:** Claude Code + Tú · **Depende de:** F1.2; decisión pendiente D-006 (dónde corre SQL Server en producción) y dónde se publica el receptor con HTTPS
 - **Entregables:** Dockerfiles de Api, Webhooks, Worker y frontend (nginx); `deploy/docker/compose.prod.yml`; secretos por variables de entorno o `.env` ignorado; health checks; migraciones aplicadas por un paso explícito (no al arrancar); solo el receptor expuesto a internet.
