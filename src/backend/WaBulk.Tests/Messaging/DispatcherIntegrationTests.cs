@@ -57,7 +57,7 @@ public sealed class DispatcherIntegrationTests(SqlServerTestDatabase database)
     private Dispatcher NewDispatcher(WaBulkDbContext db, FakeHttpHandler handler, string owner, TimeSpan? httpTimeout = null)
     {
         var options = Microsoft.Extensions.Options.Options.Create(Options(owner));
-        return new Dispatcher(db, new DispatchQueue(db), new ConsentService(db, _clock), TestCapacity.Unlimited(db), new AlertService(db, _clock, NullLogger<AlertService>.Instance), TestServices.Lifecycle(db),
+        return new Dispatcher(db, new DispatchQueue(db), new ConsentService(db, _clock), TestCapacity.Unlimited(db), new AlertService(db, _clock, NullLogger<AlertService>.Instance), TestServices.Lifecycle(db), TestServices.RateLimiter, TestServices.Frequency(),
             MetaWhatsAppClientTests.CreateClient(handler, httpTimeout),
             options, new DispatcherIdentity(options), _clock, NullLogger<Dispatcher>.Instance);
     }

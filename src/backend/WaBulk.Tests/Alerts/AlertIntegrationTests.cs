@@ -69,7 +69,7 @@ public sealed class AlertIntegrationTests(SqlServerTestDatabase database)
             WorkerId = "W", LeaseSeconds = 120,
         });
         var dispatcher = new Dispatcher(db, new DispatchQueue(db), new ConsentService(db, _clock), TestCapacity.Unlimited(db),
-            new AlertService(db, _clock, NullLogger<AlertService>.Instance), TestServices.Lifecycle(db), MetaWhatsAppClientTests.CreateClient(handler),
+            new AlertService(db, _clock, NullLogger<AlertService>.Instance), TestServices.Lifecycle(db), TestServices.RateLimiter, TestServices.Frequency(), MetaWhatsAppClientTests.CreateClient(handler),
             options, new DispatcherIdentity(options), _clock, NullLogger<Dispatcher>.Instance);
         return await dispatcher.RunOnceAsync(CancellationToken.None);
     }

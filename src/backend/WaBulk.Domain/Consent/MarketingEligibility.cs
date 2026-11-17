@@ -19,6 +19,9 @@ public static class SkipReasons
 
     /// <summary>Ya tiene un envío de una versión anterior de la misma campaña: no se le manda dos veces.</summary>
     public const string YaEnviado = "YaEnviado";
+
+    /// <summary>F1.7 (D-031): el contacto ya recibió el máximo de promociones de los últimos 7 días.</summary>
+    public const string LimiteFrecuencia = "LimiteFrecuencia";
 }
 
 public sealed record EligibilityResult(bool Eligible, string? SkipReason)

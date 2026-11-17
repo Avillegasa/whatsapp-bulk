@@ -26,6 +26,7 @@ public sealed partial class DispatcherWorker(
         LogStarted(logger, identity.Owner, options.Value.PollSeconds);
         var poll = TimeSpan.FromSeconds(options.Value.PollSeconds);
         var pausedLogged = false;
+        var closedLogged = false;
 
         while (!stoppingToken.IsCancellationRequested)
         {
@@ -42,6 +43,19 @@ public sealed partial class DispatcherWorker(
                 }
 
                 pausedLogged = round.Paused;
+                if (round.OutsideHours != closedLogged)
+                {
+                    if (round.OutsideHours)
+                    {
+                        LogClosed(logger, options.Value.AllowedFrom, options.Value.AllowedUntil, options.Value.TimeZone);
+                    }
+                    else
+                    {
+                        LogOpened(logger);
+                    }
+                }
+
+                closedLogged = round.OutsideHours;
                 if (round.Claimed + round.Recovered + round.Expired > 0)
                 {
                     LogRound(logger, round.Recovered, round.Expired, round.Claimed, round.Sent, round.Skipped, round.NoCapacity, round.LeaseLost);
@@ -71,6 +85,12 @@ public sealed partial class DispatcherWorker(
             }
         }
     }
+
+    [LoggerMessage(Level = LogLevel.Information, Message = "Fuera del horario permitido ({From}–{Until}, {Zone}): no se envía hasta que abra")]
+    private static partial void LogClosed(ILogger logger, string from, string until, string zone);
+
+    [LoggerMessage(Level = LogLevel.Information, Message = "Horario permitido abierto: el despacho sigue")]
+    private static partial void LogOpened(ILogger logger);
 
     [LoggerMessage(Level = LogLevel.Information, Message = "Despachador apagado (Dispatcher:Enabled = false)")]
     private static partial void LogDisabled(ILogger logger);

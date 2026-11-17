@@ -378,6 +378,76 @@ public sealed class CampaignIntegrationTests(SqlServerTestDatabase database)
         Assert.Equal(SkipReasons.SinCampania, (await check.DispatchJobs.SingleAsync()).SkipReason);
     }
 
+    // ---------- Controles de F1.7 ----------
+
+    [Fact]
+    public async Task Tope_semanal_omite_a_quien_ya_recibio_el_maximo()
+    {
+        await using (var db = database.CreateContext())
+        {
+            var ana = await db.Contacts.SingleAsync(c => c.PhoneE164 == "+59170000001");
+            var beto = await db.Contacts.SingleAsync(c => c.PhoneE164 == "+59170000002");
+            // Ana: 2 promociones en los últimos 7 días (una aceptada, una incierta: puede haber llegado).
+            await SentAsync(db, ana, Start.AddDays(-1), SendAttemptStatus.Accepted, campaign: true);
+            await SentAsync(db, ana, Start.AddDays(-3), SendAttemptStatus.SubmissionUnknown, campaign: true);
+            // Beto: una de hace 8 días (fuera de la ventana), una rechazada y un send-test (no es promoción de campaña).
+            await SentAsync(db, beto, Start.AddDays(-8), SendAttemptStatus.Accepted, campaign: true);
+            await SentAsync(db, beto, Start.AddDays(-1), SendAttemptStatus.Rejected, campaign: true);
+            await SentAsync(db, beto, Start.AddHours(-1), SendAttemptStatus.Accepted, campaign: false);
+        }
+
+        await ApprovedAsync();
+        var handler = Accepting();
+        var round = await DispatchAsync(handler, maxPerWeek: 2);
+
+        Assert.Equal((1, 1), (round.Sent, round.Skipped));
+        Assert.Equal("+59170000002", JsonDocument.Parse(Assert.Single(handler.Requests).Body).RootElement.GetProperty("to").GetString());
+        await using var check = database.CreateContext();
+        var versionId = await check.CampaignVersions.Where(v => v.TemplateName == "promo_f15").Select(v => v.Id).SingleAsync();
+        var anaJob = await check.DispatchJobs.SingleAsync(j => j.PhoneE164 == "+59170000001" && j.CampaignVersionId == versionId);
+        Assert.Equal((DispatchStatus.Skipped, SkipReasons.LimiteFrecuencia), (anaJob.DispatchStatus, anaJob.SkipReason));
+    }
+
+    [Fact]
+    public async Task Fuera_de_horario_no_reclama_ni_envia_y_sale_al_abrir()
+    {
+        await ApprovedAsync(expiresIn: TimeSpan.FromDays(2));
+        var laPaz = new DispatcherOptions { AllowedFrom = "08:00", AllowedUntil = "20:00", TimeZone = "America/La_Paz" };
+        var handler = Accepting();
+
+        _clock.Advance(TimeSpan.FromHours(11)); // 01:00 UTC = 21:00 en La Paz.
+        var night = await DispatchAsync(handler, laPaz);
+
+        Assert.True(night.OutsideHours);
+        Assert.Equal(0, night.Claimed);
+        Assert.Empty(handler.Requests);
+        await using (var db = database.CreateContext())
+        {
+            Assert.Equal(2, await db.DispatchJobs.CountAsync(j => j.DispatchStatus == DispatchStatus.Queued));
+        }
+
+        _clock.Advance(TimeSpan.FromHours(11)); // 12:00 UTC = 08:00 en La Paz.
+        var morning = await DispatchAsync(handler, laPaz);
+
+        Assert.False(morning.OutsideHours);
+        Assert.Equal(2, morning.Sent);
+    }
+
+    /// <summary>Un envío anterior al contacto: trabajo (de campaña o de send-test) con un intento en el estado dado.</summary>
+    private static async Task SentAsync(WaBulkDbContext db, Contact contact, DateTime when, SendAttemptStatus status, bool campaign)
+    {
+        var job = new DispatchJob
+        {
+            CampaignVersionId = campaign ? await TestServices.CampaignVersionAsync(db) : null,
+            ContactId = contact.Id, PhoneE164 = contact.PhoneE164!, ScheduledUtc = when, ExpiresUtc = when.AddDays(1),
+            DispatchStatus = status == SendAttemptStatus.Rejected ? DispatchStatus.Failed : DispatchStatus.Submitted,
+        };
+        db.DispatchJobs.Add(job);
+        await db.SaveChangesAsync();
+        db.SendAttempts.Add(new SendAttempt { AttemptId = Guid.CreateVersion7(), DispatchJobId = job.Id, StartedUtc = when, Status = status });
+        await db.SaveChangesAsync();
+    }
+
     // ---------- Apoyo ----------
 
     private CampaignDraft Draft(string promo = "2x1 en cortes", TimeSpan? expiresIn = null) => new(
@@ -428,12 +498,16 @@ public sealed class CampaignIntegrationTests(SqlServerTestDatabase database)
     private FakeHttpHandler Accepting() => new((_, _) => Task.FromResult(MetaWhatsAppClientTests.Json(HttpStatusCode.OK,
         $$"""{"messaging_product":"whatsapp","messages":[{"id":"wamid.C{{Interlocked.Increment(ref _wamid)}}","message_status":"accepted"}]}""")));
 
-    private async Task<DispatchRound> DispatchAsync(FakeHttpHandler handler)
+    private async Task<DispatchRound> DispatchAsync(FakeHttpHandler handler, DispatcherOptions? custom = null, int maxPerWeek = 1000)
     {
         await using var db = database.CreateContext();
-        var options = Options.Create(new DispatcherOptions { WorkerId = "W", LeaseSeconds = 120 });
+        var opts = custom ?? new DispatcherOptions();
+        opts.WorkerId = "W";
+        opts.LeaseSeconds = 120;
+        var options = Options.Create(opts);
         var dispatcher = new Dispatcher(db, new DispatchQueue(db), new ConsentService(db, _clock), TestCapacity.Unlimited(db),
-            new AlertService(db, _clock, NullLogger<AlertService>.Instance), TestServices.Lifecycle(db), MetaWhatsAppClientTests.CreateClient(handler),
+            new AlertService(db, _clock, NullLogger<AlertService>.Instance), TestServices.Lifecycle(db), TestServices.RateLimiter,
+            TestServices.Frequency(maxPerWeek), MetaWhatsAppClientTests.CreateClient(handler),
             options, new DispatcherIdentity(options), _clock, NullLogger<Dispatcher>.Instance);
         return await dispatcher.RunOnceAsync(CancellationToken.None);
     }

@@ -32,7 +32,41 @@ public sealed class DispatcherOptions
     /// <summary>Cuánto se pospone un trabajo que no consiguió capacidad del portafolio (F0.11).</summary>
     public int NoCapacityRetryMinutes { get; set; } = 5;
 
+    /// <summary>
+    /// Tasa por número (F1.7): mensajes por segundo, 1 a 80 (techo de Meta por número). Inicial 10.
+    /// https://developers.facebook.com/documentation/business-messaging/whatsapp/throughput
+    /// </summary>
+    public int MessagesPerSecond { get; set; } = 10;
+
+    /// <summary>Fichas acumulables del token bucket (1 = envíos parejos, sin ráfagas).</summary>
+    public int RateBurst { get; set; } = 1;
+
+    /// <summary>
+    /// Horario permitido (F1.7), hora local de <see cref="TimeZone"/>: desde incluido, hasta excluido. Iguales = todo el
+    /// día (valor por defecto de la clase; el appsettings del Worker pone 08:00–20:00).
+    /// </summary>
+    public string AllowedFrom { get; set; } = "00:00";
+
+    public string AllowedUntil { get; set; } = "00:00";
+
+    /// <summary>Zona IANA del horario. Bolivia: America/La_Paz (UTC−4, sin horario de verano).</summary>
+    public string TimeZone { get; set; } = "America/La_Paz";
+
+    public SendingWindow Window => SendingWindow.Parse(AllowedFrom, AllowedUntil, TimeZone);
+
     public TimeSpan Lease => TimeSpan.FromSeconds(LeaseSeconds);
 
     public RetrySettings Retry => new(MaxAttempts, TimeSpan.FromSeconds(RetryBaseSeconds), TimeSpan.FromSeconds(RetryMaxSeconds));
+}
+
+/// <summary>
+/// Tope de promociones por contacto (F1.7, D-031). Misma clave que usa la Api para el texto de la oferta
+/// ("OfertaPromociones:MaxPromotionsPerWeek"): lo que se promete al cliente es lo que cumple el despachador.
+/// </summary>
+public sealed class FrequencyOptions
+{
+    public const string SectionName = "OfertaPromociones";
+
+    /// <summary>Promociones como máximo por contacto en 7 días móviles. Inicial 2.</summary>
+    public int MaxPromotionsPerWeek { get; set; } = 2;
 }

@@ -24,6 +24,14 @@ public static class TestServices
 
     public static CampaignLifecycle Lifecycle(WaBulkDbContext db) => new(db, Options.Create(new CampaignOptions()));
 
+    /// <summary>Tasa alta para que las pruebas no esperen (la tasa real se prueba en SendRateLimiterTests).</summary>
+    public static SendRateLimiter RateLimiter { get; } =
+        new(Options.Create(new DispatcherOptions { MessagesPerSecond = 1000, RateBurst = 1000 }), TimeProvider.System);
+
+    /// <summary>Tope semanal (D-031); por defecto alto para no interferir con pruebas de otros controles.</summary>
+    public static IOptions<FrequencyOptions> Frequency(int maxPerWeek = 1000) =>
+        Options.Create(new FrequencyOptions { MaxPromotionsPerWeek = maxPerWeek });
+
     /// <summary>
     /// Versión de campaña lista para enviar (F1.6: DispatchJob.CampaignVersionId tiene FK): plantilla APPROVED de
     /// marketing sin parámetros (se crea si no existe), campaña Scheduled y una versión nueva por llamada, programada en

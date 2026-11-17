@@ -18,7 +18,8 @@ namespace WaBulk.Infrastructure.Messaging;
 
 /// <summary>Resumen de una vuelta del despachador.</summary>
 public sealed record DispatchRound(
-    int Recovered, int Expired, int Claimed, int Sent, int LeaseLost, int Skipped, int NoCapacity = 0, bool Paused = false, int Held = 0);
+    int Recovered, int Expired, int Claimed, int Sent, int LeaseLost, int Skipped, int NoCapacity = 0, bool Paused = false, int Held = 0,
+    bool OutsideHours = false);
 
 /// <summary>
 /// Despachador (F0.9). Una vuelta: recupera leases vencidos → marca vencidos → reclama un lote →
@@ -31,7 +32,9 @@ public sealed record DispatchRound(
 /// alerta, pausa y devuelve a la cola lo que quedaba del lote.
 /// Campañas (F1.6): al inicio de cada vuelta avanza el ciclo de vida de las campañas; antes de cada envío revisa la
 /// campaña del trabajo (cancelada o versión reemplazada → Skipped; en pausa → OnHold) y toma la plantilla y los
-/// parámetros de la versión. Revalidaciones de plantilla APPROVED, fatiga y horario: F1.7.
+/// parámetros de la versión.
+/// F1.7: fuera del horario permitido no reclama (y suelta lo que quedaba del lote); tope de promociones por contacto en
+/// 7 días (Skipped LimiteFrecuencia, D-031); tasa por número (SendRateLimiter) antes de cada POST.
 /// </summary>
 public sealed partial class Dispatcher(
     WaBulkDbContext db,
@@ -40,6 +43,8 @@ public sealed partial class Dispatcher(
     CapacityService capacity,
     AlertService alerts,
     CampaignLifecycle lifecycle,
+    SendRateLimiter rateLimiter,
+    IOptions<FrequencyOptions> frequency,
     MetaWhatsAppClient meta,
     IOptions<DispatcherOptions> options,
     DispatcherIdentity identity,
@@ -66,6 +71,12 @@ public sealed partial class Dispatcher(
             return new DispatchRound(recovered.Count, expired, 0, 0, 0, 0, Paused: true);
         }
 
+        var window = Options.Window;
+        if (!window.IsOpen(Now))
+        {
+            return new DispatchRound(recovered.Count, expired, 0, 0, 0, 0, OutsideHours: true);
+        }
+
         var ids = await queue.ClaimBatchAsync(Owner, Options.BatchSize, Now, Options.Lease, cancellationToken);
 
         int sent = 0, lost = 0, skipped = 0, noCapacity = 0, held = 0;
@@ -78,15 +89,22 @@ public sealed partial class Dispatcher(
                 break;
             }
 
-            // La pausa puede llegar a mitad del lote (este despachador, otro o el procesador de webhooks).
-            if (await alerts.IsPausedAsync(cancellationToken))
+            // La pausa puede llegar a mitad del lote (este despachador, otro o el procesador de webhooks), y el horario
+            // puede cerrar a mitad del lote: lo que no empezó vuelve a la cola.
+            var closed = !window.IsOpen(Now);
+            if (closed || await alerts.IsPausedAsync(cancellationToken))
             {
                 foreach (var pending in ids.Skip(i))
                 {
                     await queue.ReleaseClaimAsync(pending, Owner, cancellationToken);
                 }
 
-                paused = true;
+                paused = !closed;
+                if (closed)
+                {
+                    return new DispatchRound(recovered.Count, expired, ids.Count, sent, lost, skipped, noCapacity, false, held, OutsideHours: true);
+                }
+
                 break;
             }
 
@@ -152,6 +170,17 @@ public sealed partial class Dispatcher(
             LogSkipped(logger, job.Id, eligibility.SkipReason);
             return skippedNow ? BeginOutcome.Skipped : BeginOutcome.LeaseLost;
         }
+
+        // Tope semanal por contacto (F1.7, D-031): lo que el texto de la oferta prometió.
+        if (await PromotionsThisWeekAsync(job) >= frequency.Value.MaxPromotionsPerWeek)
+        {
+            var capped = await queue.SkipAsync(job.Id, Owner, SkipReasons.LimiteFrecuencia, cancellationToken);
+            LogSkipped(logger, job.Id, SkipReasons.LimiteFrecuencia);
+            return capped ? BeginOutcome.Skipped : BeginOutcome.LeaseLost;
+        }
+
+        // Tasa por número (F1.7): espera su turno antes de reservar y enviar.
+        await rateLimiter.WaitAsync(cancellationToken);
 
         // Capacidad del portafolio (F0.11): reserva atómica antes del intento; un número ya contado no ocupa lugar.
         if (await capacity.ReserveAsync(job.Id, job.PhoneE164, Now, cancellationToken) == ReserveOutcome.NoCapacity)
@@ -221,6 +250,21 @@ public sealed partial class Dispatcher(
         }
 
         return BeginOutcome.Started;
+    }
+
+    /// <summary>
+    /// Promociones enviadas al contacto en los últimos 7 días: trabajos de campaña (no send-test) con un intento aceptado,
+    /// incierto o en curso (lo incierto cuenta: puede haber llegado). Excluye el trabajo actual (un reintento no suma).
+    /// </summary>
+    private Task<int> PromotionsThisWeekAsync(DispatchJob job)
+    {
+        var since = Now.AddDays(-7);
+        return (from a in db.SendAttempts.AsNoTracking()
+                join j in db.DispatchJobs.AsNoTracking() on a.DispatchJobId equals j.Id
+                where j.ContactId == job.ContactId && j.Id != job.Id && j.CampaignVersionId != null && a.StartedUtc >= since
+                      && (a.Status == SendAttemptStatus.Accepted || a.Status == SendAttemptStatus.SubmissionUnknown
+                          || a.Status == SendAttemptStatus.Submitting)
+                select j.Id).Distinct().CountAsync(CancellationToken.None);
     }
 
     /// <summary>131050: "This recipient has chosen to stop receiving marketing messages" (no reintentar).</summary>

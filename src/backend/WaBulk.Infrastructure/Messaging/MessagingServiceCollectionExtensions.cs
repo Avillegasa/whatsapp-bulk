@@ -50,7 +50,15 @@ public static class MessagingServiceCollectionExtensions
             .Validate<IOptions<MetaOptions>>(
                 (o, meta) => o.LeaseSeconds >= 2 * meta.Value.RequestTimeoutSeconds,
                 "Dispatcher:LeaseSeconds debe ser al menos el doble de Meta:RequestTimeoutSeconds (el lease no puede vencer durante un POST)")
+            .Validate(o => o.MessagesPerSecond is >= 1 and <= 80 && o.RateBurst is >= 1 and <= 80,
+                "Dispatcher:MessagesPerSecond y RateBurst deben estar entre 1 y 80 (techo de Meta por número)")
+            .Validate(o => TryWindow(o), "Dispatcher:AllowedFrom/AllowedUntil (HH:mm) o TimeZone (IANA, ej. America/La_Paz) inválidos")
             .ValidateOnStart();
+        services.AddOptions<FrequencyOptions>()
+            .Bind(configuration.GetSection(FrequencyOptions.SectionName))
+            .Validate(o => o.MaxPromotionsPerWeek >= 1, "OfertaPromociones:MaxPromotionsPerWeek debe ser al menos 1")
+            .ValidateOnStart();
+        services.AddSingleton<SendRateLimiter>();
         services.AddSingleton<DispatcherIdentity>();
         services.AddScoped<DispatchQueue>();
         services.AddScoped<Dispatcher>();
@@ -65,5 +73,18 @@ public static class MessagingServiceCollectionExtensions
         services.TryAddScoped<AlertService>();
         services.AddCampaigns(configuration); // F1.6: ciclo de vida de las campañas en cada vuelta.
         return services;
+    }
+
+    private static bool TryWindow(DispatcherOptions o)
+    {
+        try
+        {
+            _ = o.Window;
+            return true;
+        }
+        catch (Exception ex) when (ex is FormatException or TimeZoneNotFoundException or InvalidTimeZoneException)
+        {
+            return false;
+        }
     }
 }
