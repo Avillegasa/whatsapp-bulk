@@ -32,11 +32,51 @@ public sealed partial class MetaWhatsAppClient(
         DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
     };
 
-    public async Task<MetaSendResult> SendTemplateAsync(
+    public Task<MetaSendResult> SendTemplateAsync(
         string to,
         TemplateMessage template,
         Guid attemptId,
         CancellationToken cancellationToken)
+    {
+        var body = new SendTemplateRequest(
+            To: to,
+            Template: new TemplatePayload(template.Name, new LanguagePayload(template.LanguageCode)),
+            BizOpaqueCallbackData: attemptId.ToString());
+        return PostAsync(body, attemptId.ToString(), cancellationToken);
+    }
+
+    /// <summary>
+    /// Mensaje interactivo con botones de respuesta (no es plantilla: solo dentro de la ventana de 24 h).
+    /// Hasta 3 botones, título ≤ 20, id ≤ 256, cuerpo ≤ 1024. Destinatario: teléfono en "to" o, si no hay, el BSUID en
+    /// "recipient". Un solo POST, sin reintento (regla 3).
+    /// https://developers.facebook.com/documentation/business-messaging/whatsapp/messages/interactive-reply-buttons-messages
+    /// https://developers.facebook.com/documentation/business-messaging/whatsapp/messages/send-messages (recipient = BSUID)
+    /// </summary>
+    public Task<MetaSendResult> SendReplyButtonsAsync(
+        string? phoneE164,
+        string? userId,
+        string bodyText,
+        IReadOnlyList<(string Id, string Title)> buttons,
+        string callbackData,
+        CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(buttons);
+        if (string.IsNullOrWhiteSpace(phoneE164) && string.IsNullOrWhiteSpace(userId))
+        {
+            throw new ArgumentException("Se necesita teléfono o BSUID.");
+        }
+
+        var body = new SendInteractiveRequest(
+            To: string.IsNullOrWhiteSpace(phoneE164) ? null : phoneE164.TrimStart('+'),
+            Recipient: string.IsNullOrWhiteSpace(phoneE164) ? userId : null,
+            Interactive: new InteractivePayload(
+                new TextPayload(bodyText),
+                new ActionPayload([.. buttons.Select(b => new ButtonPayload(new ReplyPayload(b.Id, b.Title)))])),
+            BizOpaqueCallbackData: callbackData);
+        return PostAsync(body, callbackData, cancellationToken);
+    }
+
+    private async Task<MetaSendResult> PostAsync<TBody>(TBody body, string logId, CancellationToken cancellationToken)
     {
         var meta = options.CurrentValue;
         if (string.IsNullOrWhiteSpace(meta.GraphApiVersion) || string.IsNullOrWhiteSpace(meta.PhoneNumberId)
@@ -45,11 +85,6 @@ public sealed partial class MetaWhatsAppClient(
             throw new InvalidOperationException(
                 "Configuración de Meta incompleta: se requieren Meta:GraphApiVersion, Meta:PhoneNumberId y Meta:AccessToken.");
         }
-
-        var body = new SendTemplateRequest(
-            To: to,
-            Template: new TemplatePayload(template.Name, new LanguagePayload(template.LanguageCode)),
-            BizOpaqueCallbackData: attemptId.ToString());
 
         using var request = new HttpRequestMessage(
             HttpMethod.Post,
@@ -67,7 +102,7 @@ public sealed partial class MetaWhatsAppClient(
         catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or OperationCanceledException or IOException)
         {
             // Timeout, conexión cortada o cancelación: no sabemos si Meta recibió el mensaje.
-            LogUnknown(logger, attemptId, ex.GetType().Name);
+            LogUnknown(logger, logId, ex.GetType().Name);
             return new MetaSendResult(SendAttemptStatus.SubmissionUnknown, null, null, null,
                 Truncate($"{ex.GetType().Name}: {ex.Message}"));
         }
@@ -129,8 +164,8 @@ public sealed partial class MetaWhatsAppClient(
     private static string Truncate(string text) =>
         text.Length <= MaxDetailLength ? text : text[..MaxDetailLength];
 
-    [LoggerMessage(Level = LogLevel.Warning, Message = "Intento {AttemptId} sin respuesta confiable de Meta ({Reason}) → SubmissionUnknown")]
-    private static partial void LogUnknown(ILogger logger, Guid attemptId, string reason);
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Envío {Id} sin respuesta confiable de Meta ({Reason}) → SubmissionUnknown")]
+    private static partial void LogUnknown(ILogger logger, string id, string reason);
 
     // --- Payloads (snake_case) ---
 
@@ -142,6 +177,29 @@ public sealed partial class MetaWhatsAppClient(
     }
 
     private sealed record TemplatePayload(string Name, LanguagePayload Language);
+
+    private sealed record SendInteractiveRequest(string? To, string? Recipient, InteractivePayload Interactive, string BizOpaqueCallbackData)
+    {
+        public string MessagingProduct => "whatsapp";
+        public string RecipientType => "individual";
+        public string Type => "interactive";
+    }
+
+    private sealed record InteractivePayload(TextPayload Body, ActionPayload Action)
+    {
+        public string Type => "button";
+    }
+
+    private sealed record TextPayload(string Text);
+
+    private sealed record ActionPayload(IReadOnlyList<ButtonPayload> Buttons);
+
+    private sealed record ButtonPayload(ReplyPayload Reply)
+    {
+        public string Type => "reply";
+    }
+
+    private sealed record ReplyPayload(string Id, string Title);
 
     private sealed record LanguagePayload(string Code)
     {

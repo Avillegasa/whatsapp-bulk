@@ -1,5 +1,8 @@
 using WaBulk.Api.Auth;
+using WaBulk.Api.Contacts;
 using WaBulk.Api.Users;
+using WaBulk.Infrastructure.Contacts;
+using WaBulk.Infrastructure.Meta;
 using WaBulk.Infrastructure.Persistence;
 
 // Comando de una sola ejecución: crear el primer Admin (no levanta el servidor web).
@@ -12,6 +15,11 @@ builder.Services.AddHealthChecks();
 builder.Services.AddWaBulkPersistence(
     builder.Configuration.GetConnectionString(PersistenceServiceCollectionExtensions.ConnectionStringName));
 builder.Services.AddWaBulkAuth(builder.Environment);
+
+// F1.4: la oferta de promociones se envía desde la Api (botón "Ofrecer promociones"). IDs de Meta en appsettings;
+// el token en user-secrets (almacén compartido, D-018) o META__ACCESSTOKEN en Docker.
+builder.Services.AddMetaWhatsApp(builder.Configuration);
+builder.Services.AddContacts(builder.Configuration);
 
 var app = builder.Build();
 
@@ -30,7 +38,8 @@ app.MapHealthChecks("/health").AllowAnonymous();
 app.MapGroup("/api")
     .AddEndpointFilter<XsrfValidationFilter>()
     .MapAuthEndpoints()
-    .MapUsersEndpoints();
+    .MapUsersEndpoints()
+    .MapContactsEndpoints();
 
 await app.RunAsync();
 return 0;

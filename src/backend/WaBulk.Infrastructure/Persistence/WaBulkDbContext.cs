@@ -4,6 +4,7 @@ using WaBulk.Domain.Alerts;
 using WaBulk.Domain.Audit;
 using WaBulk.Domain.Capacity;
 using WaBulk.Domain.Consent;
+using WaBulk.Domain.Contacts;
 using WaBulk.Domain.Messaging;
 using WaBulk.Infrastructure.Identity;
 
@@ -25,6 +26,11 @@ public class WaBulkDbContext(DbContextOptions<WaBulkDbContext> options) : Identi
     public DbSet<Alert> Alerts => Set<Alert>();
     public DbSet<DispatchPause> DispatchPauses => Set<DispatchPause>();
     public DbSet<AuditLog> AuditLogs => Set<AuditLog>();
+    public DbSet<Contact> Contacts => Set<Contact>();
+    public DbSet<InboundMessage> InboundMessages => Set<InboundMessage>();
+    public DbSet<ConsentOffer> ConsentOffers => Set<ConsentOffer>();
+    public DbSet<Segment> Segments => Set<Segment>();
+    public DbSet<SegmentMember> SegmentMembers => Set<SegmentMember>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

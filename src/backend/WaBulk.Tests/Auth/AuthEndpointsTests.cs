@@ -202,6 +202,9 @@ internal sealed class ApiSession(HttpClient client)
 
     public HttpClient Client { get; } = client;
 
+    /// <summary>Token XSRF vigente (para armar peticiones a mano, por ejemplo multipart).</summary>
+    public string? Xsrf => _xsrf;
+
     public async Task<HttpResponseMessage> LoginAsync(string userName, string password)
     {
         if (_xsrf is null)

@@ -78,7 +78,7 @@ public sealed class CapacityIntegrationTests(SqlServerTestDatabase database)
             }
 
             var job = await new EnqueueService(db, new ConsentService(db, _clock)).EnqueueAsync(
-                new EnqueueRequest(Interlocked.Increment(ref _campaignVersion), 1, phone, Start, Start.AddDays(3)), CancellationToken.None);
+                new EnqueueRequest(Interlocked.Increment(ref _campaignVersion), await TestServices.ContactIdAsync(db, phone), phone, Start, Start.AddDays(3)), CancellationToken.None);
             ids.Add(job.Id);
         }
 

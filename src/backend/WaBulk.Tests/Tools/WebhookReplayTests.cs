@@ -18,6 +18,7 @@ using WaBulk.Infrastructure.Persistence;
 using WaBulk.WebhookReplay;
 using WaBulk.Webhooks;
 using WaBulk.Webhooks.Security;
+using WaBulk.Tests.Support;
 
 namespace WaBulk.Tests.Tools;
 
@@ -97,8 +98,7 @@ public sealed class WebhookReplayTests : IAsyncLifetime
     private async Task ProcessInboxAsync()
     {
         await using var db = Db();
-        var processor = new WebhookInboxProcessor(db, Options.Create(new InboxProcessorOptions()),
-            Options.Create(new OptOutOptions()), new AlertService(db, TimeProvider.System, NullLogger<AlertService>.Instance), TimeProvider.System, NullLogger<WebhookInboxProcessor>.Instance);
+        var processor = TestServices.Processor(db, TimeProvider.System);
         await processor.ProcessBatchAsync(CancellationToken.None);
     }
 

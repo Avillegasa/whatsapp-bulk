@@ -5,9 +5,11 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using WaBulk.Domain.Alerts;
 using WaBulk.Domain.Consent;
+using WaBulk.Domain.Contacts;
 using WaBulk.Domain.Messaging;
 using WaBulk.Infrastructure.Alerts;
 using WaBulk.Infrastructure.Consent;
+using WaBulk.Infrastructure.Contacts;
 using WaBulk.Infrastructure.Persistence;
 
 namespace WaBulk.Infrastructure.Messaging;
@@ -18,7 +20,9 @@ namespace WaBulk.Infrastructure.Messaging;
 /// registra MessageEvent una sola vez por (wamid, estado) y hace avanzar SendAttempt.EstadoEntrega
 /// sin retroceder nunca (regla 7). Bajas (F0.10): mensajes entrantes con palabra clave o botón de baja →
 /// ConsentRecord OptOut (capa empresa); user_preferences y estados failed con 131050 → PlatformPreference (capa
-/// plataforma). Todo lo de una fila se guarda en un solo SaveChanges.
+/// plataforma). F1.4: todo mensaje entrante se guarda en InboundMessage con su Contact (mapeo BSUID ↔ teléfono) y la
+/// respuesta a la oferta de promociones (D-031) se registra: «Sí» → ConsentRecord OptIn; «Ahora no» → solo la oferta.
+/// Todo lo de una fila se guarda en un solo SaveChanges, salvo un Contact nuevo, que se guarda antes para tener Id.
 /// Referencia: https://developers.facebook.com/documentation/business-messaging/whatsapp/webhooks/reference/messages/status
 /// </summary>
 public sealed partial class WebhookInboxProcessor(
@@ -26,6 +30,7 @@ public sealed partial class WebhookInboxProcessor(
     IOptions<InboxProcessorOptions> options,
     IOptions<OptOutOptions> optOut,
     AlertService alerts,
+    ContactDirectory contacts,
     TimeProvider clock,
     ILogger<WebhookInboxProcessor> logger)
 {
@@ -101,7 +106,7 @@ public sealed partial class WebhookInboxProcessor(
 
                         foreach (var message in change.Value?.Messages ?? [])
                         {
-                            outcomes.Add(await ApplyInboundMessageAsync(message, change.Value?.Contacts, cancellationToken));
+                            outcomes.Add(await ApplyInboundMessageAsync(row.Id, message, change.Value?.Contacts, cancellationToken));
                         }
 
                         break;
@@ -170,11 +175,138 @@ public sealed partial class WebhookInboxProcessor(
     }
 
     /// <summary>
-    /// Mensaje entrante: si es una baja (palabra clave o botón de baja), ConsentRecord OptOut. Cualquier otro
-    /// mensaje se ignora por ahora (la interacción para la regla de fatiga llega en la Fase 1).
+    /// Mensaje entrante (F1.4): se guarda en InboundMessage con su Contact (abre la ventana de 24 h). Además:
+    /// respuesta a la oferta de promociones → OptIn o «Ahora no» (D-031); palabra clave o botón de baja →
+    /// ConsentRecord OptOut. Si Meta no manda el teléfono (nombre de usuario), se usa el del contacto mapeado por BSUID.
     /// </summary>
     private async Task<(Outcome Outcome, string? Note)> ApplyInboundMessageAsync(
-        WebhookMessage message, IReadOnlyList<WebhookContact>? contacts, CancellationToken cancellationToken)
+        long inboxId, WebhookMessage message, IReadOnlyList<WebhookContact>? webhookContacts, CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrEmpty(message.Id))
+        {
+            return (Outcome.Review, "mensaje entrante sin id");
+        }
+
+        var info = webhookContacts?.FirstOrDefault(c =>
+                       (message.FromUserId is not null && c.UserId == message.FromUserId) || (message.From is not null && c.WaId == message.From))
+                   ?? (webhookContacts is { Count: 1 } ? webhookContacts[0] : null);
+        var phone = PhoneNumbers.FromWaId(message.From ?? info?.WaId);
+        var userId = message.FromUserId ?? info?.UserId;
+        if (phone is null && userId is null)
+        {
+            return (Outcome.Review, $"mensaje {message.Id} sin teléfono ni user_id");
+        }
+
+        // Idempotencia: el mismo mensaje (webhook repetido) se aplica una sola vez.
+        if (db.InboundMessages.Local.Any(m => m.Wamid == message.Id)
+            || await db.InboundMessages.AnyAsync(m => m.Wamid == message.Id, cancellationToken))
+        {
+            return (Outcome.Duplicate, null);
+        }
+
+        var contact = await contacts.ResolveAsync(phone, userId, info?.Profile?.Name, "webhook", cancellationToken);
+        phone ??= contact.PhoneE164; // Mapeo BSUID → teléfono.
+        var sentUtc = ParseUnixSeconds(message.Timestamp) ?? Now();
+        var reply = message.Interactive?.ButtonReply;
+        db.InboundMessages.Add(new InboundMessage
+        {
+            Wamid = message.Id,
+            ContactId = contact.Id,
+            PhoneE164 = phone,
+            UserId = userId,
+            Type = TruncateTo(message.Type ?? "desconocido", 30),
+            Text = message.Text?.Body is { } body ? TruncateTo(body, 4000) : reply?.Title ?? message.Button?.Text,
+            ButtonId = reply?.Id ?? message.Button?.Payload,
+            ContextWamid = message.Context?.Id,
+            SentUtc = sentUtc,
+            ReceivedUtc = Now(),
+            WebhookInboxId = inboxId,
+        });
+
+        if (message.Type == "interactive" && reply?.Id is OfferButtons.Si or OfferButtons.AhoraNo)
+        {
+            return await ApplyOfferReplyAsync(message, reply, contact, phone, sentUtc, cancellationToken);
+        }
+
+        return await ApplyOptOutAsync(message, contact, phone, sentUtc, cancellationToken);
+    }
+
+    /// <summary>
+    /// Respuesta a la oferta (D-031). La oferta se busca por context.id (wamid de la oferta) y, si no, la última sin
+    /// respuesta del contacto. «Sí» → OptIn con la evidencia de Meta y de la oferta, aunque antes hubiera una baja (el
+    /// cliente lo pidió), salvo No contactar. «Ahora no» → solo se anota en la oferta; el consentimiento no cambia.
+    /// </summary>
+    private async Task<(Outcome Outcome, string? Note)> ApplyOfferReplyAsync(
+        WebhookMessage message, WebhookButtonReply reply, Contact contact, string? phone, DateTime sentUtc,
+        CancellationToken cancellationToken)
+    {
+        var contextId = message.Context?.Id;
+        var offer = contextId is null ? null
+            : await db.ConsentOffers.FirstOrDefaultAsync(o => o.Wamid == contextId, cancellationToken);
+        offer ??= await db.ConsentOffers
+            .Where(o => o.ContactId == contact.Id && o.Response == null && o.Status != ConsentOfferStatus.Rechazada)
+            .OrderByDescending(o => o.OfferedUtc).FirstOrDefaultAsync(cancellationToken);
+        if (offer is null)
+        {
+            return (Outcome.Review, $"respuesta {reply.Id} del contacto {contact.Id} sin oferta registrada (mensaje {message.Id})");
+        }
+
+        if (offer.Status is ConsentOfferStatus.Enviando or ConsentOfferStatus.Incierta)
+        {
+            // El cliente respondió: Meta sí entregó la oferta.
+            offer.Status = ConsentOfferStatus.Enviada;
+            offer.Wamid ??= contextId;
+        }
+
+        var yes = reply.Id == OfferButtons.Si;
+        offer.Response = yes ? ConsentOfferResponse.Si : ConsentOfferResponse.AhoraNo;
+        offer.ResponseUtc = sentUtc;
+        offer.ResponseWamid = message.Id;
+        LogOfferReply(logger, offer.Id, offer.Response.Value);
+        if (!yes)
+        {
+            return (Outcome.Applied, null);
+        }
+
+        if (phone is null)
+        {
+            return (Outcome.Review, $"«Sí» del contacto {contact.Id} sin teléfono (user_id {message.FromUserId})");
+        }
+
+        var current = await db.ConsentRecords.AsNoTracking()
+            .Where(c => c.PhoneE164 == phone && c.Purpose == ConsentPurposes.Promociones)
+            .OrderByDescending(c => c.RecordedUtc).ThenByDescending(c => c.Id)
+            .Select(c => (ConsentStatus?)c.Status).FirstOrDefaultAsync(cancellationToken);
+        if (current == ConsentStatus.NoContactar)
+        {
+            offer.Detail = TruncateTo($"«Sí» recibido pero el contacto está en No contactar: no se registró OptIn. {offer.Detail}", MaxErrorLength);
+            return (Outcome.Applied, null);
+        }
+
+        if (await db.ConsentRecords.AnyAsync(c => c.SourceWamid == message.Id, cancellationToken))
+        {
+            return (Outcome.Duplicate, null);
+        }
+
+        db.ConsentRecords.Add(new ConsentRecord
+        {
+            ContactId = contact.Id,
+            PhoneE164 = phone,
+            Status = ConsentStatus.OptIn,
+            Source = ConsentSource.Boton,
+            Evidence = TruncateTo(
+                $"boton id={reply.Id} titulo={reply.Title} | oferta {offer.Id} texto {offer.TextVersion} ofrecida por {offer.OfferedBy} " +
+                $"el {offer.OfferedUtc:yyyy-MM-dd HH:mm}Z | wamid oferta {offer.Wamid}", 1000),
+            SourceWamid = message.Id,
+            RecordedUtc = sentUtc,
+            RecordedBy = "webhook",
+        });
+        return (Outcome.Applied, null);
+    }
+
+    /// <summary>Palabra clave o botón de baja → ConsentRecord OptOut (F0.10). Cualquier otro mensaje solo queda guardado.</summary>
+    private async Task<(Outcome Outcome, string? Note)> ApplyOptOutAsync(
+        WebhookMessage message, Contact contact, string? phone, DateTime sentUtc, CancellationToken cancellationToken)
     {
         var opts = optOut.Value;
         (ConsentSource Source, string Evidence)? optOutMatch = message.Type switch
@@ -192,19 +324,13 @@ public sealed partial class WebhookInboxProcessor(
         };
         if (optOutMatch is not { } match)
         {
-            return (Outcome.Ignored, null);
+            return (Outcome.Applied, null); // Mensaje común: queda guardado en InboundMessage.
         }
 
-        var phone = ConsentService.ToE164(message.From ?? (contacts is { Count: 1 } ? contacts[0].WaId : null));
         if (phone is null)
         {
-            // Sin teléfono (usuario con nombre de usuario): no se puede aplicar por PhoneE164; lo resuelve una persona.
+            // Solo BSUID y sin teléfono mapeado: no se puede aplicar por PhoneE164; lo resuelve una persona.
             return (Outcome.Review, $"baja sin teléfono (user_id {message.FromUserId}, mensaje {message.Id})");
-        }
-
-        if (string.IsNullOrEmpty(message.Id))
-        {
-            return (Outcome.Review, $"baja de {phone} sin id de mensaje");
         }
 
         if (db.ConsentRecords.Local.Any(c => c.SourceWamid == message.Id)
@@ -215,15 +341,54 @@ public sealed partial class WebhookInboxProcessor(
 
         db.ConsentRecords.Add(new ConsentRecord
         {
+            ContactId = contact.Id,
             PhoneE164 = phone,
             Status = ConsentStatus.OptOut,
             Source = match.Source,
             Evidence = TruncateTo(match.Evidence, 1000),
             SourceWamid = message.Id,
-            RecordedUtc = ParseUnixSeconds(message.Timestamp) ?? Now(),
+            RecordedUtc = sentUtc,
             RecordedBy = "webhook",
         });
         LogOptOut(logger, phone, match.Source);
+        return (Outcome.Applied, null);
+    }
+
+    /// <summary>
+    /// Estados del mensaje de oferta (no es un SendAttempt): se reconocen por biz_opaque_callback_data "oferta:{Id}" o por
+    /// wamid. Resuelven una oferta Enviando/Incierta; un failed la deja Rechazada. Devuelve null si no es de una oferta.
+    /// </summary>
+    private async Task<(Outcome Outcome, string? Note)?> ApplyOfferStatusAsync(WebhookStatus status, CancellationToken cancellationToken)
+    {
+        ConsentOffer? offer = null;
+        var callback = status.BizOpaqueCallbackData;
+        if (callback?.StartsWith(ConsentOfferService.CallbackPrefix, StringComparison.Ordinal) == true)
+        {
+            if (!long.TryParse(callback.AsSpan(ConsentOfferService.CallbackPrefix.Length), NumberStyles.None,
+                    CultureInfo.InvariantCulture, out var offerId)
+                || (offer = await db.ConsentOffers.FindAsync([offerId], cancellationToken)) is null)
+            {
+                return (Outcome.Review, $"estado de una oferta que no existe ({callback})");
+            }
+        }
+
+        offer ??= status.Id is null ? null : await db.ConsentOffers.FirstOrDefaultAsync(o => o.Wamid == status.Id, cancellationToken);
+        if (offer is null)
+        {
+            return null;
+        }
+
+        offer.Wamid ??= status.Id;
+        if (status.Status == "failed")
+        {
+            offer.Status = ConsentOfferStatus.Rechazada;
+            offer.Detail = Truncate($"failed por webhook: {RawJson(status.Errors)}");
+        }
+        else if (offer.Status is ConsentOfferStatus.Enviando or ConsentOfferStatus.Incierta)
+        {
+            offer.Status = ConsentOfferStatus.Enviada;
+        }
+
         return (Outcome.Applied, null);
     }
 
@@ -341,6 +506,11 @@ public sealed partial class WebhookInboxProcessor(
         if (string.IsNullOrEmpty(status.Id))
         {
             return (Outcome.Review, "estado sin id (wamid)");
+        }
+
+        if (await ApplyOfferStatusAsync(status, cancellationToken) is { } offerOutcome)
+        {
+            return offerOutcome;
         }
 
         var wamid = status.Id;
@@ -484,6 +654,9 @@ public sealed partial class WebhookInboxProcessor(
 
     [LoggerMessage(Level = LogLevel.Information, Message = "Baja de empresa registrada para {Phone} ({Source})")]
     private static partial void LogOptOut(ILogger logger, string phone, ConsentSource source);
+
+    [LoggerMessage(Level = LogLevel.Information, Message = "Respuesta a la oferta {OfferId}: {Response}")]
+    private static partial void LogOfferReply(ILogger logger, long offerId, ConsentOfferResponse response);
 
     [LoggerMessage(Level = LogLevel.Information, Message = "Preferencia de plataforma {Value} para {Phone} ({Origin})")]
     private static partial void LogPlatformPreference(ILogger logger, string phone, PlatformPreferenceValue value, PlatformPreferenceOrigin origin);

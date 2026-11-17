@@ -40,10 +40,19 @@ internal sealed record WebhookOtherInfo(
 // Mensajes entrantes (F0.10). from y wa_id se omiten si el usuario adoptó un nombre de usuario; user_id (BSUID) siempre viene.
 // https://developers.facebook.com/documentation/business-messaging/whatsapp/webhooks/reference/messages/text
 // https://developers.facebook.com/documentation/business-messaging/whatsapp/webhooks/reference/messages/button
+// https://developers.facebook.com/documentation/business-messaging/whatsapp/webhooks/reference/messages/interactive (F1.4)
 
 internal sealed record WebhookContact(
     [property: JsonPropertyName("wa_id")] string? WaId,
-    [property: JsonPropertyName("user_id")] string? UserId);
+    [property: JsonPropertyName("user_id")] string? UserId,
+    [property: JsonPropertyName("profile")] WebhookProfile? Profile);
+
+internal sealed record WebhookProfile([property: JsonPropertyName("name")] string? Name);
+
+/// <summary>context.id = wamid del mensaje nuestro al que responde (por ejemplo, la oferta de D-031).</summary>
+internal sealed record WebhookContext(
+    [property: JsonPropertyName("from")] string? From,
+    [property: JsonPropertyName("id")] string? Id);
 
 internal sealed record WebhookMessage(
     [property: JsonPropertyName("from")] string? From,
@@ -51,6 +60,7 @@ internal sealed record WebhookMessage(
     [property: JsonPropertyName("id")] string? Id,
     [property: JsonPropertyName("timestamp")] string? Timestamp,
     [property: JsonPropertyName("type")] string? Type,
+    [property: JsonPropertyName("context")] WebhookContext? Context,
     [property: JsonPropertyName("text")] WebhookText? Text,
     [property: JsonPropertyName("button")] WebhookButton? Button,
     [property: JsonPropertyName("interactive")] WebhookInteractive? Interactive);

@@ -1,6 +1,7 @@
 using System.Text.RegularExpressions;
 using Microsoft.EntityFrameworkCore;
 using WaBulk.Domain.Messaging;
+using WaBulk.Infrastructure.Contacts;
 using WaBulk.Infrastructure.Messaging;
 using WaBulk.Infrastructure.Meta;
 using WaBulk.Infrastructure.Persistence;
@@ -10,8 +11,8 @@ namespace WaBulk.Worker;
 /// <summary>
 /// Comando de prueba de F0.5: envía una plantilla a un número permitido y muestra el SendAttempt.
 /// Uso: dotnet run --project src/backend/WaBulk.Worker -- send-test --to +591XXXXXXXX [--template hello_world] [--lang en_US]
-/// Usa un DispatchJob de prueba con CampaignVersionId = 0 (no existe campaña 0) y ContactId = dígitos del número,
-/// reutilizado en cada ejecución; cada ejecución crea un SendAttempt nuevo.
+/// Usa un DispatchJob de prueba con CampaignVersionId = 0 (no existe campaña 0) y el Contact del número (se crea si no
+/// existe, F1.4), reutilizado en cada ejecución; cada ejecución crea un SendAttempt nuevo.
 /// </summary>
 public static partial class SendTestCommand
 {
@@ -31,11 +32,13 @@ public static partial class SendTestCommand
         }
 
         var phone = to.StartsWith('+') ? to : "+" + to;
-        var contactId = long.Parse(phone[1..], System.Globalization.CultureInfo.InvariantCulture);
 
         await using var scope = services.CreateAsyncScope();
         var db = scope.ServiceProvider.GetRequiredService<WaBulkDbContext>();
         var sender = scope.ServiceProvider.GetRequiredService<TemplateSendService>();
+        var contact = await scope.ServiceProvider.GetRequiredService<ContactDirectory>()
+            .ResolveAsync(phone, null, null, $"windows:{Environment.UserName}", cancellationToken);
+        var contactId = contact.Id;
         var now = DateTime.UtcNow;
 
         var job = await db.DispatchJobs.SingleOrDefaultAsync(

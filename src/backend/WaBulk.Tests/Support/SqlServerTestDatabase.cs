@@ -52,8 +52,10 @@ public sealed class SqlServerTestDatabase : IAsyncLifetime
     {
         await using var db = CreateContext();
         await db.Database.ExecuteSqlRawAsync(
-            "DELETE FROM MessageEvent; DELETE FROM SendAttempt; DELETE FROM DispatchJob; DELETE FROM WebhookInbox; " +
-            "DELETE FROM ConsentRecord; DELETE FROM PlatformPreference; DELETE FROM CapacityReservation; DELETE FROM DispatchPause; DELETE FROM Alert; DELETE FROM AuditLog;");
+            "DELETE FROM MessageEvent; DELETE FROM SendAttempt; DELETE FROM CapacityReservation; DELETE FROM DispatchJob; " +
+            "DELETE FROM InboundMessage; DELETE FROM WebhookInbox; DELETE FROM ConsentOffer; DELETE FROM SegmentMember; DELETE FROM Segment; " +
+            "DELETE FROM ConsentRecord; DELETE FROM PlatformPreference; DELETE FROM DispatchPause; DELETE FROM Alert; DELETE FROM AuditLog; " +
+            "DELETE FROM Contact;");
     }
 
     public async Task DisposeAsync()

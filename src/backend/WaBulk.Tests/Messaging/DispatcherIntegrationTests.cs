@@ -86,8 +86,8 @@ public sealed class DispatcherIntegrationTests(SqlServerTestDatabase database)
         await using var db = database.CreateContext();
         var job = new DispatchJob
         {
-            CampaignVersionId = 1,
-            ContactId = Random.Shared.NextInt64(1, long.MaxValue),
+            CampaignVersionId = Random.Shared.NextInt64(1, long.MaxValue), // Único (CampaignVersionId, ContactId).
+            ContactId = await TestServices.ContactIdAsync(db, "+59170000000"),
             PhoneE164 = "+59170000000",
             ScheduledUtc = Start + (scheduledIn ?? TimeSpan.Zero),
             ExpiresUtc = Start + (expiresIn ?? TimeSpan.FromDays(1)),
@@ -421,9 +421,7 @@ public sealed class DispatcherIntegrationTests(SqlServerTestDatabase database)
 
         await using (var db = database.CreateContext())
         {
-            var processor = new WebhookInboxProcessor(db, Microsoft.Extensions.Options.Options.Create(new InboxProcessorOptions()),
-                Microsoft.Extensions.Options.Options.Create(new OptOutOptions()),
-                new AlertService(db, _clock, NullLogger<AlertService>.Instance), _clock, NullLogger<WebhookInboxProcessor>.Instance);
+            var processor = TestServices.Processor(db, _clock);
             await processor.ProcessBatchAsync(CancellationToken.None);
         }
 

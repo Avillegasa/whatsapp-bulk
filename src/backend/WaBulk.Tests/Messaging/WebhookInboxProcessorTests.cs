@@ -7,6 +7,7 @@ using WaBulk.Infrastructure.Alerts;
 using WaBulk.Infrastructure.Consent;
 using WaBulk.Infrastructure.Messaging;
 using WaBulk.Infrastructure.Persistence;
+using WaBulk.Tests.Support;
 
 namespace WaBulk.Tests.Messaging;
 
@@ -97,8 +98,7 @@ public sealed class WebhookInboxProcessorTests
     private WaBulkDbContext Db() => new(_dbOptions);
 
     private WebhookInboxProcessor Processor(WaBulkDbContext db) =>
-        new(db, Options.Create(_options), Options.Create(new OptOutOptions()),
-            new AlertService(db, _clock, NullLogger<AlertService>.Instance), _clock, NullLogger<WebhookInboxProcessor>.Instance);
+        TestServices.Processor(db, _clock, _options);
 
     private async Task<SendAttempt> SeedAttemptAsync(string? wamid, SendAttemptStatus status = SendAttemptStatus.Accepted)
     {

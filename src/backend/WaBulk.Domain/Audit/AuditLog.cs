@@ -36,4 +36,12 @@ public static class AuditActions
     public const string RestablecerClave = "RestablecerClave";
     public const string DesbloquearUsuario = "DesbloquearUsuario";
     public const string ReanudarDespacho = "ReanudarDespacho";
+
+    // F1.4: contactos y consentimiento.
+    public const string OfrecerPromociones = "OfrecerPromociones";
+    public const string BajaManual = "BajaManual";
+    public const string ImportarContactos = "ImportarContactos";
+    public const string CrearLista = "CrearLista";
+    public const string AgregarALista = "AgregarALista";
+    public const string QuitarDeLista = "QuitarDeLista";
 }

@@ -472,6 +472,8 @@ namespace WaBulk.Infrastructure.Persistence.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("ContactId");
+
                     b.HasIndex("SourceWamid")
                         .IsUnique()
                         .HasFilter("[WamidOrigen] IS NOT NULL");
@@ -526,6 +528,294 @@ namespace WaBulk.Infrastructure.Persistence.Migrations
                         .IsUnique();
 
                     b.ToTable("PlatformPreference", (string)null);
+                });
+
+            modelBuilder.Entity("WaBulk.Domain.Contacts.ConsentOffer", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
+
+                    b.Property<long>("ContactId")
+                        .HasColumnType("bigint");
+
+                    b.Property<string>("Detail")
+                        .HasMaxLength(4000)
+                        .HasColumnType("nvarchar(4000)")
+                        .HasColumnName("Detalle");
+
+                    b.Property<int?>("ErrorCode")
+                        .HasColumnType("int")
+                        .HasColumnName("CodigoError");
+
+                    b.Property<int?>("HttpStatus")
+                        .HasColumnType("int");
+
+                    b.Property<string>("OfferedBy")
+                        .IsRequired()
+                        .HasMaxLength(256)
+                        .HasColumnType("nvarchar(256)")
+                        .HasColumnName("OfrecidoPor");
+
+                    b.Property<DateTime>("OfferedUtc")
+                        .HasColumnType("datetime2")
+                        .HasColumnName("FechaUtc");
+
+                    b.Property<string>("PhoneE164")
+                        .HasMaxLength(16)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(16)");
+
+                    b.Property<string>("Response")
+                        .HasMaxLength(20)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(20)")
+                        .HasColumnName("Respuesta");
+
+                    b.Property<DateTime?>("ResponseUtc")
+                        .HasColumnType("datetime2")
+                        .HasColumnName("RespuestaUtc");
+
+                    b.Property<string>("ResponseWamid")
+                        .HasMaxLength(128)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(128)")
+                        .HasColumnName("WamidRespuesta");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(20)")
+                        .HasColumnName("Estado");
+
+                    b.Property<string>("Text")
+                        .IsRequired()
+                        .HasMaxLength(1024)
+                        .HasColumnType("nvarchar(1024)")
+                        .HasColumnName("Texto");
+
+                    b.Property<string>("TextVersion")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("nvarchar(40)")
+                        .HasColumnName("VersionTexto");
+
+                    b.Property<string>("Wamid")
+                        .HasMaxLength(128)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(128)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Wamid")
+                        .IsUnique()
+                        .HasFilter("[Wamid] IS NOT NULL");
+
+                    b.HasIndex("ContactId", "OfferedUtc");
+
+                    b.ToTable("ConsentOffer", (string)null);
+                });
+
+            modelBuilder.Entity("WaBulk.Domain.Contacts.Contact", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
+
+                    b.Property<string>("CreatedBy")
+                        .IsRequired()
+                        .HasMaxLength(256)
+                        .HasColumnType("nvarchar(256)")
+                        .HasColumnName("CreadoPor");
+
+                    b.Property<DateTime>("CreatedUtc")
+                        .HasColumnType("datetime2")
+                        .HasColumnName("CreadoUtc");
+
+                    b.Property<string>("CustomerId")
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)")
+                        .HasColumnName("ClienteId");
+
+                    b.Property<bool>("IsActive")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bit")
+                        .HasDefaultValue(true)
+                        .HasColumnName("Activo");
+
+                    b.Property<string>("Name")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)")
+                        .HasColumnName("Nombre");
+
+                    b.Property<string>("PhoneE164")
+                        .HasMaxLength(16)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(16)");
+
+                    b.Property<string>("UserId")
+                        .HasMaxLength(64)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(64)");
+
+                    b.Property<string>("WaId")
+                        .HasMaxLength(20)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(20)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("PhoneE164")
+                        .IsUnique()
+                        .HasFilter("[PhoneE164] IS NOT NULL");
+
+                    b.HasIndex("UserId")
+                        .IsUnique()
+                        .HasFilter("[UserId] IS NOT NULL");
+
+                    b.ToTable("Contact", (string)null);
+                });
+
+            modelBuilder.Entity("WaBulk.Domain.Contacts.InboundMessage", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
+
+                    b.Property<string>("ButtonId")
+                        .HasMaxLength(256)
+                        .HasColumnType("nvarchar(256)")
+                        .HasColumnName("BotonId");
+
+                    b.Property<long>("ContactId")
+                        .HasColumnType("bigint");
+
+                    b.Property<string>("ContextWamid")
+                        .HasMaxLength(128)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(128)")
+                        .HasColumnName("WamidContexto");
+
+                    b.Property<string>("PhoneE164")
+                        .HasMaxLength(16)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(16)");
+
+                    b.Property<DateTime>("ReceivedUtc")
+                        .HasColumnType("datetime2")
+                        .HasColumnName("RecibidoUtc");
+
+                    b.Property<DateTime>("SentUtc")
+                        .HasColumnType("datetime2")
+                        .HasColumnName("FechaUtc");
+
+                    b.Property<string>("Text")
+                        .HasMaxLength(4000)
+                        .HasColumnType("nvarchar(4000)")
+                        .HasColumnName("Texto");
+
+                    b.Property<string>("Type")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(30)")
+                        .HasColumnName("Tipo");
+
+                    b.Property<string>("UserId")
+                        .HasMaxLength(64)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(64)");
+
+                    b.Property<string>("Wamid")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(128)");
+
+                    b.Property<long>("WebhookInboxId")
+                        .HasColumnType("bigint");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("SentUtc");
+
+                    b.HasIndex("Wamid")
+                        .IsUnique();
+
+                    b.HasIndex("WebhookInboxId");
+
+                    b.HasIndex("ContactId", "SentUtc");
+
+                    b.ToTable("InboundMessage", (string)null);
+                });
+
+            modelBuilder.Entity("WaBulk.Domain.Contacts.Segment", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
+
+                    b.Property<string>("CreatedBy")
+                        .IsRequired()
+                        .HasMaxLength(256)
+                        .HasColumnType("nvarchar(256)")
+                        .HasColumnName("CreadoPor");
+
+                    b.Property<DateTime>("CreatedUtc")
+                        .HasColumnType("datetime2")
+                        .HasColumnName("CreadoUtc");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)")
+                        .HasColumnName("Descripcion");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)")
+                        .HasColumnName("Nombre");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Name")
+                        .IsUnique();
+
+                    b.ToTable("Segment", (string)null);
+                });
+
+            modelBuilder.Entity("WaBulk.Domain.Contacts.SegmentMember", b =>
+                {
+                    b.Property<long>("SegmentId")
+                        .HasColumnType("bigint");
+
+                    b.Property<long>("ContactId")
+                        .HasColumnType("bigint");
+
+                    b.Property<string>("AddedBy")
+                        .IsRequired()
+                        .HasMaxLength(256)
+                        .HasColumnType("nvarchar(256)")
+                        .HasColumnName("AgregadoPor");
+
+                    b.Property<DateTime>("AddedUtc")
+                        .HasColumnType("datetime2")
+                        .HasColumnName("AgregadoUtc");
+
+                    b.HasKey("SegmentId", "ContactId");
+
+                    b.HasIndex("ContactId");
+
+                    b.ToTable("SegmentMember", (string)null);
                 });
 
             modelBuilder.Entity("WaBulk.Domain.Messaging.DispatchJob", b =>
@@ -593,6 +883,8 @@ namespace WaBulk.Infrastructure.Persistence.Migrations
                         .HasColumnName("MotivoOmision");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("ContactId");
 
                     b.HasIndex("CampaignVersionId", "ContactId")
                         .IsUnique();
@@ -881,6 +1173,62 @@ namespace WaBulk.Infrastructure.Persistence.Migrations
                     b.HasOne("WaBulk.Domain.Alerts.Alert", null)
                         .WithMany()
                         .HasForeignKey("AlertId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("WaBulk.Domain.Consent.ConsentRecord", b =>
+                {
+                    b.HasOne("WaBulk.Domain.Contacts.Contact", null)
+                        .WithMany()
+                        .HasForeignKey("ContactId")
+                        .OnDelete(DeleteBehavior.Restrict);
+                });
+
+            modelBuilder.Entity("WaBulk.Domain.Contacts.ConsentOffer", b =>
+                {
+                    b.HasOne("WaBulk.Domain.Contacts.Contact", null)
+                        .WithMany()
+                        .HasForeignKey("ContactId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("WaBulk.Domain.Contacts.InboundMessage", b =>
+                {
+                    b.HasOne("WaBulk.Domain.Contacts.Contact", null)
+                        .WithMany()
+                        .HasForeignKey("ContactId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("WaBulk.Domain.Messaging.WebhookInbox", null)
+                        .WithMany()
+                        .HasForeignKey("WebhookInboxId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("WaBulk.Domain.Contacts.SegmentMember", b =>
+                {
+                    b.HasOne("WaBulk.Domain.Contacts.Contact", null)
+                        .WithMany()
+                        .HasForeignKey("ContactId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("WaBulk.Domain.Contacts.Segment", null)
+                        .WithMany()
+                        .HasForeignKey("SegmentId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("WaBulk.Domain.Messaging.DispatchJob", b =>
+                {
+                    b.HasOne("WaBulk.Domain.Contacts.Contact", null)
+                        .WithMany()
+                        .HasForeignKey("ContactId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
                 });

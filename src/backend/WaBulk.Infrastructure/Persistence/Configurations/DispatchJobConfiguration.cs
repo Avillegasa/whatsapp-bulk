@@ -11,7 +11,7 @@ internal sealed class DispatchJobConfiguration : IEntityTypeConfiguration<Dispat
         builder.ToTable("DispatchJob");
         builder.HasKey(x => x.Id);
 
-        // CampaignVersionId y ContactId quedan sin FK hasta que existan CampaignVersion y Contact (Fase 1).
+        // ContactId tiene FK a Contact (F1.4, Contacts/ContactConfiguration.cs); CampaignVersionId, cuando exista CampaignVersion (F1.6).
         builder.Property(x => x.PhoneE164).HasMaxLength(16).IsUnicode(false);
         builder.Property(x => x.Parameters).HasColumnName("Parametros");
         builder.Property(x => x.Priority).HasColumnName("Prioridad");

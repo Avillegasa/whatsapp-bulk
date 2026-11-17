@@ -47,7 +47,7 @@ public sealed class AlertIntegrationTests(SqlServerTestDatabase database)
             });
             await db.SaveChangesAsync();
             var job = await new EnqueueService(db, new ConsentService(db, _clock)).EnqueueAsync(
-                new EnqueueRequest(n + 1, 1, Phone(n), Start, Start.AddDays(1)), CancellationToken.None);
+                new EnqueueRequest(n + 1, await TestServices.ContactIdAsync(db, Phone(n)), Phone(n), Start, Start.AddDays(1)), CancellationToken.None);
             ids.Add(job.Id);
         }
 
@@ -83,9 +83,7 @@ public sealed class AlertIntegrationTests(SqlServerTestDatabase database)
         }
 
         await db.SaveChangesAsync();
-        await new WebhookInboxProcessor(db, Options.Create(new InboxProcessorOptions()), Options.Create(new OptOutOptions()),
-                new AlertService(db, _clock, NullLogger<AlertService>.Instance), _clock, NullLogger<WebhookInboxProcessor>.Instance)
-            .ProcessBatchAsync(CancellationToken.None);
+        await TestServices.Processor(db, _clock).ProcessBatchAsync(CancellationToken.None);
     }
 
     /// <summary>Webhook de plantilla PAUSED: el mismo payload que usa tools/webhook-replay (escenario plantilla-paused).</summary>

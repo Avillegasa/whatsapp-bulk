@@ -5,6 +5,7 @@ using Microsoft.Extensions.Options;
 using WaBulk.Infrastructure.Alerts;
 using WaBulk.Infrastructure.Capacity;
 using WaBulk.Infrastructure.Consent;
+using WaBulk.Infrastructure.Contacts;
 using WaBulk.Infrastructure.Meta;
 
 namespace WaBulk.Infrastructure.Messaging;
@@ -21,6 +22,8 @@ public static class MessagingServiceCollectionExtensions
                 "InboxProcessor: valores fuera de rango")
             .ValidateOnStart();
         services.AddScoped<WebhookInboxProcessor>();
+        services.TryAddScoped<ContactDirectory>();
+        services.TryAddSingleton(TimeProvider.System);
         services.AddConsent(configuration);
         services.TryAddScoped<AlertService>();
         return services;

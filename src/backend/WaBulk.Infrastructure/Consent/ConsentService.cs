@@ -31,11 +31,7 @@ public sealed class ConsentService(WaBulkDbContext db, TimeProvider clock)
 {
     public async Task<EligibilityResult> EvaluateAsync(string phoneE164, CancellationToken cancellationToken)
     {
-        var company = await db.ConsentRecords.AsNoTracking()
-            .Where(c => c.PhoneE164 == phoneE164 && c.Purpose == ConsentPurposes.Promociones)
-            .OrderByDescending(c => c.RecordedUtc).ThenByDescending(c => c.Id)
-            .Select(c => (ConsentStatus?)c.Status)
-            .FirstOrDefaultAsync(cancellationToken);
+        var company = await CurrentCompanyStatusAsync(phoneE164, cancellationToken);
 
         var platform = await db.PlatformPreferences.AsNoTracking()
             .Where(p => p.PhoneE164 == phoneE164 && p.Category == PlatformCategories.MarketingMessages)
@@ -45,6 +41,14 @@ public sealed class ConsentService(WaBulkDbContext db, TimeProvider clock)
 
         return MarketingEligibility.Evaluate(company, platform);
     }
+
+    /// <summary>Estado vigente de la capa empresa: el último registro por teléfono (null = nunca dio consentimiento).</summary>
+    public Task<ConsentStatus?> CurrentCompanyStatusAsync(string phoneE164, CancellationToken cancellationToken) =>
+        db.ConsentRecords.AsNoTracking()
+            .Where(c => c.PhoneE164 == phoneE164 && c.Purpose == ConsentPurposes.Promociones)
+            .OrderByDescending(c => c.RecordedUtc).ThenByDescending(c => c.Id)
+            .Select(c => (ConsentStatus?)c.Status)
+            .FirstOrDefaultAsync(cancellationToken);
 
     /// <summary>
     /// Registra un cambio de la capa empresa (intranet, manual, importación). Devuelve false y no guarda si es una
@@ -56,11 +60,7 @@ public sealed class ConsentService(WaBulkDbContext db, TimeProvider clock)
     {
         if (status == ConsentStatus.OptIn)
         {
-            var current = await db.ConsentRecords.AsNoTracking()
-                .Where(c => c.PhoneE164 == phoneE164 && c.Purpose == ConsentPurposes.Promociones)
-                .OrderByDescending(c => c.RecordedUtc).ThenByDescending(c => c.Id)
-                .Select(c => (ConsentStatus?)c.Status)
-                .FirstOrDefaultAsync(cancellationToken);
+            var current = await CurrentCompanyStatusAsync(phoneE164, cancellationToken);
             if (!MarketingEligibility.CanRecordOptIn(current, source))
             {
                 return false;

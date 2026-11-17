@@ -162,7 +162,7 @@ public sealed class OptOutIntegrationTests(SqlServerTestDatabase database)
     {
         await using var db = database.CreateContext();
         return await new EnqueueService(db, new ConsentService(db, _clock)).EnqueueAsync(
-            new EnqueueRequest(++_campaignVersion, 1, Phone, Start, Start.AddDays(1)), CancellationToken.None);
+            new EnqueueRequest(++_campaignVersion, await TestServices.ContactIdAsync(db, Phone), Phone, Start, Start.AddDays(1)), CancellationToken.None);
     }
 
     private async Task ProcessInboxAsync(params string[] bodies)
@@ -174,9 +174,7 @@ public sealed class OptOutIntegrationTests(SqlServerTestDatabase database)
         }
 
         await db.SaveChangesAsync();
-        var processor = new WebhookInboxProcessor(db, Options.Create(new InboxProcessorOptions()),
-            Options.Create(new OptOutOptions()), new AlertService(db, _clock, NullLogger<AlertService>.Instance), _clock,
-            NullLogger<WebhookInboxProcessor>.Instance);
+        var processor = TestServices.Processor(db, _clock);
         await processor.ProcessBatchAsync(CancellationToken.None);
     }
 
