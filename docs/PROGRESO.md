@@ -38,9 +38,13 @@ Estados: Pendiente · En curso · Hecho (sin verificar) · Verificado · Bloquea
 - F0.9: actualizar `DispatchJob.EstadoDespacho` según el resultado del intento, verificar el lease antes de guardar y pasar a `SubmissionUnknown` los intentos que quedaron en `Submitting` (hoy `TemplateSendService` solo actualiza el `SendAttempt`).
 - Plantillas con parámetros (`components`) en `TemplateMessage`: con las campañas (F0.9 / Fase 1).
 - Datos de desarrollo: los intentos 01A1E617… y 01A1E975… quedaron con `EstadoEntrega` = Read por el replay de F0.8 (no es una lectura real).
-- Confirmar que `db\scripts\verificar-f0.8.sql` corre desde cmd (Andrés).
 
 ## Bitácora (lo más reciente arriba)
+
+### 2026-11-17 — Verificación manual de `verificar-f0.8.sql` (Andrés)
+- Corrido desde cmd: `WebhookInbox` 1–13 en `Procesado`, 1 intento, sin error (5–6 duplicado, 7–9 desorden, 10 lote, 11–13 stop/resume/PAUSED); último intento 01A1E986… `Accepted`/`Delivered` con 1 `MessageEvent` Delivered.
+- Cierra el pendiente "confirmar `verificar-f0.8.sql` en cmd". Sigue abierto: `EstadoEntrega` = Read de prueba en 01A1E617…/01A1E975….
+- Siguiente: F0.9.
 
 ### 2026-11-17 — F0.8 Herramienta de replay firmado (Claude Code)
 - Hecho: consola `tools/webhook-replay` (proyecto `WaBulk.WebhookReplay`, en la solución, carpeta `tools`). Arma el webhook desde plantillas `payloads/*.json` embebidas, lo firma con `Meta:AppSecret` (user-secrets compartido, D-018; HMAC propio, independiente del receptor) y lo envía a `http://localhost:5244/webhooks/whatsapp`. Escenarios `duplicado`, `desorden`, `lote`, `stop`, `resume`, `plantilla-paused` y el modificador `--firma-mala`. `--intento ultimo|<AttemptId>` lee de SQL el AttemptId, el wamid y el teléfono reales para que el procesador correlacione; sin él usa ids sintéticos. Script `db/scripts/verificar-f0.8.sql`.
