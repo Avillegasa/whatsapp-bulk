@@ -1,0 +1,26 @@
+{
+  "name": "promo_demo",
+  "language": "es",
+  "category": "marketing",
+  "parameter_format": "named",
+  "components": [
+    {
+      "type": "body",
+      "text": "Hola {{nombre}}, esta semana tenemos una promoción especial para ti: *{{promocion}}*. ¿Te interesa?",
+      "example": {
+        "body_text_named_params": [
+          { "param_name": "nombre", "example": "Andrés" },
+          { "param_name": "promocion", "example": "15% de descuento en cortes de res" }
+        ]
+      }
+    },
+    { "type": "footer", "text": "Demo interna WaBulk" },
+    {
+      "type": "buttons",
+      "buttons": [
+        { "type": "quick_reply", "text": "Me interesa" },
+        { "type": "quick_reply", "text": "No recibir más" }
+      ]
+    }
+  ]
+}

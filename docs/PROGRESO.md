@@ -62,6 +62,22 @@ Estados: Pendiente · En curso · Hecho (sin verificar) · Verificado · Bloquea
 
 ## Bitácora (lo más reciente arriba)
 
+### 2026-11-17 — F1.1 prueba 3: primer compañero como destinatario (Andrés)
+- Destinatario …7355 agregado en "Paso 1. Pruébalo" del panel (el botón "Enviar" del panel queda gris sin token temporal; se usa `send-test`).
+- `send-test --no-build --to +591…7355` (con `--no-build` porque el Worker abierto bloquea las DLL) → `SendAttempt` 01A1EA3E… `Accepted`; `MessageEvent` 9–11 Sent → Delivered → Read reales, en orden (Inbox 23–25); mensaje recibido (confirmación de Andrés). Primera secuencia real completa a un tercero.
+- Falta: 3 compañeros más y el "sí" escrito de cada uno (evidencia de opt-in para F1.4).
+
+### 2026-11-17 — F1.1 prueba 2: plantilla propia (Andrés)
+- `POST /{WABA_ID}/message_templates` con `tools/plantillas/promo_demo.json` → `promo_demo` ID 1501960108463090, MARKETING, `PENDING` (`rejected_reason` NONE). La WABA de prueba acepta plantillas propias; falta la aprobación y ver si llega `message_template_status_update`.
+- Incidente: el token del System User quedó visible en el chat (error de `findstr` y luego en el comando `user-secrets set`); Andrés revocó y regeneró. Ningún valor en archivos. Regla: pegar solo la línea de respuesta, nunca la del comando con el secreto.
+- Siguiente: aprobación de `promo_demo` y prueba 3 (destinatarios).
+
+### 2026-11-17 — F1.1 prueba 1: mensajes entrantes reales (Andrés)
+- Con la app sin publicar, los mensajes entrantes SÍ llegan: "Hola" desde el teléfono de Andrés → `WebhookInbox` Id=21 (`messages`, tipo `text`, …9667; `verificar-f1.1.sql`); "BAJA" → `ConsentRecord` 3 OptOut PalabraClave con wamid real `wamid.HBgL…`. También llegaron estados `read` reales (Id=19 y 20, al abrir el chat). Cierra la duda de D-020/D-021 para el número de prueba.
+- Datos de desarrollo: +591…9667 quedó con OptOut de empresa (sin OptIn previo); se revierte con un opt-in manual antes de la demo (F1.4/F1.10).
+- Nuevo: `db/scripts/verificar-f1.1.sql` (entrantes, solo últimos 4 dígitos); `tools/plantillas/promo_demo.json` (plantilla de marketing de la prueba 2).
+- Siguiente: prueba 2 (plantilla propia).
+
 ### 2026-11-17 — D-028: la Fase 1 es una demo con el número de prueba (Andrés)
 - La empresa no tiene portafolio de Meta ni número dedicado; Andrés elige seguir con el número de prueba (5 destinatarios) y mostrar la PoC en su oficina. Los activos de la empresa pasan a "Paso a la empresa" en `PLAN.md`.
 - `PLAN.md`: F1.1 = "Preparar la demo" (prueba de entrantes, plantilla propia, destinatarios); F1.10 = demo en la oficina sin conciliación.

@@ -16,6 +16,7 @@ Pasos que hace Andrés en los paneles de Meta y en su terminal. Cada paso dice d
 | Número visible | +1 (555) 189-2694 (prueba) | |
 | System User (nombre) | wabulk-poc (ID 61596887810621) | |
 | Graph API en uso | v27.0 | |
+| Plantilla de la demo (F1.1, `tools/plantillas/promo_demo.json`) | `promo_demo` (es, MARKETING) — ID 1501960108463090 | |
 
 ## Dónde viven los secretos
 
