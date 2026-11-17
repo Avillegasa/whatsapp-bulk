@@ -62,6 +62,9 @@ public sealed class DispatcherOptions
     /// <summary>Porcentaje de fallos que pausa todo (docs/ARQUITECTURA.md: 5 %).</summary>
     public int FailureThresholdPercent { get; set; } = 5;
 
+    /// <summary>Horas sin webhook tras las que un NeedsReview se lista para revisión manual (F1.7; inicial 2).</summary>
+    public int NeedsReviewHours { get; set; } = 2;
+
     /// <summary>Fatiga (F1.7, D-012): promociones seguidas sin interacción que pausan al contacto.</summary>
     public int FatigueStreak { get; set; } = 3;
 

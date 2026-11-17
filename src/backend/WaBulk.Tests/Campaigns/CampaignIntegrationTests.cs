@@ -532,6 +532,24 @@ public sealed class CampaignIntegrationTests(SqlServerTestDatabase database)
         Assert.Equal(2, await check.DispatchJobs.CountAsync(j => j.DispatchStatus == DispatchStatus.Failed));
     }
 
+    [Fact]
+    public async Task NeedsReview_vencido_se_lista_para_revision()
+    {
+        await using (var db = database.CreateContext())
+        {
+            var ana = await db.Contacts.SingleAsync(c => c.PhoneE164 == "+59170000001");
+            var beto = await db.Contacts.SingleAsync(c => c.PhoneE164 == "+59170000002");
+            await SentAsync(db, ana, Start.AddHours(-3), SendAttemptStatus.SubmissionUnknown, campaign: true);
+            await SentAsync(db, beto, Start.AddHours(-1), SendAttemptStatus.SubmissionUnknown, campaign: true);
+            await db.DispatchJobs.ExecuteUpdateAsync(s => s.SetProperty(j => j.DispatchStatus, DispatchStatus.NeedsReview));
+        }
+
+        await using var check = database.CreateContext();
+        var overdue = await NeedsReviewQuery.OverdueAsync(check, Start, 2, CancellationToken.None);
+
+        Assert.Equal("+59170000001", Assert.Single(overdue).PhoneE164); // El de hace 1 h todavía puede resolverse por webhook.
+    }
+
     /// <summary>Un envío anterior al contacto: trabajo (de campaña o de send-test) con un intento en el estado dado.</summary>
     private static async Task SentAsync(
         WaBulkDbContext db, Contact contact, DateTime when, SendAttemptStatus status, bool campaign, DeliveryStatus? delivery = null,

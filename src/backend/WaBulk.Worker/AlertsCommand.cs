@@ -1,5 +1,7 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 using WaBulk.Infrastructure.Alerts;
+using WaBulk.Infrastructure.Messaging;
 using WaBulk.Infrastructure.Persistence;
 
 namespace WaBulk.Worker;
@@ -8,11 +10,32 @@ namespace WaBulk.Worker;
 /// Comandos del freno de emergencia (F0.12), hasta que exista la pantalla de la Fase 1:
 ///   dotnet run --project src\backend\WaBulk.Worker -- alertas
 ///   dotnet run --project src\backend\WaBulk.Worker -- reanudar   (registra "windows:<usuario>" en LevantadaPor y en AuditLog)
+///   dotnet run --project src\backend\WaBulk.Worker -- revision   (F1.7: envíos inciertos sin webhook tras Dispatcher:NeedsReviewHours)
 /// </summary>
 public static class AlertsCommand
 {
     public const string ListName = "alertas";
     public const string ResumeName = "reanudar";
+    public const string ReviewName = "revision";
+
+    /// <summary>Lista los NeedsReview vencidos. Código de salida 1 si hay alguno (para usarlo en un script).</summary>
+    public static async Task<int> ReviewAsync(IServiceProvider services, CancellationToken cancellationToken)
+    {
+        await using var scope = services.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<WaBulkDbContext>();
+        var hours = scope.ServiceProvider.GetRequiredService<IOptions<DispatcherOptions>>().Value.NeedsReviewHours;
+        var items = await NeedsReviewQuery.OverdueAsync(db, DateTime.UtcNow, hours, cancellationToken);
+        Console.WriteLine(items.Count == 0
+            ? $"Sin envíos inciertos de más de {hours} h."
+            : $"Envíos inciertos sin confirmar de Meta hace más de {hours} h: {items.Count}. No se reenvían solos; revisar si llegaron.");
+        foreach (var i in items)
+        {
+            Console.WriteLine($"  trabajo {i.JobId} (versión {i.CampaignVersionId?.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? "send-test"}) "
+                              + $"…{i.PhoneE164[^4..]} intento {i.AttemptId} {i.StartedUtc:yyyy-MM-dd HH:mm} UTC: {i.Detail}");
+        }
+
+        return items.Count == 0 ? 0 : 1;
+    }
 
     public static async Task<int> ListAsync(IServiceProvider services, CancellationToken cancellationToken)
     {
