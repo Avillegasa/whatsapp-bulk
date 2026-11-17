@@ -22,7 +22,7 @@ public sealed class WhatsAppWebhookTests : IAsyncLifetime
 
     // Payload de estado con caracteres no ASCII: la firma debe calcularse sobre los bytes crudos.
     private const string StatusPayload = """
-        {"object":"whatsapp_business_account","entry":[{"id":"2043065989689955","changes":[{"value":{"messaging_product":"whatsapp","metadata":{"display_phone_number":"15551892694","phone_number_id":"1524289747428097"},"statuses":[{"id":"wamid.TEST","status":"delivered","timestamp":"1763325639","recipient_id":"59170000000","biz_opaque_callback_data":"01a1e617-2789-7751-99a1-2d17ae607b7b"}]},"field":"messages"}]}],"nota":"canción ñandú"}
+        {"object":"whatsapp_business_account","entry":[{"id":"2088365445132575","changes":[{"value":{"messaging_product":"whatsapp","metadata":{"display_phone_number":"15551892694","phone_number_id":"1524289747428097"},"statuses":[{"id":"wamid.TEST","status":"delivered","timestamp":"1763325639","recipient_id":"59170000000","biz_opaque_callback_data":"01a1e617-2789-7751-99a1-2d17ae607b7b"}]},"field":"messages"}]}],"nota":"canción ñandú"}
         """;
 
     private readonly string _dbName = $"webhooks-{Guid.NewGuid()}";
