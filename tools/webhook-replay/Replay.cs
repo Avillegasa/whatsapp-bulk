@@ -14,7 +14,11 @@ public sealed record ReplayContext(
     string Wamid,
     Guid AttemptId,
     long BaseTimestamp,
-    string InboundWamid = "wamid.REPLAYIN");
+    string InboundWamid = "wamid.REPLAYIN",
+    // F1.5: plantilla de los webhooks de plantillas (con --plantilla se leen de la tabla Template).
+    long TemplateId = 1689556908129832,
+    string TemplateName = "promo_prueba",
+    string TemplateLanguage = "es");
 
 /// <summary>Un POST del escenario: plantilla de payload (payloads/*.json) y etiqueta para la consola.</summary>
 public sealed record ReplayStep(string Payload, string Label);
@@ -58,6 +62,22 @@ public static class ReplayScenarios
             "message_template_status_update con event PAUSED (FIRST_PAUSE).",
             "1 fila Procesado; 1 Alert PlantillaPausada y pausa global. Levantar con: dotnet run --project src\\backend\\WaBulk.Worker -- reanudar",
             [new("template-paused", "plantilla PAUSED")]),
+        new("plantilla-approved",
+            "message_template_status_update con event APPROVED (usar --plantilla <nombre>).",
+            "1 fila Procesado; Template.Estado = APPROVED (UltimoEvento APPROVED); la pantalla Plantillas lo muestra.",
+            [new("template-approved", "plantilla APPROVED")]),
+        new("plantilla-rejected",
+            "message_template_status_update con event REJECTED, reason INVALID_FORMAT y rejection_info.",
+            "1 fila Procesado; Template.Estado = REJECTED con el motivo y la recomendación en MotivoEstado.",
+            [new("template-rejected", "plantilla REJECTED")]),
+        new("plantilla-calidad",
+            "message_template_quality_update: GREEN → YELLOW.",
+            "1 fila Procesado; Template.Calidad = YELLOW.",
+            [new("template-quality", "calidad YELLOW")]),
+        new("plantilla-categoria",
+            "template_category_update: recategorización completada MARKETING → UTILITY.",
+            "1 fila Procesado; Template.Categoria = UTILITY, CategoriaAnterior = MARKETING.",
+            [new("template-category", "categoría UTILITY")]),
     ];
 
     public static ReplayScenario? Find(string name) =>
@@ -81,6 +101,9 @@ public static class PayloadTemplates
             .Replace("{{WAMID}}", ctx.Wamid, StringComparison.Ordinal)
             .Replace("{{IN_WAMID}}", ctx.InboundWamid, StringComparison.Ordinal)
             .Replace("{{ATTEMPT_ID}}", ctx.AttemptId.ToString("D"), StringComparison.Ordinal)
+            .Replace("{{TEMPLATE_ID}}", ctx.TemplateId.ToString(CultureInfo.InvariantCulture), StringComparison.Ordinal)
+            .Replace("{{TEMPLATE_NAME}}", ctx.TemplateName, StringComparison.Ordinal)
+            .Replace("{{TEMPLATE_LANG}}", ctx.TemplateLanguage, StringComparison.Ordinal)
             .Replace("{{TS}}", Ts(ctx, 0), StringComparison.Ordinal)
             .Replace("{{TS1}}", Ts(ctx, 1), StringComparison.Ordinal)
             .Replace("{{TS2}}", Ts(ctx, 2), StringComparison.Ordinal);

@@ -5,7 +5,7 @@ using WaBulk.WebhookReplay;
 
 // Uso (desde la raíz del repo, en cmd):
 //   dotnet run --project tools\webhook-replay -- <escenario> [--intento ultimo|<AttemptId>] [--wamid <wamid>]
-//                                                [--url <url>] [--firma-mala]
+//                                                [--url <url>] [--firma-mala] [--plantilla <nombre>]
 //   dotnet run --project tools\webhook-replay -- lista
 // Ver tools/webhook-replay/README.md.
 
@@ -23,7 +23,7 @@ if (scenario is null)
     return 1;
 }
 
-string? intento = null, wamidArg = null, urlArg = null;
+string? intento = null, wamidArg = null, urlArg = null, plantilla = null;
 var wrongSignature = false;
 for (var i = 1; i < args.Length; i++)
 {
@@ -32,6 +32,7 @@ for (var i = 1; i < args.Length; i++)
         case "--intento" when i + 1 < args.Length: intento = args[++i]; break;
         case "--wamid" when i + 1 < args.Length: wamidArg = args[++i]; break;
         case "--url" when i + 1 < args.Length: urlArg = args[++i]; break;
+        case "--plantilla" when i + 1 < args.Length: plantilla = args[++i]; break;
         case "--firma-mala": wrongSignature = true; break;
         default:
             Console.Error.WriteLine($"Opción no reconocida: {args[i]}");
@@ -96,6 +97,27 @@ else
     wamid = wamidArg ?? row.Value.Wamid ?? "wamid.REPLAY" + Convert.ToHexString(RandomNumberGenerator.GetBytes(12));
 }
 
+// Plantilla (F1.5): la de la tabla Template, para que el procesador la encuentre por su id de Meta.
+(long Id, string Name, string Language)? template = null;
+if (plantilla is not null)
+{
+    try
+    {
+        template = await FindTemplateAsync(config.GetConnectionString("WaBulk"), plantilla);
+    }
+    catch (Exception ex) when (ex is InvalidOperationException or SqlException)
+    {
+        Console.Error.WriteLine($"No se pudo leer la plantilla: {ex.Message}");
+        return 1;
+    }
+
+    if (template is null)
+    {
+        Console.Error.WriteLine($"No existe la plantilla {plantilla} con id de Meta en la tabla Template. Sincroniza antes.");
+        return 1;
+    }
+}
+
 var ctx = new ReplayContext(
     replay["WabaId"] ?? "",
     replay["PhoneNumberId"] ?? "",
@@ -105,6 +127,12 @@ var ctx = new ReplayContext(
     attemptId,
     DateTimeOffset.UtcNow.ToUnixTimeSeconds(),
     "wamid.REPLAYIN" + Convert.ToHexString(RandomNumberGenerator.GetBytes(12)));
+if (template is { } t)
+{
+    // Los webhooks mandan el idioma con guion ("en-US"); la tabla lo guarda con guion bajo.
+    ctx = ctx with { TemplateId = t.Id, TemplateName = t.Name, TemplateLanguage = t.Language.Replace('_', '-') };
+    Console.WriteLine($"Plantilla: {t.Name} ({t.Language}) id {t.Id}");
+}
 
 var pause = TimeSpan.FromMilliseconds(int.TryParse(replay["PauseMs"], out var ms) ? ms : 300);
 using var http = new HttpClient { Timeout = TimeSpan.FromSeconds(15) };
@@ -139,7 +167,9 @@ for (var i = 0; i < results.Count; i++)
 Console.WriteLine(wrongSignature
     ? "Esperado: 401 y ninguna fila nueva en WebhookInbox."
     : $"Esperado con el Worker corriendo: {scenario.Expected}");
-Console.WriteLine("Revisar con db\\scripts\\verificar-f0.8.sql.");
+Console.WriteLine(scenario.Name.StartsWith("plantilla-", StringComparison.Ordinal) && scenario.Name != "plantilla-paused"
+    ? "Revisar con db\\scripts\\verificar-f1.5.sql."
+    : "Revisar con db\\scripts\\verificar-f0.8.sql.");
 return ok ? 0 : 2;
 
 static async Task<(Guid AttemptId, string? Wamid, string WaId)?> FindAttemptAsync(string? connectionString, string intento)
@@ -190,6 +220,32 @@ static async Task<(Guid AttemptId, string? Wamid, string WaId)?> FindAttemptAsyn
     return (reader.GetGuid(0), reader.IsDBNull(1) ? null : reader.GetString(1), reader.GetString(2).TrimStart('+'));
 }
 
+static async Task<(long Id, string Name, string Language)?> FindTemplateAsync(string? connectionString, string name)
+{
+    if (string.IsNullOrWhiteSpace(connectionString))
+    {
+        throw new InvalidOperationException("Falta ConnectionStrings:WaBulk en user-secrets.");
+    }
+
+    await using var conn = new SqlConnection(connectionString);
+    await conn.OpenAsync();
+    await using var cmd = conn.CreateCommand();
+    cmd.CommandText = """
+        SELECT TOP 1 MetaTemplateId, Nombre, Idioma
+        FROM Template
+        WHERE Nombre = @name AND MetaTemplateId IS NOT NULL
+        ORDER BY Id DESC
+        """;
+    cmd.Parameters.AddWithValue("@name", name);
+    await using var reader = await cmd.ExecuteReaderAsync();
+    if (!await reader.ReadAsync() || !long.TryParse(reader.GetString(0), out var id))
+    {
+        return null;
+    }
+
+    return (id, reader.GetString(1), reader.GetString(2));
+}
+
 static void PrintUsage()
 {
     Console.WriteLine("""
@@ -200,6 +256,7 @@ static void PrintUsage()
           --wamid <wamid>               usa este wamid en lugar del guardado en el intento
           --url <url>                   receptor (por defecto http://localhost:5244/webhooks/whatsapp)
           --firma-mala                  firma con otra clave: el receptor debe responder 401
+          --plantilla <nombre>          escenarios plantilla-*: usa esa plantilla de la tabla Template (id de Meta)
 
         Escenarios:
         """);

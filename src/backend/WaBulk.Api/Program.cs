@@ -1,9 +1,11 @@
 using WaBulk.Api.Auth;
 using WaBulk.Api.Contacts;
+using WaBulk.Api.Templates;
 using WaBulk.Api.Users;
 using WaBulk.Infrastructure.Contacts;
 using WaBulk.Infrastructure.Meta;
 using WaBulk.Infrastructure.Persistence;
+using WaBulk.Infrastructure.Templates;
 
 // Comando de una sola ejecución: crear el primer Admin (no levanta el servidor web).
 var command = args.Length > 0 && args[0] == CreateAdminCommand.Name ? args[0] : null;
@@ -20,6 +22,8 @@ builder.Services.AddWaBulkAuth(builder.Environment);
 // el token en user-secrets (almacén compartido, D-018) o META__ACCESSTOKEN en Docker.
 builder.Services.AddMetaWhatsApp(builder.Configuration);
 builder.Services.AddContacts(builder.Configuration);
+// F1.5: plantillas (lista, sincronización con Meta y creación).
+builder.Services.AddTemplates(builder.Configuration);
 
 var app = builder.Build();
 
@@ -39,7 +43,8 @@ app.MapGroup("/api")
     .AddEndpointFilter<XsrfValidationFilter>()
     .MapAuthEndpoints()
     .MapUsersEndpoints()
-    .MapContactsEndpoints();
+    .MapContactsEndpoints()
+    .MapTemplatesEndpoints();
 
 await app.RunAsync();
 return 0;

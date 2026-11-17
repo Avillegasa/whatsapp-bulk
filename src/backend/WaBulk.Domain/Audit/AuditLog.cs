@@ -44,4 +44,8 @@ public static class AuditActions
     public const string CrearLista = "CrearLista";
     public const string AgregarALista = "AgregarALista";
     public const string QuitarDeLista = "QuitarDeLista";
+
+    // F1.5: plantillas.
+    public const string CrearPlantilla = "CrearPlantilla";
+    public const string SincronizarPlantillas = "SincronizarPlantillas";
 }

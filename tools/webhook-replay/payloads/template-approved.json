@@ -1,0 +1,22 @@
+{
+  "object": "whatsapp_business_account",
+  "entry": [
+    {
+      "id": "{{WABA_ID}}",
+      "time": {{TS}},
+      "changes": [
+        {
+          "value": {
+            "event": "APPROVED",
+            "message_template_id": {{TEMPLATE_ID}},
+            "message_template_name": "{{TEMPLATE_NAME}}",
+            "message_template_language": "{{TEMPLATE_LANG}}",
+            "reason": "NONE",
+            "message_template_category": "MARKETING"
+          },
+          "field": "message_template_status_update"
+        }
+      ]
+    }
+  ]
+}

@@ -55,7 +55,7 @@ public sealed class SqlServerTestDatabase : IAsyncLifetime
             "DELETE FROM MessageEvent; DELETE FROM SendAttempt; DELETE FROM CapacityReservation; DELETE FROM DispatchJob; " +
             "DELETE FROM InboundMessage; DELETE FROM WebhookInbox; DELETE FROM ConsentOffer; DELETE FROM SegmentMember; DELETE FROM Segment; " +
             "DELETE FROM ConsentRecord; DELETE FROM PlatformPreference; DELETE FROM DispatchPause; DELETE FROM Alert; DELETE FROM AuditLog; " +
-            "DELETE FROM Contact;");
+            "DELETE FROM Contact; DELETE FROM Template;");
     }
 
     public async Task DisposeAsync()

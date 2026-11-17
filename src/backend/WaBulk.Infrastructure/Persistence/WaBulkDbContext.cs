@@ -6,6 +6,7 @@ using WaBulk.Domain.Capacity;
 using WaBulk.Domain.Consent;
 using WaBulk.Domain.Contacts;
 using WaBulk.Domain.Messaging;
+using WaBulk.Domain.Templates;
 using WaBulk.Infrastructure.Identity;
 
 namespace WaBulk.Infrastructure.Persistence;
@@ -31,6 +32,7 @@ public class WaBulkDbContext(DbContextOptions<WaBulkDbContext> options) : Identi
     public DbSet<ConsentOffer> ConsentOffers => Set<ConsentOffer>();
     public DbSet<Segment> Segments => Set<Segment>();
     public DbSet<SegmentMember> SegmentMembers => Set<SegmentMember>();
+    public DbSet<Template> Templates => Set<Template>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

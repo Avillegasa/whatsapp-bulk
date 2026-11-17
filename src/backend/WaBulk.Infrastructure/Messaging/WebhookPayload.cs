@@ -11,8 +11,10 @@ internal sealed record WebhookPayload(
     [property: JsonPropertyName("object")] string? Object,
     [property: JsonPropertyName("entry")] IReadOnlyList<WebhookEntry>? Entry);
 
+/// <summary>time: segundos Unix del evento (entero). Lo usan los webhooks de plantillas para no pisar un dato más nuevo.</summary>
 internal sealed record WebhookEntry(
     [property: JsonPropertyName("id")] string? Id,
+    [property: JsonPropertyName("time")] JsonElement? Time,
     [property: JsonPropertyName("changes")] IReadOnlyList<WebhookChange>? Changes);
 
 internal sealed record WebhookChange(
@@ -31,7 +33,22 @@ internal sealed record WebhookChangeValue(
     [property: JsonPropertyName("message_template_name")] string? MessageTemplateName,
     [property: JsonPropertyName("message_template_language")] string? MessageTemplateLanguage,
     [property: JsonPropertyName("reason")] string? Reason,
-    [property: JsonPropertyName("other_info")] WebhookOtherInfo? OtherInfo);
+    [property: JsonPropertyName("other_info")] WebhookOtherInfo? OtherInfo,
+    // F1.5: resto de message_template_status_update, message_template_quality_update y template_category_update.
+    // https://developers.facebook.com/documentation/business-messaging/whatsapp/webhooks/reference/message_template_quality_update
+    // https://developers.facebook.com/documentation/business-messaging/whatsapp/webhooks/reference/template_category_update
+    [property: JsonPropertyName("message_template_category")] string? MessageTemplateCategory,
+    [property: JsonPropertyName("rejection_info")] WebhookRejectionInfo? RejectionInfo,
+    [property: JsonPropertyName("previous_quality_score")] string? PreviousQualityScore,
+    [property: JsonPropertyName("new_quality_score")] string? NewQualityScore,
+    [property: JsonPropertyName("previous_category")] string? PreviousCategory,
+    [property: JsonPropertyName("new_category")] string? NewCategory,
+    [property: JsonPropertyName("correct_category")] string? CorrectCategory,
+    [property: JsonPropertyName("category_update_timestamp")] JsonElement? CategoryUpdateTimestamp);
+
+internal sealed record WebhookRejectionInfo(
+    [property: JsonPropertyName("reason")] string? Reason,
+    [property: JsonPropertyName("recommendation")] string? Recommendation);
 
 internal sealed record WebhookOtherInfo(
     [property: JsonPropertyName("title")] string? Title,

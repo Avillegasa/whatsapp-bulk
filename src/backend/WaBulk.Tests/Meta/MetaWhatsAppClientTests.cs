@@ -144,7 +144,7 @@ public sealed class MetaWhatsAppClientTests
         Assert.Equal(SendAttemptStatus.SubmissionUnknown, result.Status);
     }
 
-    private sealed class StaticOptionsMonitor(MetaOptions value) : IOptionsMonitor<MetaOptions>
+    internal sealed class StaticOptionsMonitor(MetaOptions value) : IOptionsMonitor<MetaOptions>
     {
         public MetaOptions CurrentValue => value;
         public MetaOptions Get(string? name) => value;

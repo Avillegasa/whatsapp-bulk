@@ -22,6 +22,13 @@ public static class MetaServiceCollectionExtensions
             client.Timeout = TimeSpan.FromSeconds(meta.RequestTimeoutSeconds);
         });
 
+        // F1.5: API de plantillas de la WABA (listar y crear), también sin reintentos.
+        services.AddHttpClient<MetaTemplateApiClient>((sp, client) =>
+        {
+            var meta = sp.GetRequiredService<IOptions<MetaOptions>>().Value;
+            client.Timeout = TimeSpan.FromSeconds(meta.RequestTimeoutSeconds);
+        });
+
         return services;
     }
 }

@@ -7,10 +7,12 @@ using WaBulk.Domain.Alerts;
 using WaBulk.Domain.Consent;
 using WaBulk.Domain.Contacts;
 using WaBulk.Domain.Messaging;
+using WaBulk.Domain.Templates;
 using WaBulk.Infrastructure.Alerts;
 using WaBulk.Infrastructure.Consent;
 using WaBulk.Infrastructure.Contacts;
 using WaBulk.Infrastructure.Persistence;
+using WaBulk.Infrastructure.Templates;
 
 namespace WaBulk.Infrastructure.Messaging;
 
@@ -22,6 +24,7 @@ namespace WaBulk.Infrastructure.Messaging;
 /// ConsentRecord OptOut (capa empresa); user_preferences y estados failed con 131050 → PlatformPreference (capa
 /// plataforma). F1.4: todo mensaje entrante se guarda en InboundMessage con su Contact (mapeo BSUID ↔ teléfono) y la
 /// respuesta a la oferta de promociones (D-031) se registra: «Sí» → ConsentRecord OptIn; «Ahora no» → solo la oferta.
+/// F1.5: los webhooks de plantillas (estado, calidad, categoría) actualizan la tabla Template.
 /// Todo lo de una fila se guarda en un solo SaveChanges, salvo un Contact nuevo, que se guarda antes para tener Id.
 /// Referencia: https://developers.facebook.com/documentation/business-messaging/whatsapp/webhooks/reference/messages/status
 /// </summary>
@@ -118,10 +121,16 @@ public sealed partial class WebhookInboxProcessor(
 
                         break;
                     case "message_template_status_update":
-                        outcomes.Add(await ApplyTemplateStatusAsync(change.Value, cancellationToken));
+                        outcomes.Add(await ApplyTemplateStatusAsync(change.Value, EntryTime(entry), cancellationToken));
+                        break;
+                    case "message_template_quality_update":
+                        outcomes.Add(await ApplyTemplateQualityAsync(change.Value, EntryTime(entry), cancellationToken));
+                        break;
+                    case "template_category_update":
+                        outcomes.Add(await ApplyTemplateCategoryAsync(change.Value, EntryTime(entry), cancellationToken));
                         break;
                     default:
-                        outcomes.Add((Outcome.Ignored, null)); // account_update, calidad, categoría…: Fase 1.
+                        outcomes.Add((Outcome.Ignored, null)); // account_update, calidad del número…: F1.7.
                         break;
                 }
 
@@ -393,22 +402,206 @@ public sealed partial class WebhookInboxProcessor(
     }
 
     /// <summary>
-    /// message_template_status_update con event PAUSED → alerta y pausa global (F0.12). Los demás eventos (APPROVED,
-    /// REJECTED, DISABLED…) se sincronizan con la tabla Template en la Fase 1.
+    /// message_template_status_update (F1.5): actualiza Template.Estado si el evento es un estado (APPROVED, REJECTED,
+    /// PAUSED, DISABLED…) y el dato no es más viejo que el guardado; otros eventos (FLAGGED, REINSTATED…) solo quedan en
+    /// UltimoEvento. Si la plantilla no está en la tabla (creada en WhatsApp Manager) se agrega. PAUSED además levanta la
+    /// alerta y la pausa global (F0.12), aunque el webhook llegue desordenado.
+    /// https://developers.facebook.com/documentation/business-messaging/whatsapp/webhooks/reference/message_template_status_update
     /// </summary>
-    private async Task<(Outcome Outcome, string? Note)> ApplyTemplateStatusAsync(WebhookChangeValue? value, CancellationToken cancellationToken)
+    private async Task<(Outcome Outcome, string? Note)> ApplyTemplateStatusAsync(
+        WebhookChangeValue? value, DateTime eventUtc, CancellationToken cancellationToken)
     {
-        if (value?.Event != "PAUSED")
+        if (string.IsNullOrEmpty(value?.Event) || (value.MessageTemplateName is null && TemplateMetaId(value) is null))
         {
+            return (Outcome.Review, "message_template_status_update sin event o sin plantilla");
+        }
+
+        if (value.Event == TemplateStatuses.Paused)
+        {
+            var key = $"{value.MessageTemplateName}:{value.MessageTemplateLanguage}";
+            await alerts.RaiseAsync(AlertType.PlantillaPausada, key,
+                $"Meta pausó la plantilla {key} ({value.OtherInfo?.Title ?? value.Reason})",
+                value.OtherInfo?.Description, "Webhook", cancellationToken);
+        }
+
+        var template = await FindTemplateAsync(value, cancellationToken);
+        var isStatus = TemplateStatuses.FromMeta.Contains(value.Event);
+        if (template is null)
+        {
+            if (!isStatus || value.MessageTemplateName is null)
+            {
+                return (Outcome.Ignored, null);
+            }
+
+            template = new Template
+            {
+                MetaTemplateId = TemplateMetaId(value),
+                Name = value.MessageTemplateName,
+                Language = TemplateRules.NormalizeLanguage(value.MessageTemplateLanguage),
+                Category = value.MessageTemplateCategory ?? "",
+                Status = value.Event,
+                StatusUtc = DateTime.MinValue,
+                CreatedUtc = Now(),
+                CreatedBy = TemplateService.MetaActor,
+            };
+            db.Templates.Add(template);
+        }
+
+        if (eventUtc < template.StatusUtc)
+        {
+            return (Outcome.Duplicate, null); // Más viejo que lo guardado (webhook desordenado o sincronización posterior).
+        }
+
+        if (template.LastEvent == value.Event && template.StatusUtc == eventUtc && (!isStatus || template.Status == value.Event))
+        {
+            return (Outcome.Duplicate, null); // El mismo webhook repetido.
+        }
+
+        var reason = TemplateReason(value);
+        template.LastEvent = value.Event;
+        template.MetaTemplateId ??= TemplateMetaId(value);
+        if (value.MessageTemplateCategory is { Length: > 0 } category)
+        {
+            template.Category = category;
+        }
+
+        if (isStatus)
+        {
+            template.Status = value.Event;
+            template.StatusUtc = eventUtc;
+            template.StatusReason = reason;
+        }
+        else
+        {
+            template.StatusReason = Truncate($"Evento {value.Event}: {reason ?? "sin detalle"}. Sincroniza para ver el estado actual.");
+        }
+
+        LogTemplateEvent(logger, template.Name, template.Language, value.Event);
+        return (Outcome.Applied, null);
+    }
+
+    /// <summary>message_template_quality_update (F1.5): GREEN, YELLOW, RED o UNKNOWN. Solo si es más nuevo que el guardado.</summary>
+    private async Task<(Outcome Outcome, string? Note)> ApplyTemplateQualityAsync(
+        WebhookChangeValue? value, DateTime eventUtc, CancellationToken cancellationToken)
+    {
+        if (value?.NewQualityScore is not { Length: > 0 } score)
+        {
+            return (Outcome.Review, "message_template_quality_update sin new_quality_score");
+        }
+
+        var template = await FindTemplateAsync(value, cancellationToken);
+        if (template is null)
+        {
+            LogTemplateUnknown(logger, value.MessageTemplateName, "calidad");
+            return (Outcome.Ignored, null); // La sincronización la traerá con su calidad.
+        }
+
+        if (template.QualityUtc is { } last && eventUtc <= last)
+        {
+            return (Outcome.Duplicate, null);
+        }
+
+        template.Quality = score;
+        template.QualityUtc = eventUtc;
+        LogTemplateQuality(logger, template.Name, value.PreviousQualityScore, score);
+        return (Outcome.Applied, null);
+    }
+
+    /// <summary>
+    /// template_category_update (F1.5). Con correct_category: Meta anuncia que la recategoriza (new_category es la
+    /// categoría actual) → se guarda la categoría futura y la fecha. Con previous_category: la recategorización ya ocurrió.
+    /// https://developers.facebook.com/documentation/business-messaging/whatsapp/webhooks/reference/template_category_update
+    /// </summary>
+    private async Task<(Outcome Outcome, string? Note)> ApplyTemplateCategoryAsync(
+        WebhookChangeValue? value, DateTime eventUtc, CancellationToken cancellationToken)
+    {
+        if (value?.NewCategory is not { Length: > 0 } newCategory)
+        {
+            return (Outcome.Review, "template_category_update sin new_category");
+        }
+
+        var template = await FindTemplateAsync(value, cancellationToken);
+        if (template is null)
+        {
+            LogTemplateUnknown(logger, value.MessageTemplateName, "categoría");
             return (Outcome.Ignored, null);
         }
 
-        var key = $"{value.MessageTemplateName}:{value.MessageTemplateLanguage}";
-        await alerts.RaiseAsync(AlertType.PlantillaPausada, key,
-            $"Meta pausó la plantilla {key} ({value.OtherInfo?.Title ?? value.Reason})",
-            value.OtherInfo?.Description, "Webhook", cancellationToken);
+        if (value.CorrectCategory is { Length: > 0 } future)
+        {
+            DateTime? when = value.CategoryUpdateTimestamp is { ValueKind: JsonValueKind.Number } n && n.TryGetInt64(out var seconds)
+                ? DateTimeOffset.FromUnixTimeSeconds(seconds).UtcDateTime
+                : null;
+            if (template.CorrectCategory == future && template.CategoryChangeUtc == when)
+            {
+                return (Outcome.Duplicate, null);
+            }
+
+            template.CorrectCategory = future;
+            template.CategoryChangeUtc = when;
+            LogTemplateCategory(logger, template.Name, newCategory, future);
+            return (Outcome.Applied, null);
+        }
+
+        if (template.Category == newCategory && template.CorrectCategory is null)
+        {
+            return (Outcome.Duplicate, null);
+        }
+
+        template.PreviousCategory = value.PreviousCategory ?? template.Category;
+        template.Category = newCategory;
+        template.CorrectCategory = null;
+        template.CategoryChangeUtc = eventUtc;
+        LogTemplateCategory(logger, template.Name, template.PreviousCategory, newCategory);
         return (Outcome.Applied, null);
     }
+
+    /// <summary>Busca la plantilla por id de Meta y, si no, por nombre e idioma (el webhook trae "en-US"; la tabla, "en_US").</summary>
+    private async Task<Template?> FindTemplateAsync(WebhookChangeValue value, CancellationToken cancellationToken)
+    {
+        var metaId = TemplateMetaId(value);
+        var template = metaId is null ? null
+            : db.Templates.Local.FirstOrDefault(t => t.MetaTemplateId == metaId)
+              ?? await db.Templates.FirstOrDefaultAsync(t => t.MetaTemplateId == metaId, cancellationToken);
+        if (template is not null || value.MessageTemplateName is null)
+        {
+            return template;
+        }
+
+        var name = value.MessageTemplateName;
+        var language = TemplateRules.NormalizeLanguage(value.MessageTemplateLanguage);
+        return db.Templates.Local.FirstOrDefault(t => t.Name == name && t.Language == language)
+               ?? await db.Templates.FirstOrDefaultAsync(t => t.Name == name && t.Language == language, cancellationToken);
+    }
+
+    /// <summary>message_template_id viene como número en el JSON; se guarda como texto.</summary>
+    private static string? TemplateMetaId(WebhookChangeValue value) => value.MessageTemplateId switch
+    {
+        { ValueKind: JsonValueKind.Number } n => n.GetRawText(),
+        { ValueKind: JsonValueKind.String } t when !string.IsNullOrWhiteSpace(t.GetString()) => t.GetString(),
+        _ => null,
+    };
+
+    private static string? TemplateReason(WebhookChangeValue value)
+    {
+        var parts = new[]
+        {
+            value.Reason is null or "NONE" ? null : value.Reason,
+            value.RejectionInfo?.Reason,
+            value.RejectionInfo?.Recommendation is { } r ? $"Recomendación: {r}" : null,
+            value.OtherInfo?.Title,
+            value.OtherInfo?.Description,
+        }.Where(p => !string.IsNullOrWhiteSpace(p)).ToList();
+        return parts.Count == 0 ? null : TruncateTo(string.Join(" | ", parts), MaxErrorLength);
+    }
+
+    /// <summary>entry.time (segundos Unix); si no viene, la hora actual.</summary>
+    private DateTime EntryTime(WebhookEntry entry) => entry.Time switch
+    {
+        { ValueKind: JsonValueKind.Number } n when n.TryGetInt64(out var s) => DateTimeOffset.FromUnixTimeSeconds(s).UtcDateTime,
+        { ValueKind: JsonValueKind.String } t => ParseUnixSeconds(t.GetString()) ?? Now(),
+        _ => Now(),
+    };
 
     /// <summary>Estado failed con 131042 (método de pago) → alerta y pausa global (F0.12).</summary>
     private async Task<(Outcome Outcome, string? Note)> ApplyBillingAlertFromErrorAsync(WebhookStatus status, CancellationToken cancellationToken)
@@ -660,6 +853,18 @@ public sealed partial class WebhookInboxProcessor(
 
     [LoggerMessage(Level = LogLevel.Information, Message = "Preferencia de plataforma {Value} para {Phone} ({Origin})")]
     private static partial void LogPlatformPreference(ILogger logger, string phone, PlatformPreferenceValue value, PlatformPreferenceOrigin origin);
+
+    [LoggerMessage(Level = LogLevel.Information, Message = "Plantilla {Name} ({Language}): evento {Event}")]
+    private static partial void LogTemplateEvent(ILogger logger, string name, string language, string @event);
+
+    [LoggerMessage(Level = LogLevel.Information, Message = "Plantilla {Name}: calidad {Previous} → {New}")]
+    private static partial void LogTemplateQuality(ILogger logger, string name, string? previous, string @new);
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Plantilla {Name}: categoría {Previous} → {New}")]
+    private static partial void LogTemplateCategory(ILogger logger, string name, string? previous, string @new);
+
+    [LoggerMessage(Level = LogLevel.Information, Message = "Webhook de {Kind} para la plantilla {Name}, que no está en la tabla: se ignora hasta sincronizar")]
+    private static partial void LogTemplateUnknown(ILogger logger, string? name, string kind);
 
     [LoggerMessage(Level = LogLevel.Information, Message = "Estado de entrega no manejado: {Status}")]
     private static partial void LogUnknownStatus(ILogger logger, string? status);

@@ -1048,6 +1048,124 @@ namespace WaBulk.Infrastructure.Persistence.Migrations
                     b.ToTable("WebhookInbox", (string)null);
                 });
 
+            modelBuilder.Entity("WaBulk.Domain.Templates.Template", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
+
+                    b.Property<string>("Category")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(30)")
+                        .HasColumnName("Categoria");
+
+                    b.Property<DateTime?>("CategoryChangeUtc")
+                        .HasColumnType("datetime2")
+                        .HasColumnName("CambioCategoriaUtc");
+
+                    b.Property<string>("Components")
+                        .HasColumnType("nvarchar(max)")
+                        .HasColumnName("Componentes");
+
+                    b.Property<string>("CorrectCategory")
+                        .HasMaxLength(30)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(30)")
+                        .HasColumnName("CategoriaNueva");
+
+                    b.Property<string>("CreatedBy")
+                        .IsRequired()
+                        .HasMaxLength(256)
+                        .HasColumnType("nvarchar(256)")
+                        .HasColumnName("CreadaPor");
+
+                    b.Property<DateTime>("CreatedUtc")
+                        .HasColumnType("datetime2")
+                        .HasColumnName("CreadaUtc");
+
+                    b.Property<string>("Language")
+                        .IsRequired()
+                        .HasMaxLength(15)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(15)")
+                        .HasColumnName("Idioma");
+
+                    b.Property<string>("LastEvent")
+                        .HasMaxLength(30)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(30)")
+                        .HasColumnName("UltimoEvento");
+
+                    b.Property<string>("MetaTemplateId")
+                        .HasMaxLength(64)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(64)");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(512)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(512)")
+                        .HasColumnName("Nombre");
+
+                    b.Property<string>("ParameterFormat")
+                        .HasMaxLength(15)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(15)")
+                        .HasColumnName("FormatoParametros");
+
+                    b.Property<string>("PreviousCategory")
+                        .HasMaxLength(30)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(30)")
+                        .HasColumnName("CategoriaAnterior");
+
+                    b.Property<string>("Quality")
+                        .HasMaxLength(15)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(15)")
+                        .HasColumnName("Calidad");
+
+                    b.Property<DateTime?>("QualityUtc")
+                        .HasColumnType("datetime2")
+                        .HasColumnName("CalidadUtc");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(30)")
+                        .HasColumnName("Estado");
+
+                    b.Property<string>("StatusReason")
+                        .HasMaxLength(4000)
+                        .HasColumnType("nvarchar(4000)")
+                        .HasColumnName("MotivoEstado");
+
+                    b.Property<DateTime>("StatusUtc")
+                        .HasColumnType("datetime2")
+                        .HasColumnName("EstadoUtc");
+
+                    b.Property<DateTime?>("SyncedUtc")
+                        .HasColumnType("datetime2")
+                        .HasColumnName("SincronizadaUtc");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("MetaTemplateId")
+                        .IsUnique()
+                        .HasFilter("[MetaTemplateId] IS NOT NULL");
+
+                    b.HasIndex("Name", "Language")
+                        .IsUnique();
+
+                    b.ToTable("Template", (string)null);
+                });
+
             modelBuilder.Entity("WaBulk.Infrastructure.Identity.AppUser", b =>
                 {
                     b.Property<string>("Id")

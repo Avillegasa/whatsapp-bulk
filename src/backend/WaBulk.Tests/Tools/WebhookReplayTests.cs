@@ -107,7 +107,7 @@ public sealed class WebhookReplayTests : IAsyncLifetime
     {
         var ctx = Context(Guid.CreateVersion7(), "wamid.X");
         var names = PayloadTemplates.Names().ToList();
-        Assert.Equal(9, names.Count);
+        Assert.Equal(13, names.Count); // F1.5: + template-approved, -rejected, -quality, -category.
 
         foreach (var name in names)
         {

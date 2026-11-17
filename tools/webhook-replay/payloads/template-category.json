@@ -1,0 +1,21 @@
+{
+  "object": "whatsapp_business_account",
+  "entry": [
+    {
+      "id": "{{WABA_ID}}",
+      "time": {{TS}},
+      "changes": [
+        {
+          "value": {
+            "message_template_id": {{TEMPLATE_ID}},
+            "message_template_name": "{{TEMPLATE_NAME}}",
+            "message_template_language": "{{TEMPLATE_LANG}}",
+            "previous_category": "MARKETING",
+            "new_category": "UTILITY"
+          },
+          "field": "template_category_update"
+        }
+      ]
+    }
+  ]
+}

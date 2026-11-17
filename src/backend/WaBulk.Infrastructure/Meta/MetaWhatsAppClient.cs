@@ -38,9 +38,21 @@ public sealed partial class MetaWhatsAppClient(
         Guid attemptId,
         CancellationToken cancellationToken)
     {
+        ArgumentNullException.ThrowIfNull(template);
+
+        // components (F1.5): solo el cuerpo lleva parámetros. Los botones de respuesta rápida no se envían: sin payload
+        // propio, Meta devuelve en el webhook button.payload = texto del botón ("No recibir más"), que es lo que reconoce
+        // OptOutDetector (Bajas:ButtonTexts).
+        // https://developers.facebook.com/documentation/business-messaging/whatsapp/templates/overview (named/positional)
+        // https://developers.facebook.com/documentation/business-messaging/whatsapp/webhooks/reference/messages/button
+        IReadOnlyList<ComponentPayload>? components = template.BodyParameters is { Count: > 0 } values
+            ? [new ComponentPayload("body", [.. values.Select(v => new ParameterPayload(
+                v.Value, template.NamedParameters ? v.Name : null))])]
+            : null;
+
         var body = new SendTemplateRequest(
             To: to,
-            Template: new TemplatePayload(template.Name, new LanguagePayload(template.LanguageCode)),
+            Template: new TemplatePayload(template.Name, new LanguagePayload(template.LanguageCode), components),
             BizOpaqueCallbackData: attemptId.ToString());
         return PostAsync(body, attemptId.ToString(), cancellationToken);
     }
@@ -176,7 +188,15 @@ public sealed partial class MetaWhatsAppClient(
         public string Type => "template";
     }
 
-    private sealed record TemplatePayload(string Name, LanguagePayload Language);
+    private sealed record TemplatePayload(string Name, LanguagePayload Language, IReadOnlyList<ComponentPayload>? Components);
+
+    private sealed record ComponentPayload(string Type, IReadOnlyList<ParameterPayload> Parameters);
+
+    /// <summary>{"type":"text","parameter_name":"nombre","text":"Andrés"}; parameter_name se omite en POSITIONAL.</summary>
+    private sealed record ParameterPayload(string Text, string? ParameterName)
+    {
+        public string Type => "text";
+    }
 
     private sealed record SendInteractiveRequest(string? To, string? Recipient, InteractivePayload Interactive, string BizOpaqueCallbackData)
     {

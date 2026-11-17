@@ -1,0 +1,21 @@
+{
+  "object": "whatsapp_business_account",
+  "entry": [
+    {
+      "id": "{{WABA_ID}}",
+      "time": {{TS}},
+      "changes": [
+        {
+          "value": {
+            "previous_quality_score": "GREEN",
+            "new_quality_score": "YELLOW",
+            "message_template_id": {{TEMPLATE_ID}},
+            "message_template_name": "{{TEMPLATE_NAME}}",
+            "message_template_language": "{{TEMPLATE_LANG}}"
+          },
+          "field": "message_template_quality_update"
+        }
+      ]
+    }
+  ]
+}
