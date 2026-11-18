@@ -68,7 +68,7 @@ const QUE_REVISAR: Record<string, string> = {
             <tbody>
               @for (a of list; track a.id) {
                 <tr>
-                  <td data-label="Alerta">
+                  <td data-label="Alerta" class="principal-celda">
                     <strong>{{ a.tipo }}</strong> {{ a.mensaje }}
                     <span class="sec">({{ a.origen }})</span> <br /><span class="sec">{{
                       queRevisar(a.tipo)

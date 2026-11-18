@@ -38,7 +38,7 @@
         <tbody>
           @for (c of lista; track c.contactoId) {
             <tr>
-              <td data-label="Cliente">
+              <td data-label="Cliente" class="principal-celda">
                 <strong>{{ c.nombre ?? 'Sin nombre' }}</strong><br />
                 <span class="sec">{{ c.telefono ?? 'solo nombre de usuario' }}</span>
               </td>

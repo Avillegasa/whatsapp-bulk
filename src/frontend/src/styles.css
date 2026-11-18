@@ -89,6 +89,19 @@
   --sombra-2: 0 2px 6px rgb(31 27 24 / 6%), 0 8px 24px rgb(31 27 24 / 8%);
   --sombra-3: 0 12px 40px rgb(31 27 24 / 18%);
 
+  /* Piezas que cambian con el tema */
+  --sobre-tinta: #ffffff;
+  --destacado: #2e7d46;
+  --destacado-hover: #24653a;
+  --pausa-fondo: #b42318;
+  --fila-elegida: #f3ece4;
+  --seleccion: #f2d9d5;
+  --previa-fondo: var(--previa-fondo);
+  --previa-texto: #111b21;
+  --previa-tenue: #54656f;
+  --previa-boton: #0b6bb5;
+  --previa-linea: var(--previa-linea);
+
   --ancho-menu: 15.5rem;
   --alto-cabecera: 3.75rem;
 }
@@ -176,7 +189,7 @@ strong {
 }
 
 ::selection {
-  background: #f2d9d5;
+  background: var(--seleccion);
 }
 
 .solo-lector {
@@ -235,7 +248,7 @@ button.principal,
 button[type='submit'] {
   background: var(--tinta);
   border-color: var(--tinta);
-  color: #fff;
+  color: var(--sobre-tinta);
 }
 
 button.principal:hover:not(:disabled),
@@ -246,15 +259,15 @@ button[type='submit']:hover:not(:disabled) {
 
 /* Acción destacada de una pantalla (por ejemplo, "Ofrecer promociones"). */
 button.destacado {
-  background: var(--ok-solido);
-  border-color: var(--ok-solido);
+  background: var(--destacado);
+  border-color: var(--destacado);
   color: #fff;
   font-weight: 620;
 }
 
 button.destacado:hover:not(:disabled) {
-  background: #24653a;
-  border-color: #24653a;
+  background: var(--destacado-hover);
+  border-color: var(--destacado-hover);
 }
 
 /* Acción que borra, cancela o rechaza. */
@@ -618,7 +631,7 @@ tbody tr:hover td {
 
 tr.elegida td,
 tr.elegida:hover td {
-  background: #f3ece4;
+  background: var(--fila-elegida);
 }
 
 tr.elegida td:first-child {
@@ -718,12 +731,12 @@ td button + button {
 /* ---------- 10. Vista previa del mensaje (burbuja de WhatsApp) ---------- */
 .previa {
   position: relative;
-  background: #dcf3d0;
+  background: var(--previa-fondo);
   border-radius: 2px var(--r3) var(--r3) var(--r3);
   padding: var(--e3) var(--e4);
   max-width: 26rem;
   white-space: pre-wrap;
-  color: #111b21;
+  color: var(--previa-texto);
   box-shadow: 0 1px 1px rgb(0 0 0 / 10%);
   margin: var(--e3) 0 var(--e4) 0.5rem;
   font-size: var(--t-sm);
@@ -734,7 +747,7 @@ td button + button {
   position: absolute;
   top: 0;
   left: -0.5rem;
-  border-top: 0.6rem solid #dcf3d0;
+  border-top: 0.6rem solid var(--previa-fondo);
   border-left: 0.5rem solid transparent;
 }
 
@@ -743,27 +756,27 @@ td button + button {
 }
 
 .previa .sec {
-  color: #54656f;
+  color: var(--previa-tenue);
 }
 
 .botones-previa {
   display: grid;
   gap: 1px;
   margin: var(--e3) calc(-1 * var(--e4)) calc(-1 * var(--e3));
-  border-top: 1px solid rgb(0 0 0 / 8%);
+  border-top: 1px solid var(--previa-linea);
   white-space: normal;
 }
 
 .botones-previa span {
-  background: #dcf3d0;
+  background: var(--previa-fondo);
   padding: var(--e2);
   text-align: center;
-  color: #0b6bb5;
+  color: var(--previa-boton);
   font-weight: 560;
 }
 
 .botones-previa span + span {
-  border-top: 1px solid rgb(0 0 0 / 8%);
+  border-top: 1px solid var(--previa-linea);
 }
 
 .botones-previa span:last-child {
@@ -1338,7 +1351,7 @@ form.clave input {
   padding: var(--e5);
   margin: 0 0 var(--e5);
   border-radius: var(--r3);
-  background: var(--mal-solido);
+  background: var(--pausa-fondo);
   color: #fff;
   box-shadow: 0 0 0 4px var(--mal-fondo), var(--sombra-2);
 }
@@ -1369,15 +1382,15 @@ form.clave input {
   padding: 0.45rem 1rem;
   border-radius: var(--r2);
   background: #fff;
-  color: var(--mal-texto);
+  color: #9e1f18;
   font-size: var(--t-sm);
   font-weight: 650;
   text-decoration: none;
 }
 
 .boton-enlace:hover {
-  background: var(--mal-fondo);
-  color: var(--mal-texto);
+  background: #fbe6e3;
+  color: #9e1f18;
 }
 
 .banner-pausa :focus-visible {
@@ -1710,22 +1723,34 @@ button.destacado {
   }
 
   table.apilable td {
-    padding: var(--e2) var(--e4);
+    position: relative;
+    min-height: 2rem;
+    padding: 0.35rem var(--e4) 0.35rem calc(var(--e4) + 7.25rem);
     border: 0;
   }
 
   table.apilable td::before {
     content: attr(data-label);
-    display: block;
-    margin-bottom: 2px;
+    position: absolute;
+    left: var(--e4);
+    top: 0.5rem;
+    width: 6.75rem;
     color: var(--texto-3);
     font-size: 0.6875rem;
     font-weight: 650;
-    letter-spacing: 0.05em;
+    letter-spacing: 0.04em;
+    line-height: 1.3;
     text-transform: uppercase;
   }
 
-  table.apilable td[data-label='']::before {
+  /* Celdas sin título (casilla, botón "Ver") y la primera celda con nombre: a todo el ancho. */
+  table.apilable td[data-label=''],
+  table.apilable td.principal-celda {
+    padding-left: var(--e4);
+  }
+
+  table.apilable td[data-label='']::before,
+  table.apilable td.principal-celda::before {
     display: none;
   }
 
@@ -1791,7 +1816,7 @@ button.destacado {
 
 .sin-permiso .boton-enlace {
   background: var(--tinta);
-  color: #fff;
+  color: var(--sobre-tinta);
 }
 
 .importar > p {
@@ -1812,4 +1837,159 @@ button.destacado {
   table.apilable td.acciones::before {
     width: 100%;
   }
+}
+
+@media (max-width: 700px) {
+  table.apilable tr {
+    position: relative;
+  }
+
+  /* Casilla de elegir (Contactos): arriba a la derecha de la tarjeta. */
+  table.apilable td.casilla {
+    position: absolute;
+    top: var(--e2);
+    right: var(--e2);
+    width: auto;
+    min-height: 0;
+    padding: var(--e2);
+  }
+
+  table.apilable td.casilla + td {
+    padding-right: 3rem;
+  }
+}
+
+/* ---------- 19. Tema oscuro ----------
+ * Sigue al sistema operativo salvo que la persona elija "Claro" u "Oscuro" en la cabecera (atributo data-tema en <html>).
+ * Los mismos pares de contraste AA, con fondos oscuros cálidos. */
+:root[data-tema='oscuro'] {
+  color-scheme: dark;
+  --fondo: #161311;
+  --superficie: #1f1b18;
+  --superficie-2: #26211d;
+  --superficie-3: #332c27;
+  --borde: #3a332d;
+  --borde-fuerte: #5c524a;
+  --texto: #f2ede7;
+  --texto-2: #cbc2b9;
+  --texto-3: #a69c92;
+  --tinta: #f2ede7;
+  --tinta-hover: #ffffff;
+  --sobre-tinta: #1f1b18;
+  --marca-clara: #e07a6f;
+  --menu-fondo: #100d0b;
+  --menu-hover: #1f1a17;
+  --menu-activo: #2c2622;
+  --foco: #7aa7f0;
+  --ok-texto: #93d8a7;
+  --ok-fondo: #15301f;
+  --ok-borde: #2d5c3b;
+  --ok-solido: #3f9a5c;
+  --info-texto: #a3c4f5;
+  --info-fondo: #172a45;
+  --info-borde: #2e4c7a;
+  --info-solido: #5a8edb;
+  --espera-texto: #f0c87a;
+  --espera-fondo: #372809;
+  --espera-borde: #6b4f1a;
+  --espera-solido: #d29a2a;
+  --mal-texto: #f5a79f;
+  --mal-fondo: #3b1613;
+  --mal-borde: #6e2b25;
+  --mal-solido: #e0564b;
+  --omit-texto: #d1cac2;
+  --omit-fondo: #2b2622;
+  --omit-borde: #4b433c;
+  --omit-solido: #8e857c;
+  --pausa-fondo: #9d241b;
+  --fila-elegida: #2d2520;
+  --seleccion: #5a2a24;
+  --previa-fondo: #144d37;
+  --previa-texto: #e9edef;
+  --previa-tenue: #a9c4b8;
+  --previa-boton: #7cc7f5;
+  --previa-linea: rgb(255 255 255 / 10%);
+  --sombra-1: 0 1px 2px rgb(0 0 0 / 30%);
+  --sombra-2: 0 2px 6px rgb(0 0 0 / 30%), 0 8px 24px rgb(0 0 0 / 35%);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-tema='claro']) {
+    color-scheme: dark;
+    --fondo: #161311;
+    --superficie: #1f1b18;
+    --superficie-2: #26211d;
+    --superficie-3: #332c27;
+    --borde: #3a332d;
+    --borde-fuerte: #5c524a;
+    --texto: #f2ede7;
+    --texto-2: #cbc2b9;
+    --texto-3: #a69c92;
+    --tinta: #f2ede7;
+    --tinta-hover: #ffffff;
+    --sobre-tinta: #1f1b18;
+    --marca-clara: #e07a6f;
+    --menu-fondo: #100d0b;
+    --menu-hover: #1f1a17;
+    --menu-activo: #2c2622;
+    --foco: #7aa7f0;
+    --ok-texto: #93d8a7;
+    --ok-fondo: #15301f;
+    --ok-borde: #2d5c3b;
+    --ok-solido: #3f9a5c;
+    --info-texto: #a3c4f5;
+    --info-fondo: #172a45;
+    --info-borde: #2e4c7a;
+    --info-solido: #5a8edb;
+    --espera-texto: #f0c87a;
+    --espera-fondo: #372809;
+    --espera-borde: #6b4f1a;
+    --espera-solido: #d29a2a;
+    --mal-texto: #f5a79f;
+    --mal-fondo: #3b1613;
+    --mal-borde: #6e2b25;
+    --mal-solido: #e0564b;
+    --omit-texto: #d1cac2;
+    --omit-fondo: #2b2622;
+    --omit-borde: #4b433c;
+    --omit-solido: #8e857c;
+    --pausa-fondo: #9d241b;
+    --fila-elegida: #2d2520;
+    --seleccion: #5a2a24;
+    --previa-fondo: #144d37;
+    --previa-texto: #e9edef;
+    --previa-tenue: #a9c4b8;
+    --previa-boton: #7cc7f5;
+    --previa-linea: rgb(255 255 255 / 10%);
+    --sombra-1: 0 1px 2px rgb(0 0 0 / 30%);
+    --sombra-2: 0 2px 6px rgb(0 0 0 / 30%), 0 8px 24px rgb(0 0 0 / 35%);
+  }
+}
+
+/* Botón de tema y enlace "Saltar al contenido" */
+.boton-tema .icono {
+  width: 1.1rem;
+  height: 1.1rem;
+}
+
+.saltar {
+  position: absolute;
+  left: var(--e3);
+  top: -4rem;
+  z-index: 50;
+  padding: var(--e2) var(--e4);
+  border-radius: var(--r2);
+  background: var(--tinta);
+  color: var(--sobre-tinta);
+  font-weight: 650;
+  text-decoration: none;
+}
+
+.saltar:focus {
+  top: var(--e3);
+  color: var(--sobre-tinta);
+}
+
+main.pagina:focus {
+  outline: none;
 }

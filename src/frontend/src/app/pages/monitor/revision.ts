@@ -37,7 +37,7 @@ import { Incierto, MonitorService } from './monitor.service';
             <tbody>
               @for (i of list; track i.trabajoId) {
                 <tr>
-                  <td data-label="Contacto">
+                  <td data-label="Contacto" class="principal-celda">
                     {{ i.nombre ?? 'Sin nombre' }} <span class="sec">{{ i.telefono }}</span>
                   </td>
                   <td data-label="Campaña">{{ i.campana ?? 'envío de prueba' }}</td>

@@ -123,7 +123,7 @@
         <tbody>
           @for (c of cs; track c.id) {
             <tr [class.elegida]="abierta()?.campana?.id === c.id">
-              <td data-label="Campaña">
+              <td data-label="Campaña" class="principal-celda">
                 <strong>{{ c.nombre }}</strong>&ngsp;<span class="sec">v{{ c.version }}</span>
                 @if (c.motivo) {
                   <br /><span class="sec">{{ c.motivo }}</span>

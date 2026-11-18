@@ -47,7 +47,7 @@ import { Baja, MonitorService } from './monitor.service';
             <tbody>
               @for (b of list; track b.telefono + b.capa) {
                 <tr>
-                  <td data-label="Contacto">
+                  <td data-label="Contacto" class="principal-celda">
                     <strong>{{ b.nombre ?? 'Sin nombre' }}</strong
                     >&ngsp;<span class="sec">{{ b.telefono }}</span>
                   </td>

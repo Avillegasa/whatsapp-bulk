@@ -60,7 +60,7 @@
       <tbody>
         @for (u of lista; track u.id) {
           <tr [class.inactivo]="!u.activo">
-            <td data-label="Usuario">
+            <td data-label="Usuario" class="principal-celda">
               <strong>{{ u.usuario }}</strong>
               @if (esYo(u)) {
                 &ngsp;<span class="yo">(tú)</span>

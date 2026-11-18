@@ -116,7 +116,7 @@
         <tbody>
           @for (p of ps; track p.id) {
             <tr [class.elegida]="abierta()?.plantilla?.id === p.id">
-              <td data-label="Plantilla">
+              <td data-label="Plantilla" class="principal-celda">
                 <strong>{{ p.nombre }}</strong>&ngsp;<span class="sec">{{ p.idioma }}</span>
                 @if (p.motivo) {
                   <br /><span class="sec">{{ p.motivo }}</span>

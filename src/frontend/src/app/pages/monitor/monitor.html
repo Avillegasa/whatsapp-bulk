@@ -118,7 +118,7 @@
         <tbody>
           @for (c of t.campanias; track c.campanaId) {
             <tr>
-              <td data-label="Campaña">
+              <td data-label="Campaña" class="principal-celda">
                 <strong>{{ c.nombre }}</strong>&ngsp;<span class="sec">v{{ c.version }}</span>
                 <div class="etiquetas">
                   <span class="estado {{ c.estado }}">{{ estado(c.estado) }}</span>

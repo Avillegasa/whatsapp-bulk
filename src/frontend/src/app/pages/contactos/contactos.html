@@ -63,7 +63,7 @@
         <tbody>
           @for (c of lista; track c.id) {
             <tr [class.elegida]="elegidos().has(c.id)">
-              <td data-label="">
+              <td data-label="" class="casilla">
                 <input
                   type="checkbox"
                   [attr.aria-label]="'Elegir ' + (c.nombre ?? c.telefono)"
@@ -71,7 +71,7 @@
                   (change)="alternar(c.id)"
                 />
               </td>
-              <td data-label="Cliente">
+              <td data-label="Cliente" class="principal-celda">
                 <strong>{{ c.nombre ?? 'Sin nombre' }}</strong><br />
                 <span class="sec">{{ c.telefono ?? 'solo nombre de usuario' }}</span>
               </td>

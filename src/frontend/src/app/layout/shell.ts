@@ -2,6 +2,7 @@ import { Component, computed, HostListener, inject, signal } from '@angular/core
 import { Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { AuthService } from '../core/auth.service';
 import { MENU, OpcionMenu } from '../core/menu';
+import { TEXTO_TEMA, TemaService } from '../core/tema';
 import { ICONOS } from './iconos';
 
 interface GrupoMenu {
@@ -18,6 +19,7 @@ interface GrupoMenu {
   selector: 'app-shell',
   imports: [RouterOutlet, RouterLink, RouterLinkActive],
   template: `
+    <a class="saltar" href="#principal" (click)="irAlContenido($event)">Saltar al contenido</a>
     <div class="marco">
       <aside class="lateral" id="menu-lateral" [class.abierto]="menuAbierto()">
         <a class="marca" routerLink="/" (click)="menuAbierto.set(false)">
@@ -71,6 +73,16 @@ interface GrupoMenu {
             Menú
           </button>
           <span class="espacio"></span>
+          <button
+            type="button"
+            class="chico fantasma boton-tema"
+            [attr.aria-label]="'Tema: ' + textoTema[temas.tema()] + '. Cambiar'"
+            [title]="'Tema: ' + textoTema[temas.tema()]"
+            (click)="temas.siguiente()"
+          >
+            <svg class="icono" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="iconos[temas.tema()]" /></svg>
+            <span class="texto-salir">{{ textoTema[temas.tema()] }}</span>
+          </button>
           <div class="usuario">
             <span class="avatar" aria-hidden="true">{{ inicial() }}</span>
             <span class="usuario-datos">
@@ -90,7 +102,7 @@ interface GrupoMenu {
             <span class="texto-salir">Cerrar sesión</span>
           </button>
         </header>
-        <main class="pagina" id="principal"><router-outlet /></main>
+        <main class="pagina" id="principal" tabindex="-1"><router-outlet /></main>
       </div>
     </div>
   `,
@@ -100,6 +112,8 @@ export class Shell {
   private readonly router = inject(Router);
   protected readonly iconos = ICONOS;
   protected readonly menuAbierto = signal(false);
+  protected readonly temas = inject(TemaService);
+  protected readonly textoTema = TEXTO_TEMA;
   protected readonly menu = computed(() => MENU.filter((o) => this.auth.tieneAlgunRol(o.roles)));
 
   /** Opciones seguidas con el mismo grupo forman una sección del menú (el orden de MENU se respeta). */
@@ -121,6 +135,12 @@ export class Shell {
 
   protected icono(ruta: string): string {
     return ICONOS[ruta] ?? ICONOS['/'];
+  }
+
+  /** "Saltar al contenido": lleva el foco del teclado al inicio de la pantalla, sin pasar por el menú. */
+  protected irAlContenido(e: Event): void {
+    e.preventDefault();
+    document.getElementById('principal')?.focus();
   }
 
   @HostListener('document:keydown.escape')
