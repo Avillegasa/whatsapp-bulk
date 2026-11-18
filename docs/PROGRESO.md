@@ -74,6 +74,10 @@ Estados: Pendiente · En curso · Hecho (sin verificar) · Verificado · Bloquea
 
 ## Bitácora (lo más reciente arriba)
 
+### 2026-11-18 — Túnel renombrado con prefijo avit (pedido de Infraestructura)
+- Hecho: regla 13 en CLAUDE.md, D-039, META-SETUP B.2 y comando del túnel actualizados a `avit-agenticwpp`.
+- Verificación (Andrés): `devtunnel host avit-agenticwpp` → "Ready to accept connections" (URL `https://pmqb1vgx-5244.brs.devtunnels.ms`); Callback URL en Meta actualizada → "Handshake de webhook verificado"; `devtunnel delete wabulk-k7m2p9x4` → "Deleted".
+
 ### 2026-11-18 — F1.8b verificada (Andrés)
 - Verificación: Andrés revisó la intranet en su navegador: "se ve bien por ahora, solo quedan algunos detalles visuales" → F1.8b Verificado. Los detalles quedan en Pendientes hasta que los indique.
 

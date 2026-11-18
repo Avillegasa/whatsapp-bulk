@@ -56,6 +56,7 @@ docs/           Plan, progreso, decisiones, arquitectura, setup de Meta
 10. **Secretos** (token, App Secret, verify token, PIN) nunca en el repositorio: `dotnet user-secrets` en desarrollo, variables de entorno o `.env` (ignorado por git) en Docker.
 11. **Índices únicos** sobre columnas que admiten NULL siempre filtrados (`WHERE col IS NOT NULL`).
 12. **Alcance:** solo promociones (marketing) en la primera etapa. Mensajes de cobranza o saldos vencidos: nunca.
+13. **Identificadores de recursos expuestos o visibles en la red:** todo túnel (`devtunnel`) o recurso parecido que se cree empieza con `avit` (Andrés Villegas IT), pedido de Infraestructura (D-039). Formato: `avit-<proyecto>`.
 
 ## Comandos
 
@@ -65,7 +66,7 @@ Mantener esta sección al día. Todos funcionan en cmd desde la raíz del repo.
 - Backend: `dotnet build src/backend/WaBulk.sln` · `dotnet test src/backend/WaBulk.sln` (las pruebas de integración de la cola necesitan SQL Server levantado: crean y borran una base `WaBulk_Test_<guid>`; sin SQL Server: `dotnet test src/backend/WaBulk.sln --filter Category!=Integration`)
 - Ejecutar Api: `dotnet run --project src/backend/WaBulk.Api` → `GET /health` responde `Healthy`
 - Ejecutar Webhooks: `dotnet run --project src/backend/WaBulk.Webhooks` → `http://localhost:5244`, `GET /health`; receptor en `/webhooks/whatsapp` (sin `Meta:AppSecret`/`Meta:VerifyToken` responde 503)
-- Túnel para webhooks (otra ventana, ya creado): `devtunnel host wabulk-k7m2p9x4` → URL `https://…-5244…devtunnels.ms`; apagar con Ctrl+C al terminar (META-SETUP.md sección B)
+- Túnel para webhooks (otra ventana, ya creado): `devtunnel host avit-agenticwpp` → URL `https://…-5244…devtunnels.ms`; apagar con Ctrl+C al terminar (META-SETUP.md sección B)
 - Ejecutar Worker: `dotnet run --project src/backend/WaBulk.Worker` (procesa `WebhookInbox` cada 2 s, sección `InboxProcessor`). El despachador está apagado por defecto (D-024); encenderlo en cmd: `set Dispatcher__Enabled=true` antes del `dotnet run` (envía de verdad lo que haya en cola: los trabajos de campañas aprobadas, con la plantilla y los parámetros de su versión; también avanza el estado de las campañas)
 - Ver bajas (`ConsentRecord`, `PlatformPreference`, estado vigente y trabajos `Skipped`): ver comando en `db/scripts/verificar-f0.10.sql`
 - Ver capacidad (destinatarios únicos vigentes, reservas, trabajos pospuestos): ver comando en `db/scripts/verificar-f0.11.sql`

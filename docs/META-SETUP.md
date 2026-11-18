@@ -58,12 +58,13 @@ Meta solo llama a URLs HTTPS públicas. En desarrollo se usa un túnel de Micros
    devtunnel user login
    ```
    **Pega:** la última línea de cada comando.
-2. 🖥 Terminal: crea un túnel persistente con un ID difícil de adivinar, abre el puerto y publícalo.
+2. 🖥 Terminal: crea un túnel persistente con un ID que empiece con `avit` (regla de Infraestructura, D-039), abre el puerto y publícalo.
    ```cmd
-   devtunnel create wabulk-<algo-aleatorio> -a
-   devtunnel port create -p 5244 --protocol http
-   devtunnel host
+   devtunnel create avit-<proyecto> -a
+   devtunnel port create avit-<proyecto> -p 5244 --protocol http
+   devtunnel host avit-<proyecto>
    ```
+   Túnel actual: `avit-agenticwpp` (desde 2026-11-18; reemplaza a `wabulk-k7m2p9x4`, ya borrado; Callback URL en Meta verificada).
    **Pega:** la URL pública que muestra `devtunnel host` (formato `https://<id>-5244.<region>.devtunnels.ms/`).
    El túnel es anónimo: cualquiera que adivine el ID llega al receptor. Por eso la validación de firma es obligatoria y el túnel se apaga (Ctrl+C) cuando no lo usas.
 3. 🖥 Terminal: guarda el verify token (una cadena que inventas, por ejemplo 32 caracteres aleatorios).
