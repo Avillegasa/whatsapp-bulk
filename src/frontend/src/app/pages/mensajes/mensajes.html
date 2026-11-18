@@ -44,10 +44,10 @@
               </td>
               <td data-label="Último mensaje">
                 <span class="burbuja-entrante">{{ c.texto ?? '(' + c.tipo + ')' }}</span><br />
-                <span class="sec">{{ c.fechaUtc | date: 'dd/MM HH:mm' }}</span>
+                <span class="sec">{{ fecha(c.fechaUtc) | date: 'dd/MM HH:mm' }}</span>
               </td>
               <td data-label="Ventana abierta hasta">
-                {{ c.ventanaHastaUtc | date: 'dd/MM HH:mm' }}
+                {{ fecha(c.ventanaHastaUtc) | date: 'dd/MM HH:mm' }}
               </td>
               <td data-label="Consentimiento">
                 <span class="estado {{ c.consentimiento }}">{{ texto(c.consentimiento) }}</span>

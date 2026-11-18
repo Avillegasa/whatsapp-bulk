@@ -83,7 +83,7 @@
                 }
               </td>
               <td data-label="Último mensaje">
-                {{ c.ultimoMensajeUtc ? (c.ultimoMensajeUtc | date: 'dd/MM HH:mm') : '—' }}
+                {{ c.ultimoMensajeUtc ? (fecha(c.ultimoMensajeUtc) | date: 'dd/MM HH:mm') : '—' }}
               </td>
               <td data-label="">
                 <button type="button" class="chico" [attr.aria-label]="'Ver ' + (c.nombre ?? c.telefono)" (click)="ver(c)">Ver</button>
@@ -142,7 +142,7 @@
       <ul class="datos">
         @for (h of d.historial; track $index) {
           <li>
-            {{ h.recordedUtc | date: 'dd/MM/yyyy HH:mm' }} · <strong>{{ h.status }}</strong> por
+            {{ fecha(h.recordedUtc) | date: 'dd/MM/yyyy HH:mm' }} · <strong>{{ h.status }}</strong> por
             {{ h.source }} ({{ h.recordedBy }})
             @if (h.evidence) {
               <br /><span class="sec">{{ h.evidence }}</span>
@@ -159,7 +159,7 @@
       <ul class="datos">
         @for (o of d.ofertas; track o.id) {
           <li>
-            {{ o.offeredUtc | date: 'dd/MM/yyyy HH:mm' }} por {{ o.offeredBy }} (texto
+            {{ fecha(o.offeredUtc) | date: 'dd/MM/yyyy HH:mm' }} por {{ o.offeredBy }} (texto
             {{ o.textVersion }}) · {{ o.status }}
             @if (o.response) {
               · respondió {{ o.response === 'Si' ? 'Sí' : 'Ahora no' }}
@@ -175,7 +175,7 @@
     } @else {
       <ul class="datos">
         @for (m of d.mensajes; track m.id) {
-          <li>{{ m.sentUtc | date: 'dd/MM HH:mm' }} · {{ m.text ?? '(' + m.type + ')' }}</li>
+          <li>{{ fecha(m.sentUtc) | date: 'dd/MM HH:mm' }} · {{ m.text ?? '(' + m.type + ')' }}</li>
         }
       </ul>
     }

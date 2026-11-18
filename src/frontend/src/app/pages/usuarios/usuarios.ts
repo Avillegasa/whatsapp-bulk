@@ -66,10 +66,11 @@ export class Usuarios implements OnInit {
 
   protected async crear(): Promise<void> {
     const { usuario, roles, clave } = this.nuevo;
-    const r = await this.accion(() => this.api.crear(usuario.trim(), roles, clave), `Usuario ${usuario.trim()} creado.`);
-    if (r) {
+    // El formulario se vacía apenas la Api confirma (antes de recargar la lista), para que no quede a la vista el
+    // usuario anterior con sus roles marcados mientras llega la lista nueva (F1.8b, lo encontró la prueba E2E).
+    await this.accion(() => this.api.crear(usuario.trim(), roles, clave), `Usuario ${usuario.trim()} creado.`, () => {
       this.nuevo = { usuario: '', roles: [], clave: '' };
-    }
+    });
   }
 
   protected async guardarRoles(u: Usuario): Promise<void> {
@@ -125,7 +126,7 @@ export class Usuarios implements OnInit {
   }
 
   /** Ejecuta una acción, muestra el resultado y recarga la lista. Devuelve true si salió bien. */
-  private async accion(hacer: () => Promise<Resultado>, exito: string): Promise<boolean> {
+  private async accion(hacer: () => Promise<Resultado>, exito: string, alConfirmar?: () => void): Promise<boolean> {
     this.ocupado.set(true);
     this.aviso.set(null);
     const r = await hacer();
@@ -135,6 +136,7 @@ export class Usuarios implements OnInit {
       return false;
     }
     this.aviso.set({ tipo: 'ok', texto: exito });
+    alConfirmar?.();
     await this.cargar();
     return true;
   }

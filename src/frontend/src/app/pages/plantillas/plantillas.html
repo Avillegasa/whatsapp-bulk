@@ -164,7 +164,7 @@
               </td>
               <td data-label="Estado">
                 <span class="estado {{ claseEstado(p.estado) }}">{{ estado(p.estado) }}</span>
-                <br /><span class="sec">{{ p.estadoUtc | date: 'dd/MM HH:mm' }}</span>
+                <br /><span class="sec">{{ fecha(p.estadoUtc) | date: 'dd/MM HH:mm' }}</span>
               </td>
               <td data-label="Calidad">{{ p.calidad ?? '—' }}</td>
               <td data-label="">
@@ -191,7 +191,7 @@
         · Último evento: {{ d.plantilla.ultimoEvento }}
       }
       @if (d.plantilla.sincronizadaUtc) {
-        · Sincronizada {{ d.plantilla.sincronizadaUtc | date: 'dd/MM HH:mm' }}
+        · Sincronizada {{ fecha(d.plantilla.sincronizadaUtc) | date: 'dd/MM HH:mm' }}
       }
     </p>
     <div class="previa">

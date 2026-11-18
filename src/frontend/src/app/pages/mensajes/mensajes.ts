@@ -3,6 +3,7 @@ import { Component, DestroyRef, inject, OnInit, signal } from '@angular/core';
 import { Consentimiento, ContactosService, Conversacion, TEXTO_CONSENTIMIENTO } from '../contactos/contactos.service';
 import { ICONOS } from '../../layout/iconos';
 import { ConfirmacionService } from '../../core/confirmacion';
+import { utc } from '../campanias/campanias.service';
 
 /** Cada cuánto se recarga la lista (para ver llegar la respuesta del cliente sin tocar nada). */
 export const RECARGA_MS = 15_000;
@@ -24,6 +25,8 @@ export class Mensajes implements OnInit {
   protected readonly aviso = signal<{ tipo: 'ok' | 'error'; texto: string } | null>(null);
   protected readonly ocupado = signal<number | null>(null);
   protected readonly iconos = ICONOS;
+  /** La Api manda las fechas UTC sin "Z": utc() las toma como UTC y el pipe las muestra en la hora local. */
+  protected readonly fecha = utc;
 
   constructor() {
     const id = setInterval(() => void this.cargar(), RECARGA_MS);

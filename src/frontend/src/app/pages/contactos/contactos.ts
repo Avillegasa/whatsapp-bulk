@@ -11,6 +11,7 @@ import {
   Lista,
   TEXTO_CONSENTIMIENTO,
 } from './contactos.service';
+import { utc } from '../campanias/campanias.service';
 
 /** Contactos (F1.4): estado de consentimiento, detalle con historial, baja manual y agregar a una lista. */
 @Component({
@@ -24,6 +25,8 @@ export class Contactos implements OnInit {
 
   protected readonly contactos = signal<Contacto[] | null>(null);
   protected readonly pagina = signal(0);
+  /** La Api manda las fechas UTC sin "Z": utc() las toma como UTC y el pipe las muestra en la hora local. */
+  protected readonly fecha = utc;
   protected readonly visibles = computed(() => paginaDe(this.contactos() ?? [], this.pagina(), 25));
   protected readonly listas = signal<Lista[]>([]);
   protected readonly errorCarga = signal<string | null>(null);

@@ -1722,18 +1722,18 @@ button.destacado {
     box-shadow: none;
   }
 
+  /* flow-root: la celda crece si el título ocupa dos líneas (el título flota en el relleno izquierdo). */
   table.apilable td {
-    position: relative;
-    min-height: 2rem;
+    display: flow-root;
     padding: 0.35rem var(--e4) 0.35rem calc(var(--e4) + 7.25rem);
     border: 0;
   }
 
   table.apilable td::before {
     content: attr(data-label);
-    position: absolute;
-    left: var(--e4);
-    top: 0.5rem;
+    float: left;
+    margin-left: -7.25rem;
+    padding-top: 0.15rem;
     width: 6.75rem;
     color: var(--texto-3);
     font-size: 0.6875rem;

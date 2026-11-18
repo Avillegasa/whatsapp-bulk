@@ -3,6 +3,7 @@ import { Component, computed, inject, OnInit, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { NuevaPlantilla, parametros, Plantilla, PlantillaDetalle, PlantillasService, TEXTO_ESTADO } from './plantillas.service';
 import { enfocarDetalle } from '../../layout/foco';
+import { utc } from '../campanias/campanias.service';
 
 /**
  * Plantillas (F1.5): lista sincronizada con Meta, detalle y creación de plantillas de marketing (D-009) con parámetros
@@ -17,6 +18,8 @@ import { enfocarDetalle } from '../../layout/foco';
 export class Plantillas implements OnInit {
   private readonly api = inject(PlantillasService);
   protected readonly plantillas = signal<Plantilla[] | null>(null);
+  /** La Api manda las fechas UTC sin "Z": utc() las toma como UTC y el pipe las muestra en la hora local. */
+  protected readonly fecha = utc;
   protected readonly abierta = signal<PlantillaDetalle | null>(null);
   protected readonly aviso = signal<{ tipo: 'ok' | 'error'; texto: string } | null>(null);
   protected readonly ocupado = signal(false);
