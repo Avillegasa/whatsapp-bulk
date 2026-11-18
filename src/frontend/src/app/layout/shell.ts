@@ -1,45 +1,119 @@
-import { Component, computed, inject } from '@angular/core';
+import { Component, computed, HostListener, inject, signal } from '@angular/core';
 import { Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { AuthService } from '../core/auth.service';
-import { MENU } from '../core/menu';
+import { MENU, OpcionMenu } from '../core/menu';
+import { ICONOS } from './iconos';
 
-/** Marco de las pantallas con sesión: barra superior, menú según los roles del usuario y cierre de sesión. */
+interface GrupoMenu {
+  titulo: string | null;
+  opciones: OpcionMenu[];
+}
+
+/**
+ * Marco de las pantallas con sesión (F1.8b): menú lateral agrupado según los roles del usuario, cabecera con el
+ * usuario y "Cerrar sesión". En pantallas angostas el menú se abre con el botón "Menú" y se cierra al elegir una
+ * opción, al tocar fuera o con Escape. Los estilos están en src/styles.css (sección Layout).
+ */
 @Component({
   selector: 'app-shell',
   imports: [RouterOutlet, RouterLink, RouterLinkActive],
   template: `
-    <header class="barra">
-      <span class="marca">WhatsApp Bulk</span>
-      <nav aria-label="Menú principal">
-        @for (opcion of menu(); track opcion.ruta) {
-          <a
-            [routerLink]="opcion.ruta"
-            routerLinkActive="activo"
-            [routerLinkActiveOptions]="{ exact: opcion.ruta === '/' }"
-            >{{ opcion.texto }}</a
+    <div class="marco">
+      <aside class="lateral" id="menu-lateral" [class.abierto]="menuAbierto()">
+        <a class="marca" routerLink="/" (click)="menuAbierto.set(false)">
+          <span class="marca-logo" aria-hidden="true">
+            <svg class="icono" viewBox="0 0 24 24"><path [attr.d]="iconos['marca']" /></svg>
+          </span>
+          <span class="marca-texto">
+            <strong>WhatsApp Bulk</strong>
+            <span>Promociones a clientes</span>
+          </span>
+        </a>
+        <nav aria-label="Menú principal">
+          @for (grupo of grupos(); track $index) {
+            @if (grupo.titulo) {
+              <p class="grupo-menu">{{ grupo.titulo }}</p>
+            }
+            @for (opcion of grupo.opciones; track opcion.ruta) {
+              <a
+                [routerLink]="opcion.ruta"
+                routerLinkActive="activo"
+                ariaCurrentWhenActive="page"
+                [routerLinkActiveOptions]="{ exact: opcion.ruta === '/' }"
+                (click)="menuAbierto.set(false)"
+                ><svg class="icono" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icono(opcion.ruta)" /></svg
+                ><span>{{ opcion.texto }}</span></a
+              >
+            }
+          }
+        </nav>
+      </aside>
+      <div class="velo" [class.visible]="menuAbierto()" (click)="menuAbierto.set(false)" aria-hidden="true"></div>
+
+      <div class="contenido">
+        <header class="cabecera">
+          <button
+            type="button"
+            class="boton-menu fantasma"
+            aria-controls="menu-lateral"
+            [attr.aria-expanded]="menuAbierto()"
+            (click)="menuAbierto.set(!menuAbierto())"
           >
-        }
-      </nav>
-      <span class="usuario">{{ auth.usuario() }} · {{ auth.roles().join(', ') }}</span>
-      <button type="button" (click)="salir()">Cerrar sesión</button>
-    </header>
-    <main><router-outlet /></main>
-  `,
-  styles: `
-    .barra { display: flex; align-items: center; gap: 1.5rem; padding: 0.75rem 1.5rem; background: #075e54; color: #fff; flex-wrap: wrap; }
-    .marca { font-weight: 600; }
-    nav { display: flex; gap: 1rem; flex: 1; }
-    nav a { color: #d9fdd3; text-decoration: none; padding: 0.25rem 0; border-bottom: 2px solid transparent; }
-    nav a.activo { color: #fff; border-bottom-color: #fff; }
-    .usuario { font-size: 0.9rem; opacity: 0.9; }
-    button { background: transparent; color: #fff; border: 1px solid #fff; border-radius: 4px; padding: 0.35rem 0.75rem; cursor: pointer; }
-    main { padding: 1.5rem; max-width: 1100px; margin: 0 auto; }
+            <svg class="icono" viewBox="0 0 24 24" aria-hidden="true">
+              <path [attr.d]="menuAbierto() ? iconos['cerrar'] : iconos['menu']" />
+            </svg>
+            Menú
+          </button>
+          <span class="espacio"></span>
+          <div class="usuario">
+            <span class="avatar" aria-hidden="true">{{ inicial() }}</span>
+            <span class="usuario-datos">
+              <strong>{{ auth.usuario() }}</strong>
+              <span>{{ auth.roles().join(', ') }}</span>
+            </span>
+          </div>
+          <button type="button" class="chico" (click)="salir()">
+            <svg class="icono" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="iconos['salir']" /></svg>
+            Cerrar sesión
+          </button>
+        </header>
+        <main class="pagina" id="principal"><router-outlet /></main>
+      </div>
+    </div>
   `,
 })
 export class Shell {
   protected readonly auth = inject(AuthService);
   private readonly router = inject(Router);
+  protected readonly iconos = ICONOS;
+  protected readonly menuAbierto = signal(false);
   protected readonly menu = computed(() => MENU.filter((o) => this.auth.tieneAlgunRol(o.roles)));
+
+  /** Opciones seguidas con el mismo grupo forman una sección del menú (el orden de MENU se respeta). */
+  protected readonly grupos = computed(() => {
+    const grupos: GrupoMenu[] = [];
+    for (const opcion of this.menu()) {
+      const titulo = opcion.grupo ?? null;
+      const ultimo = grupos.at(-1);
+      if (ultimo && ultimo.titulo === titulo) {
+        ultimo.opciones.push(opcion);
+      } else {
+        grupos.push({ titulo, opciones: [opcion] });
+      }
+    }
+    return grupos;
+  });
+
+  protected readonly inicial = computed(() => (this.auth.usuario() ?? '?').charAt(0));
+
+  protected icono(ruta: string): string {
+    return ICONOS[ruta] ?? ICONOS['/'];
+  }
+
+  @HostListener('document:keydown.escape')
+  protected cerrarMenu(): void {
+    this.menuAbierto.set(false);
+  }
 
   protected async salir(): Promise<void> {
     await this.auth.logout();

@@ -11,7 +11,6 @@ import { Campana, CampanaDetalle, CampaniasService, utc, vistaPrevia } from '../
   selector: 'app-aprobaciones',
   imports: [FormsModule, DatePipe],
   templateUrl: './aprobaciones.html',
-  styleUrls: ['../contactos/contactos.css', '../plantillas/plantillas.css', '../campanias/campanias.css'],
 })
 export class Aprobaciones implements OnInit {
   private readonly api = inject(CampaniasService);

@@ -7,33 +7,35 @@ import { AuthService } from '../../core/auth.service';
   selector: 'app-login',
   imports: [ReactiveFormsModule],
   template: `
-    <section class="tarjeta">
-      <h1>WhatsApp Bulk</h1>
-      <p class="sub">Inicia sesión con tu usuario de la intranet</p>
-      <form [formGroup]="form" (ngSubmit)="entrar()">
-        <label for="usuario">Usuario</label>
-        <input id="usuario" formControlName="usuario" autocomplete="username" />
-        <label for="clave">Clave</label>
-        <input id="clave" type="password" formControlName="clave" autocomplete="current-password" />
-        @if (error()) {
-          <p class="error" role="alert">{{ error() }}</p>
-        }
-        <button type="submit" [disabled]="form.invalid || enviando()">
-          {{ enviando() ? 'Entrando…' : 'Entrar' }}
-        </button>
-      </form>
-    </section>
-  `,
-  styles: `
-    :host { display: grid; place-items: center; min-height: 100vh; background: #f0f2f5; }
-    .tarjeta { background: #fff; padding: 2rem; border-radius: 8px; width: min(360px, 90vw); box-shadow: 0 1px 4px rgb(0 0 0 / 15%); }
-    h1 { margin: 0; color: #075e54; font-size: 1.5rem; }
-    .sub { color: #555; margin: 0.25rem 0 1.5rem; }
-    form { display: grid; gap: 0.5rem; }
-    input { padding: 0.5rem; border: 1px solid #bbb; border-radius: 4px; font-size: 1rem; }
-    button { margin-top: 1rem; padding: 0.6rem; background: #075e54; color: #fff; border: 0; border-radius: 4px; font-size: 1rem; cursor: pointer; }
-    button:disabled { opacity: 0.6; cursor: default; }
-    .error { color: #b3261e; margin: 0.5rem 0 0; }
+    <div class="login">
+      <aside class="login-marca" aria-hidden="true">
+        <span class="marca-logo">
+          <svg class="icono" viewBox="0 0 24 24"><path d="M5 5h14v10H10l-4 3.5V15H5zM9 9h6M9 11.5h4" /></svg>
+        </span>
+        <p class="login-lema">Promociones por WhatsApp, solo a clientes que aceptaron recibirlas.</p>
+        <ul class="login-puntos">
+          <li>Cada campaña la aprueba otra persona</li>
+          <li>Las bajas se respetan al encolar y al enviar</li>
+          <li>Monitor del despacho en vivo</li>
+        </ul>
+      </aside>
+      <section class="login-tarjeta">
+        <h1>WhatsApp Bulk</h1>
+        <p class="sub">Inicia sesión con tu usuario de la intranet</p>
+        <form [formGroup]="form" (ngSubmit)="entrar()" novalidate>
+          <label class="campo" for="usuario">Usuario</label>
+          <input id="usuario" formControlName="usuario" autocomplete="username" />
+          <label class="campo" for="clave">Clave</label>
+          <input id="clave" type="password" formControlName="clave" autocomplete="current-password" />
+          @if (error()) {
+            <p class="aviso error" role="alert">{{ error() }}</p>
+          }
+          <button type="submit" [disabled]="form.invalid || enviando()">
+            {{ enviando() ? 'Entrando…' : 'Entrar' }}
+          </button>
+        </form>
+      </section>
+    </div>
   `,
 })
 export class Login {

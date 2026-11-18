@@ -67,7 +67,6 @@ const QUE_REVISAR: Record<string, string> = {
       <p>Cargando…</p>
     }
   `,
-  styleUrls: ['../contactos/contactos.css'],
 })
 export class Alertas implements OnInit {
   private readonly api = inject(MonitorService);

@@ -7,7 +7,6 @@ import { Consentimiento, Contacto, ContactosService, Lista, TEXTO_CONSENTIMIENTO
   selector: 'app-listas',
   imports: [FormsModule],
   templateUrl: './listas.html',
-  styleUrl: '../contactos/contactos.css',
 })
 export class Listas implements OnInit {
   private readonly api = inject(ContactosService);

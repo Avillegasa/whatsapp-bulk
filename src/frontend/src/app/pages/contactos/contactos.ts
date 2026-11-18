@@ -15,7 +15,6 @@ import {
   selector: 'app-contactos',
   imports: [DatePipe, FormsModule],
   templateUrl: './contactos.html',
-  styleUrl: './contactos.css',
 })
 export class Contactos implements OnInit {
   private readonly api = inject(ContactosService);

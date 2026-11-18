@@ -13,7 +13,6 @@ export const RECARGA_MS = 15_000;
   selector: 'app-mensajes',
   imports: [DatePipe],
   templateUrl: './mensajes.html',
-  styleUrl: '../contactos/contactos.css',
 })
 export class Mensajes implements OnInit {
   private readonly api = inject(ContactosService);

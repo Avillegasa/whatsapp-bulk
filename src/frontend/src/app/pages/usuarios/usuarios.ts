@@ -11,7 +11,6 @@ const ROLES: Rol[] = ['Operador', 'Aprobador', 'Admin'];
   selector: 'app-usuarios',
   imports: [DatePipe, FormsModule],
   templateUrl: './usuarios.html',
-  styleUrl: './usuarios.css',
 })
 export class Usuarios implements OnInit {
   private readonly api = inject(UsuariosService);

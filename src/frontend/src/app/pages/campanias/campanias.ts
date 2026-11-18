@@ -31,7 +31,6 @@ interface Formulario {
   selector: 'app-campanias',
   imports: [FormsModule, DatePipe],
   templateUrl: './campanias.html',
-  styleUrls: ['../contactos/contactos.css', '../plantillas/plantillas.css', './campanias.css'],
 })
 export class Campanias implements OnInit {
   private readonly api = inject(CampaniasService);

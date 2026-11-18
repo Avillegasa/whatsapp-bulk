@@ -11,7 +11,6 @@ import { MonitorService, Tablero, TEXTO_OMISION } from './monitor.service';
   selector: 'app-monitor',
   imports: [DatePipe, KeyValuePipe],
   templateUrl: './monitor.html',
-  styleUrls: ['../contactos/contactos.css', '../campanias/campanias.css', './monitor.css'],
 })
 export class Monitor implements OnInit, OnDestroy {
   private readonly api = inject(MonitorService);

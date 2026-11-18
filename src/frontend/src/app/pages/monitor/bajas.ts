@@ -52,7 +52,6 @@ import { Baja, MonitorService } from './monitor.service';
       <p>Cargando…</p>
     }
   `,
-  styleUrls: ['../contactos/contactos.css'],
 })
 export class Bajas implements OnInit {
   private readonly api = inject(MonitorService);

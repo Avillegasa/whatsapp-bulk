@@ -51,7 +51,6 @@ import { Incierto, MonitorService } from './monitor.service';
       <p>Cargando…</p>
     }
   `,
-  styleUrls: ['../contactos/contactos.css', '../campanias/campanias.css'],
 })
 export class Revision implements OnInit {
   private readonly api = inject(MonitorService);

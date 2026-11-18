@@ -7,7 +7,6 @@ import { ContactosService, Importacion, Lista } from '../contactos/contactos.ser
   selector: 'app-importar',
   imports: [FormsModule],
   templateUrl: './importar.html',
-  styleUrl: '../contactos/contactos.css',
 })
 export class Importar implements OnInit {
   private readonly api = inject(ContactosService);

@@ -12,7 +12,6 @@ import { NuevaPlantilla, parametros, Plantilla, PlantillaDetalle, PlantillasServ
   selector: 'app-plantillas',
   imports: [FormsModule, DatePipe],
   templateUrl: './plantillas.html',
-  styleUrls: ['../contactos/contactos.css', './plantillas.css'],
 })
 export class Plantillas implements OnInit {
   private readonly api = inject(PlantillasService);
