@@ -151,7 +151,7 @@ describe('Contactos', () => {
 
     expect(el.querySelectorAll('tbody tr').length).toBe(25);
     expect(el.querySelector('.paginador')?.textContent).toContain('1–25 de 30');
-    Array.from(el.querySelectorAll('.paginador button')).find((b) => b.textContent?.trim() === 'Siguiente')!.click();
+    Array.from(el.querySelectorAll<HTMLButtonElement>('.paginador button')).find((b) => b.textContent?.trim() === 'Siguiente')!.click();
     await estable(fixture);
 
     expect(el.querySelectorAll('tbody tr').length).toBe(5);
