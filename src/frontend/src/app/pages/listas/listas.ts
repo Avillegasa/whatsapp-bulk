@@ -1,6 +1,7 @@
 import { Component, inject, OnInit, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Consentimiento, Contacto, ContactosService, Lista, TEXTO_CONSENTIMIENTO } from '../contactos/contactos.service';
+import { enfocarDetalle } from '../../layout/foco';
 
 /** Listas estáticas de contactos (F1.4): crear, ver miembros y quitar. Se agregan desde Contactos o al importar. */
 @Component({
@@ -42,6 +43,7 @@ export class Listas implements OnInit {
   protected async ver(l: Lista): Promise<void> {
     this.abierta.set(l);
     this.miembros.set(await this.api.miembros(l.id));
+    enfocarDetalle();
   }
 
   protected async quitar(l: Lista, c: Contacto): Promise<void> {

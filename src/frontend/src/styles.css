@@ -2089,3 +2089,21 @@ button.peligro-solido:hover:not(:disabled) {
     position: static;
   }
 }
+
+/* ---------- 22. Paginador y foco del detalle ---------- */
+.paginador {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--e2) var(--e3);
+  margin: calc(-1 * var(--e3)) 0 var(--e5);
+}
+
+.paginador .sec {
+  margin-right: auto;
+}
+
+.detalle:focus:not(:focus-visible) {
+  outline: none;
+}

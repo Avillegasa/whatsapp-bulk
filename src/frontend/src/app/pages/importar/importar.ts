@@ -1,11 +1,12 @@
 import { Component, computed, inject, OnInit, signal } from '@angular/core';
+import { paginaDe, Paginador } from '../../layout/paginador';
 import { FormsModule } from '@angular/forms';
 import { ContactosService, Importacion, Lista } from '../contactos/contactos.service';
 
 /** Importación de contactos desde CSV o Excel (F1.4) con reporte por fila. */
 @Component({
   selector: 'app-importar',
-  imports: [FormsModule],
+  imports: [FormsModule, Paginador],
   templateUrl: './importar.html',
 })
 export class Importar implements OnInit {
@@ -16,6 +17,8 @@ export class Importar implements OnInit {
   protected readonly error = signal<string | null>(null);
   protected readonly ocupado = signal(false);
   protected readonly soloProblemas = signal(true);
+  protected readonly pagina = signal(0);
+  protected readonly visibles = computed(() => paginaDe(this.filas(), this.pagina(), 50));
   protected listaId: number | null = null;
 
   protected readonly filas = computed(() => {
@@ -48,6 +51,7 @@ export class Importar implements OnInit {
     this.ocupado.set(false);
     if (r.ok) {
       this.reporte.set(r.valor);
+      this.pagina.set(0);
     } else {
       this.error.set(r.mensaje);
     }

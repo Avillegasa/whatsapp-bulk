@@ -139,6 +139,26 @@ describe('Contactos', () => {
   let http: HttpTestingController;
   afterEach(() => http.verify());
 
+  it('pagina de a 25: "1–25 de 30" y Siguiente muestra los 5 restantes (F1.8b)', async () => {
+    http = configurar();
+    const fixture = TestBed.createComponent(Contactos);
+    fixture.detectChanges();
+    const treinta = Array.from({ length: 30 }, (_, i) => ({ ...ANA, id: i + 1, nombre: `Cliente ${i + 1}` }));
+    http.expectOne((r) => r.url === '/api/contactos').flush(treinta);
+    http.expectOne('/api/listas').flush([]);
+    await estable(fixture);
+    const el = fixture.nativeElement as HTMLElement;
+
+    expect(el.querySelectorAll('tbody tr').length).toBe(25);
+    expect(el.querySelector('.paginador')?.textContent).toContain('1–25 de 30');
+    Array.from(el.querySelectorAll('.paginador button')).find((b) => b.textContent?.trim() === 'Siguiente')!.click();
+    await estable(fixture);
+
+    expect(el.querySelectorAll('tbody tr').length).toBe(5);
+    expect(el.querySelector('tbody')?.textContent).toContain('Cliente 30');
+    expect(el.querySelector('.paginador')?.textContent).toContain('26–30 de 30');
+  });
+
   it('registrar baja manual envía el motivo y recarga el detalle', async () => {
     http = configurar();
     const fixture = TestBed.createComponent(Contactos);

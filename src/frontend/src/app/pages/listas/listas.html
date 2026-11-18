@@ -48,7 +48,7 @@
               <td data-label="Contactos">{{ l.miembros }}</td>
               <td data-label="Creada por">{{ l.creadaPor }}</td>
               <td data-label="">
-                <button type="button" class="chico" (click)="ver(l)">Ver contactos</button>
+                <button type="button" class="chico" [attr.aria-label]="'Ver contactos de ' + l.nombre" (click)="ver(l)">Ver contactos</button>
               </td>
             </tr>
           }
@@ -61,7 +61,7 @@
 }
 
 @if (abierta(); as l) {
-  <section class="detalle" aria-label="Contactos de la lista">
+  <section class="detalle" aria-label="Contactos de la lista" tabindex="-1">
     <h2>{{ l.nombre }}</h2>
     @if (miembros().length === 0) {
       <p class="vacio">La lista está vacía.</p>
@@ -81,7 +81,8 @@
                   type="button"
                   class="chico peligro"
                   [disabled]="ocupado()"
-                  (click)="quitar(l, c)"
+                  [attr.aria-label]="'Quitar ' + (c.nombre ?? c.telefono) + ' de la lista'"
+                (click)="quitar(l, c)"
                 >
                   Quitar
                 </button>

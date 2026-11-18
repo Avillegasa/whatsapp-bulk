@@ -52,7 +52,8 @@ import { Incierto, MonitorService } from './monitor.service';
                       type="button"
                       class="chico"
                       [disabled]="ocupado()"
-                      (click)="marcar(i, true)"
+                      [attr.aria-label]="'Llegó: ' + (i.nombre ?? i.telefono)"
+                    (click)="marcar(i, true)"
                     >
                       Llegó
                     </button>
@@ -60,7 +61,8 @@ import { Incierto, MonitorService } from './monitor.service';
                       type="button"
                       class="chico"
                       [disabled]="ocupado()"
-                      (click)="marcar(i, false)"
+                      [attr.aria-label]="'No llegó: ' + (i.nombre ?? i.telefono)"
+                    (click)="marcar(i, false)"
                       class="chico peligro"
                     >
                       No llegó

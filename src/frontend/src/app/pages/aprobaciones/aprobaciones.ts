@@ -2,6 +2,7 @@ import { DatePipe } from '@angular/common';
 import { Component, inject, OnInit, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Campana, CampanaDetalle, CampaniasService, utc, vistaPrevia } from '../campanias/campanias.service';
+import { enfocarDetalle } from '../../layout/foco';
 
 /**
  * Aprobaciones (F1.6, Aprobador): campañas por aprobar. Se ve exactamente la versión que se aprueba (mensaje con los
@@ -28,6 +29,7 @@ export class Aprobaciones implements OnInit {
   protected async ver(c: Campana): Promise<void> {
     this.motivo = '';
     this.abierta.set(await this.api.detallePendiente(c.id));
+    enfocarDetalle();
   }
 
   protected previa(d: CampanaDetalle): string {

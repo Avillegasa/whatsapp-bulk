@@ -168,7 +168,7 @@
               </td>
               <td data-label="Calidad">{{ p.calidad ?? '—' }}</td>
               <td data-label="">
-                <button type="button" class="chico" (click)="ver(p)">Ver</button>
+                <button type="button" class="chico" [attr.aria-label]="'Ver plantilla ' + p.nombre" (click)="ver(p)">Ver</button>
               </td>
             </tr>
           }
@@ -181,7 +181,7 @@
 }
 
 @if (abierta(); as d) {
-  <section class="detalle" aria-label="Detalle de la plantilla">
+  <section class="detalle" aria-label="Detalle de la plantilla" tabindex="-1">
     <h2>{{ d.plantilla.nombre }} ({{ d.plantilla.idioma }})</h2>
     <p class="sec">
       Id de Meta: {{ d.plantilla.metaId ?? '—' }} · Parámetros: {{ d.formatoParametros ?? '—' }} ·

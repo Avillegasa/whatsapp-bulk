@@ -61,7 +61,7 @@
           </tr>
         </thead>
         <tbody>
-          @for (c of lista; track c.id) {
+          @for (c of visibles(); track c.id) {
             <tr [class.elegida]="elegidos().has(c.id)">
               <td data-label="" class="casilla">
                 <input
@@ -86,13 +86,14 @@
                 {{ c.ultimoMensajeUtc ? (c.ultimoMensajeUtc | date: 'dd/MM HH:mm') : '—' }}
               </td>
               <td data-label="">
-                <button type="button" class="chico" (click)="ver(c)">Ver</button>
+                <button type="button" class="chico" [attr.aria-label]="'Ver ' + (c.nombre ?? c.telefono)" (click)="ver(c)">Ver</button>
               </td>
             </tr>
           }
         </tbody>
       </table>
     </div>
+    <app-paginador [total]="lista.length" [(pagina)]="pagina" que="contactos" />
     @if (lista.length >= 500) {
       <p class="ayuda">Se muestran los primeros 500: usa el filtro para encontrar el resto.</p>
     }
@@ -102,7 +103,7 @@
 }
 
 @if (detalle(); as d) {
-  <section class="detalle" aria-label="Detalle del contacto">
+  <section class="detalle" aria-label="Detalle del contacto" tabindex="-1">
     <div class="barra">
       <h2>{{ d.contacto.nombre ?? 'Sin nombre' }} · {{ d.contacto.telefono ?? 'sin teléfono' }}</h2>
       <button type="button" class="chico" (click)="cerrar()">Cerrar</button>

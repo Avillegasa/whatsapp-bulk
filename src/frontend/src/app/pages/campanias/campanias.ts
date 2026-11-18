@@ -13,6 +13,7 @@ import {
   utc,
   vistaPrevia,
 } from './campanias.service';
+import { enfocarDetalle } from '../../layout/foco';
 
 interface Formulario {
   nombre: string;
@@ -141,6 +142,7 @@ export class Campanias implements OnInit {
     } catch {
       this.aviso.set({ tipo: 'error', texto: 'No se pudo cargar la campaña.' });
     }
+    enfocarDetalle();
   }
 
   protected previa(d: CampanaDetalle): string {

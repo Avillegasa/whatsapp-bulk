@@ -4,7 +4,11 @@ export type Tema = 'sistema' | 'claro' | 'oscuro';
 
 const CLAVE = 'wabulk.tema';
 const ORDEN: Tema[] = ['sistema', 'claro', 'oscuro'];
-export const TEXTO_TEMA: Record<Tema, string> = { sistema: 'Sistema', claro: 'Claro', oscuro: 'Oscuro' };
+export const TEXTO_TEMA: Record<Tema, string> = {
+  sistema: 'Sistema',
+  claro: 'Claro',
+  oscuro: 'Oscuro',
+};
 
 /**
  * Tema de la intranet (F1.8b): "sistema" sigue al sistema operativo; "claro" u "oscuro" lo fijan con el atributo

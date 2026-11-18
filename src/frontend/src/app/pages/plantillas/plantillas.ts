@@ -2,6 +2,7 @@ import { DatePipe } from '@angular/common';
 import { Component, computed, inject, OnInit, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { NuevaPlantilla, parametros, Plantilla, PlantillaDetalle, PlantillasService, TEXTO_ESTADO } from './plantillas.service';
+import { enfocarDetalle } from '../../layout/foco';
 
 /**
  * Plantillas (F1.5): lista sincronizada con Meta, detalle y creación de plantillas de marketing (D-009) con parámetros
@@ -75,6 +76,7 @@ export class Plantillas implements OnInit {
 
   protected async ver(p: Plantilla): Promise<void> {
     this.abierta.set(await this.api.detalle(p.id));
+    enfocarDetalle();
   }
 
   protected async crear(): Promise<void> {

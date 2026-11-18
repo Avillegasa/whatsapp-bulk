@@ -182,7 +182,7 @@
                 <br /><span class="sec">vence {{ fecha(c.expiraUtc) | date: 'dd/MM HH:mm' }}</span>
               </td>
               <td data-label="">
-                <button type="button" class="chico" (click)="ver(c.id)">Ver</button>
+                <button type="button" class="chico" [attr.aria-label]="'Ver campaña ' + c.nombre" (click)="ver(c.id)">Ver</button>
               </td>
             </tr>
           }
@@ -195,7 +195,7 @@
 }
 
 @if (abierta(); as d) {
-  <section class="detalle" aria-label="Detalle de la campaña">
+  <section class="detalle" aria-label="Detalle de la campaña" tabindex="-1">
     <h2>{{ d.campana.nombre }} · {{ estado(d.campana.estado) }}</h2>
     <div class="barra acciones-detalle">
       @switch (d.campana.estado) {

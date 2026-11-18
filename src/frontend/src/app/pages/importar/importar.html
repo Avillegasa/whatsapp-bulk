@@ -81,7 +81,7 @@
     <input
       type="checkbox"
       [checked]="soloProblemas()"
-      (change)="soloProblemas.set(!soloProblemas())"
+      (change)="soloProblemas.set(!soloProblemas()); pagina.set(0)"
     />
     Mostrar solo errores y advertencias
   </label>
@@ -99,7 +99,7 @@
           </tr>
         </thead>
         <tbody>
-          @for (f of filas(); track f.row) {
+          @for (f of visibles(); track f.row) {
             <tr>
               <td data-label="Fila">{{ f.row }}</td>
               <td data-label="Teléfono">{{ f.phone ?? '—' }}</td>
@@ -112,5 +112,6 @@
         </tbody>
       </table>
     </div>
+    <app-paginador [total]="filas().length" [tamano]="50" [(pagina)]="pagina" que="filas importadas" />
   }
 }

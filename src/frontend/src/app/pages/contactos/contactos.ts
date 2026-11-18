@@ -1,5 +1,7 @@
 import { DatePipe } from '@angular/common';
-import { Component, inject, OnInit, signal } from '@angular/core';
+import { Component, computed, inject, OnInit, signal } from '@angular/core';
+import { paginaDe, Paginador } from '../../layout/paginador';
+import { enfocarDetalle } from '../../layout/foco';
 import { FormsModule } from '@angular/forms';
 import {
   Consentimiento,
@@ -13,7 +15,7 @@ import {
 /** Contactos (F1.4): estado de consentimiento, detalle con historial, baja manual y agregar a una lista. */
 @Component({
   selector: 'app-contactos',
-  imports: [DatePipe, FormsModule],
+  imports: [DatePipe, FormsModule, Paginador],
   templateUrl: './contactos.html',
 })
 export class Contactos implements OnInit {
@@ -21,6 +23,8 @@ export class Contactos implements OnInit {
   protected readonly estados = Object.entries(TEXTO_CONSENTIMIENTO) as [Consentimiento, string][];
 
   protected readonly contactos = signal<Contacto[] | null>(null);
+  protected readonly pagina = signal(0);
+  protected readonly visibles = computed(() => paginaDe(this.contactos() ?? [], this.pagina(), 25));
   protected readonly listas = signal<Lista[]>([]);
   protected readonly errorCarga = signal<string | null>(null);
   protected readonly aviso = signal<{ tipo: 'ok' | 'error'; texto: string } | null>(null);
@@ -50,6 +54,7 @@ export class Contactos implements OnInit {
   }
 
   protected async buscar(): Promise<void> {
+    this.pagina.set(0);
     this.elegidos.set(new Set());
     await this.cargar();
   }
@@ -57,6 +62,7 @@ export class Contactos implements OnInit {
   protected async ver(c: Contacto): Promise<void> {
     this.motivo = '';
     this.detalle.set(await this.api.detalle(c.id));
+    enfocarDetalle();
   }
 
   protected cerrar(): void {
@@ -97,6 +103,7 @@ export class Contactos implements OnInit {
   private async cargar(): Promise<void> {
     try {
       this.contactos.set(await this.api.listar(this.filtro.consentimiento, this.filtro.buscar));
+      if (this.pagina() * 25 >= (this.contactos()?.length ?? 0)) this.pagina.set(0);
       this.errorCarga.set(null);
     } catch {
       this.errorCarga.set('No se pudo cargar la lista de contactos.');
