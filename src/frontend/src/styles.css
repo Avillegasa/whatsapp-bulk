@@ -1801,3 +1801,15 @@ button.destacado {
 .importar form {
   margin: var(--e4) 0 0;
 }
+
+@media (max-width: 700px) {
+  table.apilable td.acciones {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--e2);
+  }
+
+  table.apilable td.acciones::before {
+    width: 100%;
+  }
+}

@@ -99,6 +99,7 @@ Mantener esta sección al día. Todos funcionan en cmd desde la raíz del repo.
 - Pantallas Campañas (Operador) y Aprobaciones (Aprobador), F1.6: para aprobar hace falta otro usuario con rol Aprobador que no haya creado ni editado la campaña.
 - Pantallas de contactos (Mensajes recientes, Contactos, Importar, Listas) y Plantillas (F1.5): solo con rol Operador; la oferta necesita el Worker corriendo (procesa la respuesta) y el receptor con el túnel
 - Frontend: `cd src\frontend && npm ci` · `npx ng build` · `npx ng test --watch=false` (Vitest)
+- Diseño de la intranet (F1.8b, D-037): estilos en `src/frontend/src/styles.css` (variables y clases globales: `.principal`, `.destacado`, `.peligro`, `.tabla`, `.estado <Estado>`, `.tarjeta`, `.aviso`, `.vacio`, `.cargando`, `.encabezado-pagina`); las pantallas no llevan CSS propio. Tablas con `class="apilable"` y `data-label` en cada `<td>` se apilan en móvil. Íconos SVG en `app/layout/iconos.ts`; grupo del menú en `MENU` (`grupo`).
 - Intranet en desarrollo (dos ventanas): `dotnet run --project src\backend\WaBulk.Api --launch-profile http` (http://localhost:5047) y `cd src\frontend && npx ng serve` → http://localhost:4200 (el proxy manda `/api` a la Api)
 
 Notas de la solución:

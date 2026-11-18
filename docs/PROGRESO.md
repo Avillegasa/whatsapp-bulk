@@ -1,7 +1,7 @@
 # Progreso
 
 **Fase actual:** Fase 1 — Demo interna (D-028)
-**Siguiente tarea:** terminar F1.5 (pasos 6–9) y las pruebas reales de F1.6 y F1.7 cuando Meta apruebe `promo_f15` o `promo_demo`. F1.9 (Docker) necesita la decisión D-006 (dónde corre SQL Server en producción) y dónde se publica el receptor con HTTPS. F1.1 sigue en curso con Andrés (Claude desktop)
+**Siguiente tarea:** visto bueno de Andrés a F1.8b (diseño, antes de la demo); luego terminar F1.5 (pasos 6–9) y las pruebas reales de F1.6 y F1.7 cuando Meta apruebe `promo_f15` o `promo_demo`. F1.9 (Docker) necesita la decisión D-006 (dónde corre SQL Server en producción) y dónde se publica el receptor con HTTPS. F1.1 sigue en curso con Andrés (Claude desktop)
 **Última actualización:** 2026-11-17
 
 ## Estado de tareas
@@ -30,12 +30,13 @@ Estados: Pendiente · En curso · Hecho (sin verificar) · Verificado · Bloquea
 | F1.6 | Campañas versionadas y aprobación | Claude Code | Hecho (sin verificar) | Evidencia completa del plan; queda sin "Verificado" hasta que F1.5 lo esté (excepción). `dotnet test` 268/268 (3 corridas): creador → 403 (servicio y HTTP, aunque tenga rol Aprobador); editar una aprobada → v2 en Draft, pendientes de v1 `VersionReemplazada`, la v1 ya no se puede aprobar y quien recibió la v1 queda `YaEnviado`; dos aprobaciones simultáneas → una sola crea los trabajos (y el índice único revierte toda la aprobación si ya existían); vencida → `Expired` sin POST; cancelada → pendientes `CampanaCancelada` y el despachador la revisa antes del POST; pausa → `OnHold` sin POST, reanudar → se envía; el despachador envía plantilla y parámetros de la versión. Mutación: sin la regla de cuatro ojos fallan 2 pruebas. `ng test` 25/25; build 0 advertencias; migración `Campanias` aplicada (3 trabajos de send-test → NULL) |
 | F1.7 | Despacho completo | Claude Code | En curso | Hecho y probado: tope semanal por contacto (`LimiteFrecuencia`), horario 08:00–20:00 La Paz, tasa por número (token bucket, medida), plantilla APPROVED al enviar, 132000–132016 → pausa de campaña, freno 131048/131031/368 y tasa de fallos > 5 %, fatiga D-012 y 131049 (+24 h, un intento), `revision` (NeedsReview > 2 h), ventana de 24 h sin capacidad. Además: límite real de Meta (tabla `MessagingLimit`, GET al arrancar y cada 6 h, webhooks, comando `limite`). `dotnet test` 312/312; build 0 advertencias; migración `LimiteMensajeria` aplicada; D-035. Falta: aviso fuera del log (decisión de Andrés: correo, después de la demo) y prueba real (campaña a 3 empleados, con la plantilla aprobada) |
 | F1.8 | Monitor en vivo y tablero | Claude Code | Hecho (sin verificar) | Evidencia completa del plan; queda sin "Verificado" hasta que F1.7 lo esté (excepción). Navegador (Andrés): replay `plantilla-paused` → banner "EN PAUSA" en el Monitor casi instantáneo, sin recargar; Reanudar desde Alertas → `verificar-f1.8.sql`: pausa 3 `LevantadaPor` = avillegas (usuario de la intranet, sin `windows:`) a las 22:45:27 y `AuditLog` `ReanudarDespacho` de avillegas. `dotnet test` 319/319 (SignalR real < 5 s); `ng test` 28/28; build 0 advertencias; sin secretos, sin versión literal ni retry |
-| F1.8b | Diseño visual de la intranet (fuera del plan, pedida por Andrés) | Claude Code | En curso | Sin verificar hasta el visto bueno de Andrés |
+| F1.8b | Diseño visual de la intranet (fuera del plan, pedida por Andrés) | Claude Code | Hecho (sin verificar) | Falta el visto bueno de Andrés en el navegador. `npx ng build` OK (sin advertencias de presupuesto) y `npx ng test --watch=false` 28/28 después de cada paso (7 commits `F1.8b:`); capturas con Edge sin ventana (1366 px y 390 px, datos de ejemplo en `/api/*`) de las 13 pantallas: sin desborde horizontal (`scrollWidth` = ancho) en ninguna; D-037 |
 | F1.9 | Docker y despliegue | Claude Code + Tú | Pendiente | |
 | F1.10 | Demo en la oficina | Tú + Claude Code | Pendiente | |
 
 ## Pendientes y bloqueos
 
+- F1.8b (segunda pasada): tarjetas móviles más compactas (hoy cada dato ocupa su línea); vista previa de la plantilla al lado del formulario en escritorio; paginación o búsqueda en tablas largas; modo oscuro; revisión con lector de pantalla y teclado completo; diálogo propio en lugar de `confirm()` del navegador al ofrecer promociones; mensajes de error por campo en los formularios (hoy borde rojo + aviso general); script de capturas a `tools/` si se quiere repetir la revisión.
 - F1.7: aviso de alertas fuera del log por **correo** (decisión de Andrés, 2026-11-17), después de la demo: hace falta servidor SMTP, cuenta remitente (secreto en user-secrets) y destinatarios.
 - F1.7: `phone_number_quality_update` ya no informa bajas de calidad (doc de Meta: solo ONBOARDING y THROUGHPUT_UPGRADE): no puede disparar el freno; evaluar `GET /{PHONE_NUMBER_ID}?fields=quality_rating` o `account_alerts`. Registrar en D-035 junto con el resto de F1.7.
 
@@ -71,6 +72,15 @@ Estados: Pendiente · En curso · Hecho (sin verificar) · Verificado · Bloquea
 - Datos de desarrollo: los intentos 01A1E617… y 01A1E975… quedaron con `EstadoEntrega` = Read por el replay de F0.8 (no es una lectura real).
 
 ## Bitácora (lo más reciente arriba)
+
+### 2026-11-17 — F1.8b Diseño visual de la intranet (Claude Code)
+- Hecho: sistema de diseño en `src/styles.css` (variables, foco visible, estados AA, botones, tabla, insignias, tarjetas, avisos, vacío y carga) y se borran los 5 CSS sueltos; menú lateral agrupado por rol con íconos SVG en línea, cabecera con usuario y «Cerrar sesión», menú desplegable en móvil; Login en dos paneles; Monitor con 6 contadores grandes por color, banner rojo EN PAUSA (con «Ir a Alertas» para Aprobador) y medidor de capacidad; Campañas y Aprobaciones con acciones en el encabezado, detalle en columnas y Aprobar/Rechazar destacados; Mensajes recientes con «Ofrecer promociones» en verde; Contactos con filtros en tarjeta y barra de selección fija; Plantillas; Inicio con accesos directos por rol; Alertas, Bajas, Envíos inciertos, Importar, Listas, Usuarios y Sin permiso; tablas apiladas como tarjetas en móvil.
+- Verificación: `npx ng build` → OK y `npx ng test --watch=false` → 28/28 tras cada paso; capturas con Edge sin ventana por el protocolo DevTools (script en el scratchpad, `/api/*` respondido con datos de ejemplo, sin tocar la base ni usar claves) a 1366 y 390 px: 13 rutas y detalles abiertos sin desborde horizontal. Falta: revisión de Andrés en su navegador.
+- Sin cambios en rutas, guardias, permisos, servicios, llamadas a la Api ni backend. Textos: se mantienen; se agregan títulos de sección («Mensaje», «Datos de la versión»), descripciones de los accesos de Inicio (reemplazan el texto provisional "se irán sumando al menú en la Fase 1") y el lema del login.
+- Archivos: `src/frontend/src/styles.css`, `app/layout/shell.ts`, `app/layout/iconos.ts`, `app/core/menu.ts` (campo `grupo`), plantillas de las 13 pantallas.
+- Decisiones: D-037.
+- Pendientes: segunda pasada (ver "Pendientes y bloqueos").
+- Siguiente: visto bueno de Andrés; luego F1.5/F1.6/F1.7 con la plantilla aprobada.
 
 ### 2026-11-17 — F1.8 Monitor en vivo y tablero (Claude Code)
 - Hecho: `MonitorService` (tablero: contadores por campaña —en cola, enviados, entregados, leídos, fallidos, omitidos por motivo—, capacidad del día con el límite real, pausa global; bajas vigentes por capa; envíos inciertos con "vencido" tras 2 h y marcar llegó / no llegó auditado); `MonitorHub` + `MonitorBroadcaster` (SignalR, cada 2 s si cambió); endpoints `/api/monitor`, `/api/bajas`, `/api/revision` (Operador) y `/api/alertas` + `reanudar` (Aprobador). Pantallas Monitor, Envíos inciertos, Bajas y Alertas. Proxy de desarrollo con websockets. Script `db/scripts/verificar-f1.8.sql`.
