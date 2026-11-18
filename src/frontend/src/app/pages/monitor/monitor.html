@@ -1,12 +1,16 @@
 <div class="encabezado-pagina">
   <h1>Monitor</h1>
   <div class="barra">
-    <span class="vivo" [class.activo]="enVivo()">{{ enVivo() ? '● En vivo' : '○ Sin conexión en vivo' }}</span>
+    <span class="vivo" [class.activo]="enVivo()">{{
+      enVivo() ? '● En vivo' : '○ Sin conexión en vivo'
+    }}</span>
     @if (actualizadoUtc(); as a) {
       <span class="sec">Actualizado {{ a | date: 'HH:mm:ss' }}</span>
     }
     <button type="button" class="chico" (click)="actualizar()">
-      <svg class="icono" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="iconos['actualizar']" /></svg>
+      <svg class="icono" viewBox="0 0 24 24" aria-hidden="true">
+        <path [attr.d]="iconos['actualizar']" />
+      </svg>
       Actualizar
     </button>
   </div>
@@ -19,12 +23,16 @@
 @if (tablero(); as t) {
   @if (t.pausa.enPausa) {
     <div class="banner-pausa" role="alert">
-      <svg class="icono" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="iconos['pausa']" /></svg>
+      <svg class="icono" viewBox="0 0 24 24" aria-hidden="true">
+        <path [attr.d]="iconos['pausa']" />
+      </svg>
       <div>
         <p class="banner-titulo">Despacho EN PAUSA por {{ t.pausa.motivo }}</p>
         <p>
-          Desde {{ fecha(t.pausa.desdeUtc) | date: 'dd/MM HH:mm' }} ({{ t.pausa.alertasAbiertas }} alertas abiertas). Lo
-          revisa y reanuda una persona con rol Aprobador en "Alertas".
+          Desde {{ fecha(t.pausa.desdeUtc) | date: 'dd/MM HH:mm' }} ({{
+            t.pausa.alertasAbiertas
+          }}
+          alertas abiertas). Lo revisa y reanuda una persona con rol Aprobador en "Alertas".
         </p>
         @if (auth.tieneAlgunRol(['Aprobador'])) {
           <a class="boton-enlace" routerLink="/alertas">Ir a Alertas</a>
@@ -33,7 +41,9 @@
     </div>
   } @else {
     <p class="banner-activo" role="status">
-      <svg class="icono" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="iconos['ok']" /></svg>
+      <svg class="icono" viewBox="0 0 24 24" aria-hidden="true">
+        <path [attr.d]="iconos['ok']" />
+      </svg>
       Despacho activo.
     </p>
   }
@@ -65,12 +75,13 @@
         <strong class="num">{{ t.capacidad.disponibles }}</strong>destinatarios disponibles hoy
       </div>
       <div>
-        <strong class="num">{{ t.capacidad.usados }} / {{ t.capacidad.presupuesto }}</strong>usados en 24 h
+        <strong class="num">{{ t.capacidad.usados }} / {{ t.capacidad.presupuesto }}</strong
+        >usados en 24 h
       </div>
       <div>
-        <strong class="num">{{ t.capacidad.limite === 2147483647 ? 'Sin límite' : t.capacidad.limite }}</strong>límite ({{
-          t.capacidad.fuenteLimite
-        }})
+        <strong class="num">{{
+          t.capacidad.limite === 2147483647 ? 'Sin límite' : t.capacidad.limite
+        }}</strong>límite ({{ t.capacidad.fuenteLimite }})
       </div>
     </div>
     <div
@@ -84,8 +95,8 @@
       <span [style.width.%]="usoCapacidad()" [class.alto]="usoCapacidad() >= 90"></span>
     </div>
     <p class="ayuda">
-      La capacidad cuenta destinatarios únicos fuera de la ventana de 24 h; el presupuesto es el 90 % del límite menos el
-      cupo de envíos manuales.
+      La capacidad cuenta destinatarios únicos fuera de la ventana de 24 h; el presupuesto es el 90
+      % del límite menos el cupo de envíos manuales.
     </p>
   </section>
 
@@ -127,10 +138,14 @@
               </td>
               <td class="num cifra ok">{{ c.enviados }}</td>
               <td class="num">
-                <span class="cifra ok">{{ c.entregados }}</span>&ngsp;<span class="sec">{{ porcentaje(c.entregados, c.enviados) }} %</span>
+                <span class="cifra ok">{{ c.entregados }}</span>&ngsp;<span class="sec"
+                  >{{ porcentaje(c.entregados, c.enviados) }} %</span
+                >
               </td>
               <td class="num">
-                <span class="cifra info">{{ c.leidos }}</span>&ngsp;<span class="sec">{{ porcentaje(c.leidos, c.enviados) }} %</span>
+                <span class="cifra info">{{ c.leidos }}</span>&ngsp;<span class="sec"
+                  >{{ porcentaje(c.leidos, c.enviados) }} %</span
+                >
               </td>
               <td class="num">
                 <span class="cifra" [class.mal]="c.fallidos > 0">{{ c.fallidos }}</span>
@@ -140,7 +155,8 @@
               </td>
               <td>
                 @for (o of c.omitidos | keyvalue; track o.key) {
-                  <span class="sec">{{ o.value }} {{ omision(o.key) }}</span><br />
+                  <span class="sec">{{ o.value }} {{ omision(o.key) }}</span
+                  ><br />
                 } @empty {
                   0
                 }

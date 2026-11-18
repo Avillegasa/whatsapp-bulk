@@ -5,79 +5,110 @@
 }
 
 <p class="ayuda">
-  Revisa el mensaje, la lista y las fechas. Al aprobar, cada contacto queda en la cola. No puedes aprobar campañas que
-  creaste o editaste.
+  Revisa el mensaje, la lista y las fechas. Al aprobar, cada contacto queda en la cola. No puedes
+  aprobar campañas que creaste o editaste.
 </p>
 
 @if (pendientes(); as ps) {
   @if (ps.length === 0) {
-    <p>No hay campañas por aprobar.</p>
+    <p class="vacio">No hay campañas por aprobar.</p>
   } @else {
-    <table>
-      <thead>
-        <tr>
-          <th>Campaña</th>
-          <th>Plantilla</th>
-          <th>Destinatarios</th>
-          <th>Creada por</th>
-          <th></th>
-        </tr>
-      </thead>
-      <tbody>
-        @for (c of ps; track c.id) {
-          <tr [class.elegida]="abierta()?.campana?.id === c.id">
-            <td>{{ c.nombre }} <span class="sec">v{{ c.version }}</span></td>
-            <td>{{ c.plantilla }}</td>
-            <td>{{ c.destinatarios }}</td>
-            <td>{{ c.creadaPor }}</td>
-            <td><button type="button" class="chico" (click)="ver(c)">Revisar</button></td>
+    <div class="tabla">
+      <table>
+        <thead>
+          <tr>
+            <th>Campaña</th>
+            <th>Plantilla</th>
+            <th>Destinatarios</th>
+            <th>Creada por</th>
+            <th></th>
           </tr>
-        }
-      </tbody>
-    </table>
+        </thead>
+        <tbody>
+          @for (c of ps; track c.id) {
+            <tr [class.elegida]="abierta()?.campana?.id === c.id">
+              <td>
+                <strong>{{ c.nombre }}</strong
+                >&ngsp;<span class="sec">v{{ c.version }}</span>
+              </td>
+              <td>{{ c.plantilla }}</td>
+              <td>{{ c.destinatarios }}</td>
+              <td>{{ c.creadaPor }}</td>
+              <td>
+                <button type="button" class="chico principal" (click)="ver(c)">Revisar</button>
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
   }
 } @else {
-  <p>Cargando…</p>
+  <p class="cargando">Cargando…</p>
 }
 
 @if (abierta(); as d) {
   @let v = d.versiones[0];
   <section class="detalle" aria-label="Versión por aprobar">
     <h2>{{ d.campana.nombre }} · versión {{ v.numero }}</h2>
-    <div class="previa">
-      @if (d.encabezado) {
-        <strong>{{ d.encabezado }}</strong>
-      }
-      <p>{{ previa(d) }}</p>
-      @if (d.pie) {
-        <span class="sec">{{ d.pie }}</span>
-      }
-      @if (d.botones.length > 0) {
-        <div class="botones-previa">
-          @for (b of d.botones; track $index) {
-            <span>{{ b }}</span>
+    <div class="detalle-columnas">
+      <div>
+        <h3>Mensaje</h3>
+        <div class="previa">
+          @if (d.encabezado) {
+            <strong>{{ d.encabezado }}</strong>
+          }
+          <p>{{ previa(d) }}</p>
+          @if (d.pie) {
+            <span class="sec">{{ d.pie }}</span>
+          }
+          @if (d.botones.length > 0) {
+            <div class="botones-previa">
+              @for (b of d.botones; track $index) {
+                <span>{{ b }}</span>
+              }
+            </div>
           }
         </div>
-      }
+      </div>
+      <div>
+        <h3>Datos de la versión</h3>
+        <ul class="datos">
+          <li>Plantilla: {{ v.plantilla }} ({{ v.idioma }}, {{ v.categoria }})</li>
+          <li>
+            Lista: {{ v.lista ?? '—' }} · {{ v.destinatarios }} destinatarios
+            @if (v.excluidos > 0) {
+              ({{ v.excluidos }} quedaron fuera: sin teléfono o inactivos)
+            }
+          </li>
+          <li>
+            Envío desde {{ fecha(v.programadaUtc) | date: 'dd/MM/yyyy HH:mm' }}, vence
+            {{ fecha(v.expiraUtc) | date: 'dd/MM/yyyy HH:mm' }}
+          </li>
+          <li>Creada por {{ v.creadaPor }} el {{ fecha(v.creadaUtc) | date: 'dd/MM HH:mm' }}</li>
+          <li>
+            Hash <span class="hash">{{ v.hash }}</span>
+          </li>
+        </ul>
+      </div>
     </div>
-    <ul>
-      <li>Plantilla: {{ v.plantilla }} ({{ v.idioma }}, {{ v.categoria }})</li>
-      <li>
-        Lista: {{ v.lista ?? '—' }} · {{ v.destinatarios }} destinatarios
-        @if (v.excluidos > 0) {
-          ({{ v.excluidos }} quedaron fuera: sin teléfono o inactivos)
-        }
-      </li>
-      <li>Envío desde {{ fecha(v.programadaUtc) | date: 'dd/MM/yyyy HH:mm' }}, vence {{ fecha(v.expiraUtc) | date: 'dd/MM/yyyy HH:mm' }}</li>
-      <li>Creada por {{ v.creadaPor }} el {{ fecha(v.creadaUtc) | date: 'dd/MM HH:mm' }}</li>
-      <li>Hash <span class="hash">{{ v.hash }}</span></li>
-    </ul>
-    <div class="barra">
-      <button type="button" class="principal" [disabled]="ocupado()" (click)="aprobar(d)">Aprobar versión {{ v.numero }}</button>
+    <div class="decision">
+      <div class="barra">
+        <button type="button" class="principal grande" [disabled]="ocupado()" (click)="aprobar(d)">
+          Aprobar versión {{ v.numero }}
+        </button>
+      </div>
+      <form class="fila" (ngSubmit)="rechazar(d)">
+        <input
+          name="motivo"
+          [(ngModel)]="motivo"
+          placeholder="Motivo del rechazo"
+          maxlength="1000"
+        />
+        <button type="submit" class="peligro" [disabled]="ocupado() || !motivo.trim()">
+          Rechazar
+        </button>
+      </form>
     </div>
-    <form class="fila" (ngSubmit)="rechazar(d)">
-      <input name="motivo" [(ngModel)]="motivo" placeholder="Motivo del rechazo" maxlength="1000" />
-      <button type="submit" [disabled]="ocupado() || !motivo.trim()">Rechazar</button>
-    </form>
   </section>
 }
