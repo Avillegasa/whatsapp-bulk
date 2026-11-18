@@ -72,9 +72,9 @@ interface GrupoMenu {
               <span>{{ auth.roles().join(', ') }}</span>
             </span>
           </div>
-          <button type="button" class="chico" (click)="salir()">
+          <button type="button" class="chico boton-salir" aria-label="Cerrar sesión" (click)="salir()">
             <svg class="icono" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="iconos['salir']" /></svg>
-            Cerrar sesión
+            <span class="texto-salir">Cerrar sesión</span>
           </button>
         </header>
         <main class="pagina" id="principal"><router-outlet /></main>

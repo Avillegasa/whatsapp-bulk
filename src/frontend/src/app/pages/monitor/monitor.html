@@ -1,11 +1,15 @@
-<h1>Monitor</h1>
-
-<div class="barra">
-  <span class="vivo" [class.activo]="enVivo()">{{ enVivo() ? '● En vivo' : '○ Sin conexión en vivo' }}</span>
-  @if (actualizadoUtc(); as a) {
-    <span class="sec">Actualizado {{ a | date: 'HH:mm:ss' }}</span>
-  }
-  <button type="button" class="chico" (click)="actualizar()">Actualizar</button>
+<div class="encabezado-pagina">
+  <h1>Monitor</h1>
+  <div class="barra">
+    <span class="vivo" [class.activo]="enVivo()">{{ enVivo() ? '● En vivo' : '○ Sin conexión en vivo' }}</span>
+    @if (actualizadoUtc(); as a) {
+      <span class="sec">Actualizado {{ a | date: 'HH:mm:ss' }}</span>
+    }
+    <button type="button" class="chico" (click)="actualizar()">
+      <svg class="icono" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="iconos['actualizar']" /></svg>
+      Actualizar
+    </button>
+  </div>
 </div>
 
 @if (error(); as e) {
@@ -14,36 +18,83 @@
 
 @if (tablero(); as t) {
   @if (t.pausa.enPausa) {
-    <p class="aviso error" role="alert">
-      Despacho EN PAUSA por {{ t.pausa.motivo }} desde {{ fecha(t.pausa.desdeUtc) | date: 'dd/MM HH:mm' }}
-      ({{ t.pausa.alertasAbiertas }} alertas abiertas). Lo revisa y reanuda una persona con rol Aprobador en "Alertas".
-    </p>
+    <div class="banner-pausa" role="alert">
+      <svg class="icono" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="iconos['pausa']" /></svg>
+      <div>
+        <p class="banner-titulo">Despacho EN PAUSA por {{ t.pausa.motivo }}</p>
+        <p>
+          Desde {{ fecha(t.pausa.desdeUtc) | date: 'dd/MM HH:mm' }} ({{ t.pausa.alertasAbiertas }} alertas abiertas). Lo
+          revisa y reanuda una persona con rol Aprobador en "Alertas".
+        </p>
+        @if (auth.tieneAlgunRol(['Aprobador'])) {
+          <a class="boton-enlace" routerLink="/alertas">Ir a Alertas</a>
+        }
+      </div>
+    </div>
   } @else {
-    <p class="aviso" role="status">Despacho activo.</p>
+    <p class="banner-activo" role="status">
+      <svg class="icono" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="iconos['ok']" /></svg>
+      Despacho activo.
+    </p>
   }
 
-  <div class="resumen">
-    <div>
-      <strong>{{ t.capacidad.disponibles }}</strong>destinatarios disponibles hoy
+  <div class="contadores" aria-label="Totales de las campañas del tablero">
+    <div class="contador espera">
+      <span>En cola</span><strong>{{ totales().enCola }}</strong>
     </div>
-    <div>
-      <strong>{{ t.capacidad.usados }} / {{ t.capacidad.presupuesto }}</strong>usados en 24 h
+    <div class="contador ok">
+      <span>Enviados</span><strong>{{ totales().enviados }}</strong>
     </div>
-    <div>
-      <strong>{{ t.capacidad.limite === 2147483647 ? 'Sin límite' : t.capacidad.limite }}</strong>límite ({{ t.capacidad.fuenteLimite }})
+    <div class="contador ok">
+      <span>Entregados</span><strong>{{ totales().entregados }}</strong>
+    </div>
+    <div class="contador info">
+      <span>Leídos</span><strong>{{ totales().leidos }}</strong>
+    </div>
+    <div class="contador mal">
+      <span>Fallidos</span><strong>{{ totales().fallidos }}</strong>
+    </div>
+    <div class="contador omit">
+      <span>Omitidos</span><strong>{{ totales().omitidos }}</strong>
     </div>
   </div>
-  <p class="ayuda">
-    La capacidad cuenta destinatarios únicos fuera de la ventana de 24 h; el presupuesto es el 90 % del límite menos el cupo
-    de envíos manuales.
-  </p>
+
+  <section class="tarjeta capacidad" aria-label="Capacidad del día">
+    <div class="capacidad-cifras">
+      <div>
+        <strong class="num">{{ t.capacidad.disponibles }}</strong>destinatarios disponibles hoy
+      </div>
+      <div>
+        <strong class="num">{{ t.capacidad.usados }} / {{ t.capacidad.presupuesto }}</strong>usados en 24 h
+      </div>
+      <div>
+        <strong class="num">{{ t.capacidad.limite === 2147483647 ? 'Sin límite' : t.capacidad.limite }}</strong>límite ({{
+          t.capacidad.fuenteLimite
+        }})
+      </div>
+    </div>
+    <div
+      class="medidor"
+      role="meter"
+      aria-label="Presupuesto de capacidad usado"
+      aria-valuemin="0"
+      aria-valuemax="100"
+      [attr.aria-valuenow]="usoCapacidad()"
+    >
+      <span [style.width.%]="usoCapacidad()" [class.alto]="usoCapacidad() >= 90"></span>
+    </div>
+    <p class="ayuda">
+      La capacidad cuenta destinatarios únicos fuera de la ventana de 24 h; el presupuesto es el 90 % del límite menos el
+      cupo de envíos manuales.
+    </p>
+  </section>
 
   <h2>Campañas</h2>
   @if (t.campanias.length === 0) {
-    <p>No hay campañas programadas, enviando, en pausa ni recién enviadas.</p>
+    <p class="vacio">No hay campañas programadas, enviando, en pausa ni recién enviadas.</p>
   } @else {
     <div class="tabla">
-      <table>
+      <table class="tabla-monitor">
         <thead>
           <tr>
             <th>Campaña</th>
@@ -59,24 +110,30 @@
           @for (c of t.campanias; track c.campanaId) {
             <tr>
               <td>
-                {{ c.nombre }} <span class="sec">v{{ c.version }}</span><br />
-                <span class="estado {{ c.estado }}">{{ estado(c.estado) }}</span>
-                <span class="sec">{{ c.total }} destinatarios</span>
-                @if (c.revision > 0) {
-                  <br /><span class="estado PendingApproval">{{ c.revision }} inciertos: revisar</span>
-                }
+                <strong>{{ c.nombre }}</strong>&ngsp;<span class="sec">v{{ c.version }}</span>
+                <div class="etiquetas">
+                  <span class="estado {{ c.estado }}">{{ estado(c.estado) }}</span>
+                  <span class="sec">{{ c.total }} destinatarios</span>
+                  @if (c.revision > 0) {
+                    <span class="estado PendingApproval">{{ c.revision }} inciertos: revisar</span>
+                  }
+                </div>
               </td>
-              <td>
+              <td class="num">
                 {{ c.enCola + c.enviandose }}
                 @if (c.enEspera > 0) {
                   <br /><span class="sec">{{ c.enEspera }} en espera (pausa)</span>
                 }
               </td>
-              <td>{{ c.enviados }}</td>
-              <td>{{ c.entregados }} <span class="sec">{{ porcentaje(c.entregados, c.enviados) }} %</span></td>
-              <td>{{ c.leidos }} <span class="sec">{{ porcentaje(c.leidos, c.enviados) }} %</span></td>
-              <td>
-                {{ c.fallidos }}
+              <td class="num cifra ok">{{ c.enviados }}</td>
+              <td class="num">
+                <span class="cifra ok">{{ c.entregados }}</span>&ngsp;<span class="sec">{{ porcentaje(c.entregados, c.enviados) }} %</span>
+              </td>
+              <td class="num">
+                <span class="cifra info">{{ c.leidos }}</span>&ngsp;<span class="sec">{{ porcentaje(c.leidos, c.enviados) }} %</span>
+              </td>
+              <td class="num">
+                <span class="cifra" [class.mal]="c.fallidos > 0">{{ c.fallidos }}</span>
                 @if (c.vencidos > 0) {
                   <br /><span class="sec">{{ c.vencidos }} vencidos</span>
                 }
@@ -95,5 +152,5 @@
     </div>
   }
 } @else {
-  <p>Cargando…</p>
+  <p class="cargando">Cargando…</p>
 }

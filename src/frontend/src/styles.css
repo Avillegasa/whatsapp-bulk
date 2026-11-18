@@ -1311,3 +1311,221 @@ form.clave input {
     padding: var(--e6) var(--e4);
   }
 }
+
+/* ---------- 14. Encabezado de página, Monitor y botón salir ---------- */
+.encabezado-pagina {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--e3) var(--e5);
+  margin-bottom: var(--e5);
+}
+
+.encabezado-pagina h1 {
+  margin: 0;
+}
+
+.encabezado-pagina .barra {
+  margin: 0;
+  align-items: center;
+}
+
+.banner-pausa {
+  display: flex;
+  gap: var(--e4);
+  align-items: flex-start;
+  padding: var(--e5);
+  margin: 0 0 var(--e5);
+  border-radius: var(--r3);
+  background: var(--mal-solido);
+  color: #fff;
+  box-shadow: 0 0 0 4px var(--mal-fondo), var(--sombra-2);
+}
+
+.banner-pausa > .icono {
+  width: 2.25rem;
+  height: 2.25rem;
+  stroke-width: 2;
+}
+
+.banner-pausa p {
+  margin: 0 0 var(--e2);
+}
+
+.banner-titulo {
+  font-family: var(--fuente-titulos);
+  font-size: var(--t-2xl);
+  font-weight: 700;
+  line-height: 1.2;
+  letter-spacing: -0.01em;
+}
+
+.boton-enlace {
+  display: inline-flex;
+  align-items: center;
+  min-height: 2.5rem;
+  margin-top: var(--e2);
+  padding: 0.45rem 1rem;
+  border-radius: var(--r2);
+  background: #fff;
+  color: var(--mal-texto);
+  font-size: var(--t-sm);
+  font-weight: 650;
+  text-decoration: none;
+}
+
+.boton-enlace:hover {
+  background: var(--mal-fondo);
+  color: var(--mal-texto);
+}
+
+.banner-pausa :focus-visible {
+  outline-color: #fff;
+}
+
+.banner-activo {
+  display: flex;
+  align-items: center;
+  gap: var(--e2);
+  padding: var(--e3) var(--e4);
+  margin: 0 0 var(--e5);
+  border: 1px solid var(--ok-borde);
+  border-radius: var(--r3);
+  background: var(--ok-fondo);
+  color: var(--ok-texto);
+  font-weight: 620;
+}
+
+.contadores {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: var(--e3);
+  margin: 0 0 var(--e4);
+}
+
+.contador {
+  display: flex;
+  flex-direction: column;
+  gap: var(--e1);
+  padding: var(--e4);
+  background: var(--superficie);
+  border: 1px solid var(--borde);
+  border-top: 4px solid var(--omit-solido);
+  border-radius: var(--r3);
+  box-shadow: var(--sombra-1);
+}
+
+.contador span {
+  color: var(--texto-2);
+  font-size: var(--t-xs);
+  font-weight: 650;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.contador strong {
+  font-family: var(--fuente-titulos);
+  font-size: var(--t-3xl);
+  font-weight: 700;
+  line-height: 1.1;
+  font-variant-numeric: tabular-nums;
+}
+
+.contador.ok { border-top-color: var(--ok-solido); }
+.contador.ok strong { color: var(--ok-texto); }
+.contador.info { border-top-color: var(--info-solido); }
+.contador.info strong { color: var(--info-texto); }
+.contador.espera { border-top-color: var(--espera-solido); }
+.contador.espera strong { color: var(--espera-texto); }
+.contador.mal { border-top-color: var(--mal-solido); }
+.contador.mal strong { color: var(--mal-texto); }
+.contador.omit strong { color: var(--omit-texto); }
+
+.capacidad-cifras {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--e3) var(--e6);
+  color: var(--texto-2);
+  font-size: var(--t-sm);
+}
+
+.capacidad-cifras strong {
+  display: block;
+  font-family: var(--fuente-titulos);
+  font-size: var(--t-xl);
+  color: var(--texto);
+}
+
+.medidor {
+  height: 0.6rem;
+  margin: var(--e4) 0 var(--e3);
+  border-radius: var(--r-pildora);
+  background: var(--superficie-3);
+  overflow: hidden;
+}
+
+.medidor span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--ok-solido);
+}
+
+.medidor span.alto {
+  background: var(--espera-solido);
+}
+
+.capacidad .ayuda {
+  margin: 0;
+}
+
+.etiquetas {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--e1) var(--e2);
+  align-items: center;
+  margin-top: var(--e1);
+}
+
+.cifra {
+  font-weight: 650;
+}
+
+.cifra.ok { color: var(--ok-texto); }
+.cifra.info { color: var(--info-texto); }
+.cifra.mal { color: var(--mal-texto); }
+
+.tabla-monitor td.num {
+  white-space: nowrap;
+}
+
+@media (max-width: 1100px) {
+  .contadores {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 600px) {
+  .contadores {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .contador strong {
+    font-size: var(--t-2xl);
+  }
+
+  .banner-pausa {
+    flex-direction: column;
+    gap: var(--e2);
+    padding: var(--e4);
+  }
+
+  .banner-titulo {
+    font-size: var(--t-xl);
+  }
+
+  .texto-salir {
+    display: none;
+  }
+}
