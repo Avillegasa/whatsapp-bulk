@@ -35,7 +35,9 @@
           }
         </select>
       </label>
-      <button type="button" [disabled]="ocupado() || !listaDestino" (click)="agregarALista()">Agregar a la lista</button>
+      <button type="button" [disabled]="ocupado() || !listaDestino" (click)="agregarALista()">
+        Agregar a la lista
+      </button>
     }
   </div>
 }
@@ -80,8 +82,12 @@
                   <br /><span class="sec">Detuvo el marketing en WhatsApp</span>
                 }
               </td>
-              <td data-label="Último mensaje">{{ c.ultimoMensajeUtc ? (c.ultimoMensajeUtc | date: 'dd/MM HH:mm') : '—' }}</td>
-              <td data-label=""><button type="button" class="chico" (click)="ver(c)">Ver</button></td>
+              <td data-label="Último mensaje">
+                {{ c.ultimoMensajeUtc ? (c.ultimoMensajeUtc | date: 'dd/MM HH:mm') : '—' }}
+              </td>
+              <td data-label="">
+                <button type="button" class="chico" (click)="ver(c)">Ver</button>
+              </td>
             </tr>
           }
         </tbody>
@@ -102,16 +108,29 @@
       <button type="button" class="chico" (click)="cerrar()">Cerrar</button>
     </div>
     <p>
-      <span class="estado {{ d.contacto.consentimiento }}">{{ texto(d.contacto.consentimiento) }}</span>
+      <span class="estado {{ d.contacto.consentimiento }}">{{
+        texto(d.contacto.consentimiento)
+      }}</span>
       @if (d.listas.length) {
         <span class="sec"> · Listas: {{ d.listas.join(', ') }}</span>
       }
     </p>
 
-    @if (d.contacto.telefono && d.contacto.consentimiento !== 'OptOut' && d.contacto.consentimiento !== 'NoContactar') {
+    @if (
+      d.contacto.telefono &&
+      d.contacto.consentimiento !== 'OptOut' &&
+      d.contacto.consentimiento !== 'NoContactar'
+    ) {
       <form class="fila" (ngSubmit)="registrarBaja(d)">
-        <input name="motivo" [(ngModel)]="motivo" placeholder="Cómo pidió la baja (por ejemplo: llamó a la tienda)" required />
-        <button type="submit" class="peligro" [disabled]="ocupado() || !motivo.trim()">Registrar baja</button>
+        <input
+          name="motivo"
+          [(ngModel)]="motivo"
+          placeholder="Cómo pidió la baja (por ejemplo: llamó a la tienda)"
+          required
+        />
+        <button type="submit" class="peligro" [disabled]="ocupado() || !motivo.trim()">
+          Registrar baja
+        </button>
       </form>
     }
 
@@ -122,7 +141,8 @@
       <ul class="datos">
         @for (h of d.historial; track $index) {
           <li>
-            {{ h.recordedUtc | date: 'dd/MM/yyyy HH:mm' }} · <strong>{{ h.status }}</strong> por {{ h.source }} ({{ h.recordedBy }})
+            {{ h.recordedUtc | date: 'dd/MM/yyyy HH:mm' }} · <strong>{{ h.status }}</strong> por
+            {{ h.source }} ({{ h.recordedBy }})
             @if (h.evidence) {
               <br /><span class="sec">{{ h.evidence }}</span>
             }
@@ -138,7 +158,8 @@
       <ul class="datos">
         @for (o of d.ofertas; track o.id) {
           <li>
-            {{ o.offeredUtc | date: 'dd/MM/yyyy HH:mm' }} por {{ o.offeredBy }} (texto {{ o.textVersion }}) · {{ o.status }}
+            {{ o.offeredUtc | date: 'dd/MM/yyyy HH:mm' }} por {{ o.offeredBy }} (texto
+            {{ o.textVersion }}) · {{ o.status }}
             @if (o.response) {
               · respondió {{ o.response === 'Si' ? 'Sí' : 'Ahora no' }}
             }

@@ -1,6 +1,11 @@
 import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import { inject, Injectable } from '@angular/core';
-import { HubConnection, HubConnectionBuilder, HubConnectionState, LogLevel } from '@microsoft/signalr';
+import {
+  HubConnection,
+  HubConnectionBuilder,
+  HubConnectionState,
+  LogLevel,
+} from '@microsoft/signalr';
 import { firstValueFrom, Observable } from 'rxjs';
 import { Resultado } from '../contactos/contactos.service';
 
@@ -31,7 +36,13 @@ export interface Pausa {
 
 export interface Tablero {
   pausa: Pausa;
-  capacidad: { limite: number; fuenteLimite: string; presupuesto: number; usados: number; disponibles: number };
+  capacidad: {
+    limite: number;
+    fuenteLimite: string;
+    presupuesto: number;
+    usados: number;
+    disponibles: number;
+  };
   campanias: Contadores[];
 }
 
@@ -101,7 +112,10 @@ export class MonitorService {
    * Abre la conexión de SignalR y llama a alRecibir con cada tablero que empuja la Api. Reconecta sola; devuelve la
    * función para cerrarla. Si no conecta, la pantalla sigue con "Actualizar".
    */
-  async conectar(alRecibir: (t: Tablero) => void, alCambiarEstado: (conectado: boolean) => void): Promise<() => Promise<void>> {
+  async conectar(
+    alRecibir: (t: Tablero) => void,
+    alCambiarEstado: (conectado: boolean) => void,
+  ): Promise<() => Promise<void>> {
     const conexion: HubConnection = new HubConnectionBuilder()
       .withUrl(RUTA_HUB)
       .withAutomaticReconnect()
@@ -132,7 +146,12 @@ export class MonitorService {
   }
 
   marcar(trabajoId: number, llego: boolean): Promise<Resultado<{ mensaje: string }>> {
-    return this.ejecutar(this.http.post<{ mensaje: string }>(`/api/revision/${trabajoId}/${llego ? 'llego' : 'no-llego'}`, null));
+    return this.ejecutar(
+      this.http.post<{ mensaje: string }>(
+        `/api/revision/${trabajoId}/${llego ? 'llego' : 'no-llego'}`,
+        null,
+      ),
+    );
   }
 
   alertas(): Promise<{ pausa: Pausa; abiertas: Alerta[] }> {

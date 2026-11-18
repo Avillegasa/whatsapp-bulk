@@ -41,14 +41,20 @@ interface GrupoMenu {
                 ariaCurrentWhenActive="page"
                 [routerLinkActiveOptions]="{ exact: opcion.ruta === '/' }"
                 (click)="menuAbierto.set(false)"
-                ><svg class="icono" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icono(opcion.ruta)" /></svg
+                ><svg class="icono" viewBox="0 0 24 24" aria-hidden="true">
+                  <path [attr.d]="icono(opcion.ruta)" /></svg
                 ><span>{{ opcion.texto }}</span></a
               >
             }
           }
         </nav>
       </aside>
-      <div class="velo" [class.visible]="menuAbierto()" (click)="menuAbierto.set(false)" aria-hidden="true"></div>
+      <div
+        class="velo"
+        [class.visible]="menuAbierto()"
+        (click)="menuAbierto.set(false)"
+        aria-hidden="true"
+      ></div>
 
       <div class="contenido">
         <header class="cabecera">
@@ -72,8 +78,15 @@ interface GrupoMenu {
               <span>{{ auth.roles().join(', ') }}</span>
             </span>
           </div>
-          <button type="button" class="chico boton-salir" aria-label="Cerrar sesión" (click)="salir()">
-            <svg class="icono" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="iconos['salir']" /></svg>
+          <button
+            type="button"
+            class="chico boton-salir"
+            aria-label="Cerrar sesión"
+            (click)="salir()"
+          >
+            <svg class="icono" viewBox="0 0 24 24" aria-hidden="true">
+              <path [attr.d]="iconos['salir']" />
+            </svg>
             <span class="texto-salir">Cerrar sesión</span>
           </button>
         </header>

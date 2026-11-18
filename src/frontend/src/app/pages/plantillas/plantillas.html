@@ -5,7 +5,9 @@
     <button type="button" [disabled]="ocupado()" (click)="creando.set(!creando())">
       {{ creando() ? 'Cerrar' : 'Nueva plantilla' }}
     </button>
-    <button type="button" class="principal" [disabled]="ocupado()" (click)="sincronizar()">Sincronizar con Meta</button>
+    <button type="button" class="principal" [disabled]="ocupado()" (click)="sincronizar()">
+      Sincronizar con Meta
+    </button>
   </div>
 </div>
 
@@ -13,8 +15,8 @@
   <p class="aviso" [class.error]="a.tipo === 'error'" role="status">{{ a.texto }}</p>
 }
 <p class="ayuda">
-  Meta revisa cada plantilla nueva; el resultado (Aprobada o Rechazada) llega solo por webhook en unos minutos. Pulsa
-  "Actualizar" para verlo.
+  Meta revisa cada plantilla nueva; el resultado (Aprobada o Rechazada) llega solo por webhook en
+  unos minutos. Pulsa "Actualizar" para verlo.
 </p>
 
 @if (creando()) {
@@ -23,7 +25,13 @@
     <form class="formulario" (ngSubmit)="crear()">
       <label>
         Nombre
-        <input name="nombre" [(ngModel)]="nueva.nombre" required maxlength="512" placeholder="promo_diciembre" />
+        <input
+          name="nombre"
+          [(ngModel)]="nueva.nombre"
+          required
+          maxlength="512"
+          placeholder="promo_diciembre"
+        />
         <span class="sec">Solo minúsculas, números y guion bajo.</span>
       </label>
       <label>
@@ -71,13 +79,18 @@
           </div>
         </div>
         <p class="ayuda">
-          Los dos botones van siempre: «{{ b.interes }}» es la señal de interés y «{{ b.baja }}» registra la baja de
-          promociones.
+          Los dos botones van siempre: «{{ b.interes }}» es la señal de interés y «{{ b.baja }}»
+          registra la baja de promociones.
         </p>
       }
 
       <div>
-        <button type="submit" [disabled]="ocupado() || !nueva.nombre.trim() || !nueva.cuerpo.trim()">Enviar a Meta</button>
+        <button
+          type="submit"
+          [disabled]="ocupado() || !nueva.nombre.trim() || !nueva.cuerpo.trim()"
+        >
+          Enviar a Meta
+        </button>
       </div>
     </form>
   </section>
@@ -85,7 +98,9 @@
 
 @if (plantillas(); as ps) {
   @if (ps.length === 0) {
-    <p class="vacio">Todavía no hay plantillas. Pulsa "Sincronizar con Meta" para traer las de la cuenta.</p>
+    <p class="vacio">
+      Todavía no hay plantillas. Pulsa "Sincronizar con Meta" para traer las de la cuenta.
+    </p>
   } @else {
     <div class="tabla">
       <table class="apilable">
@@ -118,7 +133,9 @@
                 <br /><span class="sec">{{ p.estadoUtc | date: 'dd/MM HH:mm' }}</span>
               </td>
               <td data-label="Calidad">{{ p.calidad ?? '—' }}</td>
-              <td data-label=""><button type="button" class="chico" (click)="ver(p)">Ver</button></td>
+              <td data-label="">
+                <button type="button" class="chico" (click)="ver(p)">Ver</button>
+              </td>
             </tr>
           }
         </tbody>
@@ -133,7 +150,8 @@
   <section class="detalle" aria-label="Detalle de la plantilla">
     <h2>{{ d.plantilla.nombre }} ({{ d.plantilla.idioma }})</h2>
     <p class="sec">
-      Id de Meta: {{ d.plantilla.metaId ?? '—' }} · Parámetros: {{ d.formatoParametros ?? '—' }} · Creada por
+      Id de Meta: {{ d.plantilla.metaId ?? '—' }} · Parámetros: {{ d.formatoParametros ?? '—' }} ·
+      Creada por
       {{ d.plantilla.creadaPor }}
       @if (d.plantilla.ultimoEvento) {
         · Último evento: {{ d.plantilla.ultimoEvento }}

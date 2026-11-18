@@ -2,15 +2,22 @@ import { DatePipe } from '@angular/common';
 import { Component, inject, OnInit, signal } from '@angular/core';
 import { utc } from '../campanias/campanias.service';
 import { Alerta, MonitorService, Pausa } from './monitor.service';
+import { ICONOS } from '../../layout/iconos';
 
 /** Qué revisar antes de reanudar, por tipo de alerta. */
 const QUE_REVISAR: Record<string, string> = {
-  Token: 'El token de Meta venció o es inválido: rotarlo en user-secrets (Meta:AccessToken) y reiniciar Api y Worker.',
-  Facturacion: 'Problema con el método de pago de la cuenta de Meta: revisarlo en el Administrador de WhatsApp.',
-  PlantillaPausada: 'Meta pausó una plantilla por baja calidad: revisar el contenido o usar otra plantilla.',
-  Calidad: 'Meta limitó los envíos del número (131048): revisar la calidad en el Administrador de WhatsApp.',
-  Politica: 'La cuenta fue restringida por una política (131031/368): revisar la cuenta en el Administrador de WhatsApp.',
-  TasaFallos: 'Más del 5 % de los últimos envíos falló: revisar los errores en el monitor antes de seguir.',
+  Token:
+    'El token de Meta venció o es inválido: rotarlo en user-secrets (Meta:AccessToken) y reiniciar Api y Worker.',
+  Facturacion:
+    'Problema con el método de pago de la cuenta de Meta: revisarlo en el Administrador de WhatsApp.',
+  PlantillaPausada:
+    'Meta pausó una plantilla por baja calidad: revisar el contenido o usar otra plantilla.',
+  Calidad:
+    'Meta limitó los envíos del número (131048): revisar la calidad en el Administrador de WhatsApp.',
+  Politica:
+    'La cuenta fue restringida por una política (131031/368): revisar la cuenta en el Administrador de WhatsApp.',
+  TasaFallos:
+    'Más del 5 % de los últimos envíos falló: revisar los errores en el monitor antes de seguir.',
 };
 
 /**
@@ -27,44 +34,68 @@ const QUE_REVISAR: Record<string, string> = {
     }
     @if (pausa(); as p) {
       @if (p.enPausa) {
-        <p class="aviso error" role="alert">
-          Despacho EN PAUSA por {{ p.motivo }} desde {{ fecha(p.desdeUtc) | date: 'dd/MM HH:mm' }}.
-        </p>
+        <div class="banner-pausa" role="alert">
+          <svg class="icono" viewBox="0 0 24 24" aria-hidden="true">
+            <path [attr.d]="iconos['pausa']" />
+          </svg>
+          <p class="banner-titulo">
+            Despacho EN PAUSA por {{ p.motivo }} desde
+            {{ fecha(p.desdeUtc) | date: 'dd/MM HH:mm' }}.
+          </p>
+        </div>
       } @else {
-        <p class="aviso" role="status">Despacho activo.</p>
+        <p class="banner-activo" role="status">
+          <svg class="icono" viewBox="0 0 24 24" aria-hidden="true">
+            <path [attr.d]="iconos['ok']" />
+          </svg>
+          Despacho activo.
+        </p>
       }
     }
     @if (alertas(); as list) {
       @if (list.length === 0) {
-        <p>No hay alertas abiertas.</p>
+        <p class="vacio">No hay alertas abiertas.</p>
       } @else {
-        <table class="apilable">
-          <thead>
-            <tr><th>Alerta</th><th>Veces</th><th>Última</th></tr>
-          </thead>
-          <tbody>
-            @for (a of list; track a.id) {
+        <div class="tabla">
+          <table class="apilable">
+            <thead>
               <tr>
-                <td data-label="Alerta">
-                  <strong>{{ a.tipo }}</strong> {{ a.mensaje }} <span class="sec">({{ a.origen }})</span>
-                  <br /><span class="sec">{{ queRevisar(a.tipo) }}</span>
-                </td>
-                <td data-label="Veces">{{ a.ocurrencias }}</td>
-                <td data-label="Última">{{ fecha(a.ultimaUtc) | date: 'dd/MM HH:mm' }}</td>
+                <th>Alerta</th>
+                <th>Veces</th>
+                <th>Última</th>
               </tr>
-            }
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              @for (a of list; track a.id) {
+                <tr>
+                  <td data-label="Alerta">
+                    <strong>{{ a.tipo }}</strong> {{ a.mensaje }}
+                    <span class="sec">({{ a.origen }})</span> <br /><span class="sec">{{
+                      queRevisar(a.tipo)
+                    }}</span>
+                  </td>
+                  <td data-label="Veces">{{ a.ocurrencias }}</td>
+                  <td data-label="Última">{{ fecha(a.ultimaUtc) | date: 'dd/MM HH:mm' }}</td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
       }
       @if (pausa()?.enPausa || list.length > 0) {
         <div class="barra">
-          <button type="button" class="principal" [disabled]="ocupado()" (click)="reanudar()">
+          <button
+            type="button"
+            class="principal grande"
+            [disabled]="ocupado()"
+            (click)="reanudar()"
+          >
             Revisé el problema: reanudar el despacho
           </button>
         </div>
       }
     } @else {
-      <p>Cargando…</p>
+      <p class="cargando">Cargando…</p>
     }
   `,
 })
@@ -75,6 +106,7 @@ export class Alertas implements OnInit {
   protected readonly aviso = signal<{ tipo: 'ok' | 'error'; texto: string } | null>(null);
   protected readonly ocupado = signal(false);
   protected readonly fecha = utc;
+  protected readonly iconos = ICONOS;
 
   async ngOnInit(): Promise<void> {
     await this.cargar();
@@ -88,7 +120,9 @@ export class Alertas implements OnInit {
     this.ocupado.set(true);
     const r = await this.api.reanudar();
     this.ocupado.set(false);
-    this.aviso.set(r.ok ? { tipo: 'ok', texto: r.valor.mensaje } : { tipo: 'error', texto: r.mensaje });
+    this.aviso.set(
+      r.ok ? { tipo: 'ok', texto: r.valor.mensaje } : { tipo: 'error', texto: r.mensaje },
+    );
     await this.cargar();
   }
 

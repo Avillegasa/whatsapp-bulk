@@ -13,43 +13,64 @@ import { Baja, MonitorService } from './monitor.service';
   template: `
     <h1>Bajas</h1>
     <p class="ayuda">
-      Empresa: la persona pidió no recibir promociones (solo un nuevo «Sí» o un opt-in auditado la reactiva). Plataforma:
-      la desactivó en WhatsApp ("Ofertas y anuncios"); un "resume" de WhatsApp nunca borra una baja de la empresa.
+      Empresa: la persona pidió no recibir promociones (solo un nuevo «Sí» o un opt-in auditado la
+      reactiva). Plataforma: la desactivó en WhatsApp ("Ofertas y anuncios"); un "resume" de
+      WhatsApp nunca borra una baja de la empresa.
     </p>
     @if (error(); as e) {
       <p class="aviso error" role="status">{{ e }}</p>
     }
     @if (items(); as list) {
       <div class="resumen">
-        <div><strong>{{ empresa() }}</strong>bajas de la empresa</div>
-        <div><strong>{{ plataforma() }}</strong>bajas en WhatsApp</div>
+        <div>
+          <strong>{{ empresa() }}</strong
+          >bajas de la empresa
+        </div>
+        <div>
+          <strong>{{ plataforma() }}</strong
+          >bajas en WhatsApp
+        </div>
       </div>
       @if (list.length === 0) {
-        <p>No hay bajas vigentes.</p>
+        <p class="vacio">No hay bajas vigentes.</p>
       } @else {
-        <table class="apilable">
-          <thead>
-            <tr><th>Contacto</th><th>Capa</th><th>Desde</th><th>Cómo</th></tr>
-          </thead>
-          <tbody>
-            @for (b of list; track b.telefono + b.capa) {
+        <div class="tabla">
+          <table class="apilable">
+            <thead>
               <tr>
-                <td data-label="Contacto">{{ b.nombre ?? 'Sin nombre' }} <span class="sec">{{ b.telefono }}</span></td>
-                <td data-label="Capa">{{ b.capa }}{{ b.estado === 'NoContactar' ? ' (no contactar)' : '' }}</td>
-                <td data-label="Desde">{{ fecha(b.desdeUtc) | date: 'dd/MM/yyyy HH:mm' }}</td>
-                <td data-label="Cómo">
-                  {{ b.fuente }}
-                  @if (b.evidencia) {
-                    <br /><span class="sec">{{ b.evidencia }}</span>
-                  }
-                </td>
+                <th>Contacto</th>
+                <th>Capa</th>
+                <th>Desde</th>
+                <th>Cómo</th>
               </tr>
-            }
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              @for (b of list; track b.telefono + b.capa) {
+                <tr>
+                  <td data-label="Contacto">
+                    <strong>{{ b.nombre ?? 'Sin nombre' }}</strong
+                    >&ngsp;<span class="sec">{{ b.telefono }}</span>
+                  </td>
+                  <td data-label="Capa">
+                    <span class="estado mal"
+                      >{{ b.capa }}{{ b.estado === 'NoContactar' ? ' (no contactar)' : '' }}</span
+                    >
+                  </td>
+                  <td data-label="Desde">{{ fecha(b.desdeUtc) | date: 'dd/MM/yyyy HH:mm' }}</td>
+                  <td data-label="Cómo">
+                    {{ b.fuente }}
+                    @if (b.evidencia) {
+                      <br /><span class="sec">{{ b.evidencia }}</span>
+                    }
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
       }
     } @else {
-      <p>Cargando…</p>
+      <p class="cargando">Cargando…</p>
     }
   `,
 })
@@ -58,8 +79,12 @@ export class Bajas implements OnInit {
   protected readonly items = signal<Baja[] | null>(null);
   protected readonly error = signal<string | null>(null);
   protected readonly fecha = utc;
-  protected readonly empresa = computed(() => (this.items() ?? []).filter((b) => b.capa === 'Empresa').length);
-  protected readonly plataforma = computed(() => (this.items() ?? []).filter((b) => b.capa === 'Plataforma').length);
+  protected readonly empresa = computed(
+    () => (this.items() ?? []).filter((b) => b.capa === 'Empresa').length,
+  );
+  protected readonly plataforma = computed(
+    () => (this.items() ?? []).filter((b) => b.capa === 'Plataforma').length,
+  );
 
   async ngOnInit(): Promise<void> {
     try {

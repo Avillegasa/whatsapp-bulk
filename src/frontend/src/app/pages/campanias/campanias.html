@@ -138,7 +138,9 @@
                 {{ fecha(c.programadaUtc) | date: 'dd/MM HH:mm' }}
                 <br /><span class="sec">vence {{ fecha(c.expiraUtc) | date: 'dd/MM HH:mm' }}</span>
               </td>
-              <td data-label=""><button type="button" class="chico" (click)="ver(c.id)">Ver</button></td>
+              <td data-label="">
+                <button type="button" class="chico" (click)="ver(c.id)">Ver</button>
+              </td>
             </tr>
           }
         </tbody>

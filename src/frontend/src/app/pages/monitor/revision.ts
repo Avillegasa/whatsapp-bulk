@@ -16,39 +16,64 @@ import { Incierto, MonitorService } from './monitor.service';
       <p class="aviso" [class.error]="a.tipo === 'error'" role="status">{{ a.texto }}</p>
     }
     <p class="ayuda">
-      Meta no confirmó si estos mensajes salieron. Si llega un webhook se resuelven solos; los marcados "vencido" ya
-      esperaron el plazo. Marca "Llegó" o "No llegó": el sistema nunca los reenvía.
+      Meta no confirmó si estos mensajes salieron. Si llega un webhook se resuelven solos; los
+      marcados "vencido" ya esperaron el plazo. Marca "Llegó" o "No llegó": el sistema nunca los
+      reenvía.
     </p>
     @if (items(); as list) {
       @if (list.length === 0) {
-        <p>No hay envíos inciertos.</p>
+        <p class="vacio">No hay envíos inciertos.</p>
       } @else {
-        <table class="apilable">
-          <thead>
-            <tr><th>Contacto</th><th>Campaña</th><th>Enviado</th><th></th></tr>
-          </thead>
-          <tbody>
-            @for (i of list; track i.trabajoId) {
+        <div class="tabla">
+          <table class="apilable">
+            <thead>
               <tr>
-                <td data-label="Contacto">{{ i.nombre ?? 'Sin nombre' }} <span class="sec">{{ i.telefono }}</span></td>
-                <td data-label="Campaña">{{ i.campana ?? 'envío de prueba' }}</td>
-                <td data-label="Enviado">
-                  {{ fecha(i.inicioUtc) | date: 'dd/MM HH:mm' }}
-                  @if (i.vencido) {
-                    <br /><span class="estado PendingApproval">vencido</span>
-                  }
-                </td>
-                <td data-label="">
-                  <button type="button" class="chico" [disabled]="ocupado()" (click)="marcar(i, true)">Llegó</button>
-                  <button type="button" class="chico" [disabled]="ocupado()" (click)="marcar(i, false)">No llegó</button>
-                </td>
+                <th>Contacto</th>
+                <th>Campaña</th>
+                <th>Enviado</th>
+                <th></th>
               </tr>
-            }
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              @for (i of list; track i.trabajoId) {
+                <tr>
+                  <td data-label="Contacto">
+                    {{ i.nombre ?? 'Sin nombre' }} <span class="sec">{{ i.telefono }}</span>
+                  </td>
+                  <td data-label="Campaña">{{ i.campana ?? 'envío de prueba' }}</td>
+                  <td data-label="Enviado">
+                    {{ fecha(i.inicioUtc) | date: 'dd/MM HH:mm' }}
+                    @if (i.vencido) {
+                      <br /><span class="estado PendingApproval">vencido</span>
+                    }
+                  </td>
+                  <td data-label="">
+                    <button
+                      type="button"
+                      class="chico"
+                      [disabled]="ocupado()"
+                      (click)="marcar(i, true)"
+                    >
+                      Llegó
+                    </button>
+                    <button
+                      type="button"
+                      class="chico"
+                      [disabled]="ocupado()"
+                      (click)="marcar(i, false)"
+                      class="chico peligro"
+                    >
+                      No llegó
+                    </button>
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
       }
     } @else {
-      <p>Cargando…</p>
+      <p class="cargando">Cargando…</p>
     }
   `,
 })
@@ -67,7 +92,9 @@ export class Revision implements OnInit {
     this.ocupado.set(true);
     const r = await this.api.marcar(i.trabajoId, llego);
     this.ocupado.set(false);
-    this.aviso.set(r.ok ? { tipo: 'ok', texto: r.valor.mensaje } : { tipo: 'error', texto: r.mensaje });
+    this.aviso.set(
+      r.ok ? { tipo: 'ok', texto: r.valor.mensaje } : { tipo: 'error', texto: r.mensaje },
+    );
     await this.cargar();
   }
 

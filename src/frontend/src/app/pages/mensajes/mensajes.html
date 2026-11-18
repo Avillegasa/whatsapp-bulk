@@ -2,14 +2,16 @@
   <h1>Mensajes recientes</h1>
   <div class="barra">
     <button type="button" class="chico" (click)="cargar()">
-      <svg class="icono" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="iconos['actualizar']" /></svg>
+      <svg class="icono" viewBox="0 0 24 24" aria-hidden="true">
+        <path [attr.d]="iconos['actualizar']" />
+      </svg>
       Actualizar
     </button>
   </div>
 </div>
 <p class="ayuda">
-  Clientes que escribieron en los últimos 7 días. Puedes ofrecerles promociones mientras su ventana de 24 h esté abierta;
-  su respuesta se registra sola. La lista se actualiza cada 15 segundos.
+  Clientes que escribieron en los últimos 7 días. Puedes ofrecerles promociones mientras su ventana
+  de 24 h esté abierta; su respuesta se registra sola. La lista se actualiza cada 15 segundos.
 </p>
 
 @if (aviso(); as a) {
@@ -44,17 +46,30 @@
                 <span class="burbuja-entrante">{{ c.texto ?? '(' + c.tipo + ')' }}</span><br />
                 <span class="sec">{{ c.fechaUtc | date: 'dd/MM HH:mm' }}</span>
               </td>
-              <td data-label="Ventana abierta hasta">{{ c.ventanaHastaUtc | date: 'dd/MM HH:mm' }}</td>
-              <td data-label="Consentimiento"><span class="estado {{ c.consentimiento }}">{{ texto(c.consentimiento) }}</span></td>
+              <td data-label="Ventana abierta hasta">
+                {{ c.ventanaHastaUtc | date: 'dd/MM HH:mm' }}
+              </td>
+              <td data-label="Consentimiento">
+                <span class="estado {{ c.consentimiento }}">{{ texto(c.consentimiento) }}</span>
+              </td>
               <td data-label="Oferta">
                 @if (c.respuesta) {
-                  <span class="sec">Respondió: {{ c.respuesta === 'Si' ? 'Sí' : 'Ahora no' }}</span><br />
+                  <span class="sec">Respondió: {{ c.respuesta === 'Si' ? 'Sí' : 'Ahora no' }}</span
+                  ><br />
                 } @else if (c.ultimaOferta) {
-                  <span class="sec">Última oferta: {{ c.ultimaOferta }}</span><br />
+                  <span class="sec">Última oferta: {{ c.ultimaOferta }}</span
+                  ><br />
                 }
                 @if (c.puedeOfrecer) {
-                  <button type="button" class="destacado" [disabled]="ocupado() !== null" (click)="ofrecer(c)">
-                    <svg class="icono" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="iconos['enviar']" /></svg>
+                  <button
+                    type="button"
+                    class="destacado"
+                    [disabled]="ocupado() !== null"
+                    (click)="ofrecer(c)"
+                  >
+                    <svg class="icono" viewBox="0 0 24 24" aria-hidden="true">
+                      <path [attr.d]="iconos['enviar']" />
+                    </svg>
                     Ofrecer promociones
                   </button>
                 } @else {

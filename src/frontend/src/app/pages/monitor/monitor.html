@@ -29,9 +29,7 @@
       <div>
         <p class="banner-titulo">Despacho EN PAUSA por {{ t.pausa.motivo }}</p>
         <p>
-          Desde {{ fecha(t.pausa.desdeUtc) | date: 'dd/MM HH:mm' }} ({{
-            t.pausa.alertasAbiertas
-          }}
+          Desde {{ fecha(t.pausa.desdeUtc) | date: 'dd/MM HH:mm' }} ({{ t.pausa.alertasAbiertas }}
           alertas abiertas). Lo revisa y reanuda una persona con rol Aprobador en "Alertas".
         </p>
         @if (auth.tieneAlgunRol(['Aprobador'])) {

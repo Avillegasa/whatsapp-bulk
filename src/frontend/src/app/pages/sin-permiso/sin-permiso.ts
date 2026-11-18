@@ -5,9 +5,11 @@ import { RouterLink } from '@angular/router';
   selector: 'app-sin-permiso',
   imports: [RouterLink],
   template: `
-    <h1>Sin permiso</h1>
-    <p>Tu rol no permite ver esta pantalla. Si la necesitas, pídeselo a un Admin.</p>
-    <a routerLink="/">Volver al inicio</a>
+    <div class="vacio sin-permiso">
+      <h1>Sin permiso</h1>
+      <p>Tu rol no permite ver esta pantalla. Si la necesitas, pídeselo a un Admin.</p>
+      <a class="boton-enlace" routerLink="/">Volver al inicio</a>
+    </div>
   `,
 })
 export class SinPermiso {}

@@ -1,14 +1,21 @@
 <h1>Importar contactos</h1>
 
-<section class="caja">
+<section class="caja importar">
   <p>
     Archivo <strong>.csv</strong> o <strong>.xlsx</strong> con los títulos en la primera fila:
-    <strong>Telefono</strong> (obligatorio), Nombre, ClienteId, Consentimiento (vacío, OptIn u OptOut) y Evidencia.
+    <strong>Telefono</strong> (obligatorio), Nombre, ClienteId, Consentimiento (vacío, OptIn u
+    OptOut) y Evidencia.
   </p>
   <ul class="ayuda">
     <li>Teléfono: 8 dígitos para Bolivia (70000000) o con código de país (+54…).</li>
-    <li>Un OptIn exige Evidencia: cómo y cuándo aceptó (por ejemplo, "Formulario firmado en tienda, 10/11/2026").</li>
-    <li>Una importación nunca levanta una baja: si el cliente pidió la baja, el OptIn del archivo se ignora.</li>
+    <li>
+      Un OptIn exige Evidencia: cómo y cuándo aceptó (por ejemplo, "Formulario firmado en tienda,
+      10/11/2026").
+    </li>
+    <li>
+      Una importación nunca levanta una baja: si el cliente pidió la baja, el OptIn del archivo se
+      ignora.
+    </li>
   </ul>
   <form class="barra" (ngSubmit)="importar()">
     <label>
@@ -24,7 +31,9 @@
         }
       </select>
     </label>
-    <button type="submit" [disabled]="!archivo() || ocupado()">{{ ocupado() ? 'Importando…' : 'Importar' }}</button>
+    <button type="submit" [disabled]="!archivo() || ocupado()">
+      {{ ocupado() ? 'Importando…' : 'Importar' }}
+    </button>
   </form>
 </section>
 
@@ -35,21 +44,49 @@
 @if (reporte(); as r) {
   <h2>Resultado de {{ r.archivo }}</h2>
   <div class="resumen">
-    <div><strong>{{ r.filas }}</strong>filas</div>
-    <div><strong>{{ r.validas }}</strong>válidas</div>
-    <div><strong>{{ r.errores }}</strong>con error</div>
-    <div><strong>{{ r.creados }}</strong>nuevos</div>
-    <div><strong>{{ r.actualizados }}</strong>actualizados</div>
-    <div><strong>{{ r.optIn }}</strong>OptIn</div>
-    <div><strong>{{ r.optOut }}</strong>bajas</div>
-    <div><strong>{{ r.advertencias }}</strong>advertencias</div>
+    <div>
+      <strong>{{ r.filas }}</strong
+      >filas
+    </div>
+    <div>
+      <strong>{{ r.validas }}</strong
+      >válidas
+    </div>
+    <div>
+      <strong>{{ r.errores }}</strong
+      >con error
+    </div>
+    <div>
+      <strong>{{ r.creados }}</strong
+      >nuevos
+    </div>
+    <div>
+      <strong>{{ r.actualizados }}</strong
+      >actualizados
+    </div>
+    <div>
+      <strong>{{ r.optIn }}</strong
+      >OptIn
+    </div>
+    <div>
+      <strong>{{ r.optOut }}</strong
+      >bajas
+    </div>
+    <div>
+      <strong>{{ r.advertencias }}</strong
+      >advertencias
+    </div>
   </div>
-  <label class="sec">
-    <input type="checkbox" [checked]="soloProblemas()" (change)="soloProblemas.set(!soloProblemas())" />
+  <label class="check">
+    <input
+      type="checkbox"
+      [checked]="soloProblemas()"
+      (change)="soloProblemas.set(!soloProblemas())"
+    />
     Mostrar solo errores y advertencias
   </label>
   @if (filas().length === 0) {
-    <p>Sin errores ni advertencias.</p>
+    <p class="vacio">Sin errores ni advertencias.</p>
   } @else {
     <div class="tabla">
       <table class="apilable">
@@ -66,7 +103,9 @@
             <tr>
               <td data-label="Fila">{{ f.row }}</td>
               <td data-label="Teléfono">{{ f.phone ?? '—' }}</td>
-              <td data-label="Resultado"><span class="estado {{ f.result }}">{{ f.result }}</span></td>
+              <td data-label="Resultado">
+                <span class="estado {{ f.result }}">{{ f.result }}</span>
+              </td>
               <td data-label="Detalle">{{ f.message }}</td>
             </tr>
           }

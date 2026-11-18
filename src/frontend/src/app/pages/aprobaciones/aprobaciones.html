@@ -28,8 +28,7 @@
           @for (c of ps; track c.id) {
             <tr [class.elegida]="abierta()?.campana?.id === c.id">
               <td data-label="Campaña">
-                <strong>{{ c.nombre }}</strong
-                >&ngsp;<span class="sec">v{{ c.version }}</span>
+                <strong>{{ c.nombre }}</strong>&ngsp;<span class="sec">v{{ c.version }}</span>
               </td>
               <td data-label="Plantilla">{{ c.plantilla }}</td>
               <td data-label="Destinatarios">{{ c.destinatarios }}</td>

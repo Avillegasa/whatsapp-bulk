@@ -9,7 +9,13 @@ import { Revision } from './revision';
 
 const TABLERO: Tablero = {
   pausa: { enPausa: false, motivo: null, desdeUtc: null, alertasAbiertas: 0 },
-  capacidad: { limite: 250, fuenteLimite: 'Meta (TIER_250)', presupuesto: 25, usados: 3, disponibles: 22 },
+  capacidad: {
+    limite: 250,
+    fuenteLimite: 'Meta (TIER_250)',
+    presupuesto: 25,
+    usados: 3,
+    disponibles: 22,
+  },
   campanias: [
     {
       campanaId: 7,
@@ -42,7 +48,9 @@ describe('Monitor, envíos inciertos y alertas', () => {
 
   beforeEach(() => {
     empujar = null;
-    TestBed.configureTestingModule({ providers: [provideRouter([]), provideHttpClient(), provideHttpClientTesting()] });
+    TestBed.configureTestingModule({
+      providers: [provideRouter([]), provideHttpClient(), provideHttpClientTesting()],
+    });
     http = TestBed.inject(HttpTestingController);
     // SignalR falso: guarda la función que recibe los tableros para "empujar" uno desde la prueba.
     const service = TestBed.inject(MonitorService);
@@ -69,7 +77,12 @@ describe('Monitor, envíos inciertos y alertas', () => {
 
     empujar!({
       ...TABLERO,
-      pausa: { enPausa: true, motivo: 'Token', desdeUtc: '2026-11-18T14:00:00', alertasAbiertas: 1 },
+      pausa: {
+        enPausa: true,
+        motivo: 'Token',
+        desdeUtc: '2026-11-18T14:00:00',
+        alertasAbiertas: 1,
+      },
       campanias: [{ ...TABLERO.campanias[0], enCola: 0, enviados: 4 }],
     });
     fixture.detectChanges();
@@ -98,11 +111,13 @@ describe('Monitor, envíos inciertos y alertas', () => {
     await estable(fixture);
     expect((fixture.nativeElement as HTMLElement).textContent).toContain('vencido');
 
-    const noLlego = Array.from((fixture.nativeElement as HTMLElement).querySelectorAll('button')).find((b) =>
-      b.textContent?.includes('No llegó'),
-    )!;
+    const noLlego = Array.from(
+      (fixture.nativeElement as HTMLElement).querySelectorAll('button'),
+    ).find((b) => b.textContent?.includes('No llegó'))!;
     noLlego.click();
-    http.expectOne({ method: 'POST', url: '/api/revision/11/no-llego' }).flush({ mensaje: 'Marcado como no enviado.' });
+    http
+      .expectOne({ method: 'POST', url: '/api/revision/11/no-llego' })
+      .flush({ mensaje: 'Marcado como no enviado.' });
     await estable(fixture);
     http.expectOne('/api/revision').flush([]);
     await estable(fixture);
@@ -113,7 +128,12 @@ describe('Monitor, envíos inciertos y alertas', () => {
     const fixture = TestBed.createComponent(Alertas);
     fixture.detectChanges();
     http.expectOne('/api/alertas').flush({
-      pausa: { enPausa: true, motivo: 'Token', desdeUtc: '2026-11-18T14:00:00', alertasAbiertas: 1 },
+      pausa: {
+        enPausa: true,
+        motivo: 'Token',
+        desdeUtc: '2026-11-18T14:00:00',
+        alertasAbiertas: 1,
+      },
       abiertas: [
         {
           id: 1,
@@ -131,13 +151,20 @@ describe('Monitor, envíos inciertos y alertas', () => {
     await estable(fixture);
     expect((fixture.nativeElement as HTMLElement).textContent).toContain('rotarlo en user-secrets');
 
-    const boton = Array.from((fixture.nativeElement as HTMLElement).querySelectorAll('button')).find((b) =>
-      b.textContent?.includes('reanudar'),
-    )!;
+    const boton = Array.from(
+      (fixture.nativeElement as HTMLElement).querySelectorAll('button'),
+    ).find((b) => b.textContent?.includes('reanudar'))!;
     boton.click();
-    http.expectOne({ method: 'POST', url: '/api/alertas/reanudar' }).flush({ mensaje: 'Despacho reanudado por apro-1.' });
+    http
+      .expectOne({ method: 'POST', url: '/api/alertas/reanudar' })
+      .flush({ mensaje: 'Despacho reanudado por apro-1.' });
     await estable(fixture);
-    http.expectOne('/api/alertas').flush({ pausa: { enPausa: false, motivo: null, desdeUtc: null, alertasAbiertas: 0 }, abiertas: [] });
+    http
+      .expectOne('/api/alertas')
+      .flush({
+        pausa: { enPausa: false, motivo: null, desdeUtc: null, alertasAbiertas: 0 },
+        abiertas: [],
+      });
     await estable(fixture);
     const texto = (fixture.nativeElement as HTMLElement).textContent!;
     expect(texto).toContain('Despacho reanudado por apro-1');
