@@ -22,77 +22,111 @@
 @if (creando()) {
   <section class="caja" aria-label="Nueva plantilla">
     <h2>Nueva plantilla de promociones</h2>
-    <form class="formulario" (ngSubmit)="crear()">
-      <label>
-        Nombre
-        <input
-          name="nombre"
-          [(ngModel)]="nueva.nombre"
-          required
-          maxlength="512"
-          placeholder="promo_diciembre"
-        />
-        <span class="sec">Solo minúsculas, números y guion bajo.</span>
-      </label>
-      <label>
-        Idioma
-        <input name="idioma" [(ngModel)]="nueva.idioma" required maxlength="6" />
-      </label>
-      <label>
-        Encabezado (opcional, hasta 60)
-        <input name="encabezado" [(ngModel)]="nueva.encabezado" maxlength="60" />
-      </label>
-      <label>
-        Cuerpo (hasta 1024). Usa parámetros con nombre: {{ '{{' }}nombre{{ '}}' }}
-        <textarea
-          name="cuerpo"
-          rows="5"
-          maxlength="1024"
-          required
-          [ngModel]="nueva.cuerpo"
-          (ngModelChange)="cambiarCuerpo($event)"
-        ></textarea>
-      </label>
-      @for (p of params(); track p) {
+    <div class="editor-plantilla">
+      <form class="formulario" #f="ngForm" (ngSubmit)="crear()" novalidate>
         <label>
-          Ejemplo de {{ '{{' }}{{ p }}{{ '}}' }}
-          <input [name]="'ej-' + p" [(ngModel)]="nueva.ejemplos[p]" required maxlength="200" />
+          Nombre
+          <input
+            name="nombre"
+            #nombre="ngModel"
+            [(ngModel)]="nueva.nombre"
+            required
+            maxlength="512"
+            placeholder="promo_diciembre"
+          />
+          <span class="sec">Solo minúsculas, números y guion bajo.</span>
+          @if (nombre.invalid && nombre.touched) {
+            <span class="campo-error" role="alert">Escribe el nombre de la plantilla.</span>
+          }
         </label>
-      }
-      <label>
-        Pie (opcional, hasta 60)
-        <input name="pie" [(ngModel)]="nueva.pie" maxlength="60" />
-      </label>
+        <label>
+          Idioma
+          <input
+            name="idioma"
+            #idioma="ngModel"
+            [(ngModel)]="nueva.idioma"
+            required
+            maxlength="6"
+          />
+          @if (idioma.invalid && idioma.touched) {
+            <span class="campo-error" role="alert"
+              >Escribe el código de idioma (por ejemplo, es).</span
+            >
+          }
+        </label>
+        <label>
+          Encabezado (opcional, hasta 60)
+          <input name="encabezado" [(ngModel)]="nueva.encabezado" maxlength="60" />
+        </label>
+        <label>
+          Cuerpo (hasta 1024). Usa parámetros con nombre: {{ '{{' }}nombre{{ '}}' }}
+          <textarea
+            name="cuerpo"
+            #cuerpo="ngModel"
+            rows="5"
+            maxlength="1024"
+            required
+            [ngModel]="nueva.cuerpo"
+            (ngModelChange)="cambiarCuerpo($event)"
+          ></textarea>
+          @if (cuerpo.invalid && cuerpo.touched) {
+            <span class="campo-error" role="alert">Escribe el texto del mensaje.</span>
+          }
+        </label>
+        @for (p of params(); track p) {
+          <label>
+            Ejemplo de {{ '{{' }}{{ p }}{{ '}}' }}
+            <input
+              [name]="'ej-' + p"
+              #ejemplo="ngModel"
+              [(ngModel)]="nueva.ejemplos[p]"
+              required
+              maxlength="200"
+            />
+            @if (ejemplo.invalid && ejemplo.touched) {
+              <span class="campo-error" role="alert"
+                >Meta pide un ejemplo para cada parámetro.</span
+              >
+            }
+          </label>
+        }
+        <label>
+          Pie (opcional, hasta 60)
+          <input name="pie" [(ngModel)]="nueva.pie" maxlength="60" />
+        </label>
 
-      @if (botones(); as b) {
-        <div class="previa" aria-label="Vista previa">
-          @if (nueva.encabezado) {
-            <strong>{{ nueva.encabezado }}</strong>
-          }
-          <p>{{ vistaPrevia() || 'El cuerpo del mensaje aparecerá aquí.' }}</p>
-          @if (nueva.pie) {
-            <span class="sec">{{ nueva.pie }}</span>
-          }
-          <div class="botones-previa">
-            <span>{{ b.interes }}</span>
-            <span>{{ b.baja }}</span>
-          </div>
+        <div>
+          <button
+            type="submit"
+            [disabled]="ocupado() || !nueva.nombre.trim() || !nueva.cuerpo.trim()"
+          >
+            Enviar a Meta
+          </button>
         </div>
-        <p class="ayuda">
-          Los dos botones van siempre: «{{ b.interes }}» es la señal de interés y «{{ b.baja }}»
-          registra la baja de promociones.
-        </p>
+      </form>
+      @if (botones(); as b) {
+        <aside class="editor-previa" aria-label="Vista previa">
+          <h3>Vista previa</h3>
+          <div class="previa">
+            @if (nueva.encabezado) {
+              <strong>{{ nueva.encabezado }}</strong>
+            }
+            <p>{{ vistaPrevia() || 'El cuerpo del mensaje aparecerá aquí.' }}</p>
+            @if (nueva.pie) {
+              <span class="sec">{{ nueva.pie }}</span>
+            }
+            <div class="botones-previa">
+              <span>{{ b.interes }}</span>
+              <span>{{ b.baja }}</span>
+            </div>
+          </div>
+          <p class="ayuda">
+            Los dos botones van siempre: «{{ b.interes }}» es la señal de interés y «{{ b.baja }}»
+            registra la baja de promociones.
+          </p>
+        </aside>
       }
-
-      <div>
-        <button
-          type="submit"
-          [disabled]="ocupado() || !nueva.nombre.trim() || !nueva.cuerpo.trim()"
-        >
-          Enviar a Meta
-        </button>
-      </div>
-    </form>
+    </div>
   </section>
 }
 

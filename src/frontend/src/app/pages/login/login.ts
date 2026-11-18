@@ -25,8 +25,14 @@ import { AuthService } from '../../core/auth.service';
         <form [formGroup]="form" (ngSubmit)="entrar()" novalidate>
           <label class="campo" for="usuario">Usuario</label>
           <input id="usuario" formControlName="usuario" autocomplete="username" />
+          @if (form.controls.usuario.invalid && form.controls.usuario.touched) {
+            <span class="campo-error" role="alert">Escribe tu usuario.</span>
+          }
           <label class="campo" for="clave">Clave</label>
           <input id="clave" type="password" formControlName="clave" autocomplete="current-password" />
+          @if (form.controls.clave.invalid && form.controls.clave.touched) {
+            <span class="campo-error" role="alert">Escribe tu clave.</span>
+          }
           @if (error()) {
             <p class="aviso error" role="alert">{{ error() }}</p>
           }

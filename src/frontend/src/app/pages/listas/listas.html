@@ -8,7 +8,10 @@
   <form class="barra" (ngSubmit)="crear()">
     <label>
       Nombre
-      <input name="nombre" [(ngModel)]="nueva.nombre" required maxlength="100" />
+      <input name="nombre" #nombre="ngModel" [(ngModel)]="nueva.nombre" required maxlength="100" />
+      @if (nombre.invalid && nombre.touched) {
+        <span class="campo-error" role="alert">Escribe el nombre de la lista.</span>
+      }
     </label>
     <label>
       Descripción

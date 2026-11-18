@@ -2037,3 +2037,55 @@ button.peligro-solido:hover:not(:disabled) {
   background: #8f1c13;
   border-color: #8f1c13;
 }
+
+/* ---------- 21. Editor de plantillas (vista previa al lado) y errores por campo ---------- */
+.editor-plantilla {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 24rem);
+  gap: var(--e6);
+  align-items: start;
+}
+
+.editor-previa {
+  position: sticky;
+  top: calc(var(--alto-cabecera) + var(--e4));
+}
+
+.editor-previa h3 {
+  margin-top: 0;
+  color: var(--texto-2);
+  font-size: var(--t-xs);
+  font-weight: 650;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.campo-error {
+  display: flex;
+  align-items: center;
+  gap: var(--e1);
+  font-weight: 560;
+}
+
+.campo-error::before {
+  content: '!';
+  display: inline-grid;
+  place-items: center;
+  width: 1rem;
+  height: 1rem;
+  border-radius: 50%;
+  background: var(--mal-solido);
+  color: #fff;
+  font-size: 0.7rem;
+  font-weight: 700;
+}
+
+@media (max-width: 960px) {
+  .editor-plantilla {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .editor-previa {
+    position: static;
+  }
+}

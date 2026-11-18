@@ -19,17 +19,32 @@
 @if (editando() !== null) {
   <section class="caja" aria-label="Campaña">
     <h2>{{ editando() === 0 ? 'Nueva campaña' : 'Nueva versión' }}</h2>
-    <form class="formulario" (ngSubmit)="guardar()">
+    <form
+      class="formulario"
+      #f="ngForm"
+      (ngSubmit)="f.form.markAllAsTouched(); guardar()"
+      novalidate
+    >
       @if (editando() === 0) {
         <label>
           Nombre
-          <input name="nombre" [(ngModel)]="form.nombre" required maxlength="200" />
+          <input
+            name="nombre"
+            #nombre="ngModel"
+            [(ngModel)]="form.nombre"
+            required
+            maxlength="200"
+          />
+          @if (nombre.invalid && nombre.touched) {
+            <span class="campo-error" role="alert">Escribe el nombre de la campaña.</span>
+          }
         </label>
       }
       <label>
         Plantilla (solo de marketing)
         <select
           name="plantilla"
+          #plantillaCampo="ngModel"
           [(ngModel)]="form.plantillaId"
           (ngModelChange)="form.plantillaId = $event; elegirPlantilla()"
           required
@@ -41,6 +56,9 @@
             </option>
           }
         </select>
+        @if (plantillaCampo.invalid && plantillaCampo.touched) {
+          <span class="campo-error" role="alert">Elige la plantilla del mensaje.</span>
+        }
         @if (plantilla(); as p) {
           @if (p.estado !== 'APPROVED') {
             <span class="sec"
@@ -52,12 +70,15 @@
       </label>
       <label>
         Lista de contactos
-        <select name="lista" [(ngModel)]="form.listaId" required>
+        <select name="lista" #lista="ngModel" [(ngModel)]="form.listaId" required>
           <option [ngValue]="null" disabled>Elige una lista</option>
           @for (l of opciones()?.listas ?? []; track l.id) {
             <option [ngValue]="l.id">{{ l.nombre }} ({{ l.miembros }})</option>
           }
         </select>
+        @if (lista.invalid && lista.touched) {
+          <span class="campo-error" role="alert">Elige a qué lista se envía.</span>
+        }
       </label>
       @for (p of form.parametros; track p.nombre) {
         <fieldset class="parametro">
@@ -77,6 +98,7 @@
           </label>
           <input
             [name]="'valor-' + p.nombre"
+            #valor="ngModel"
             [(ngModel)]="p.valor"
             required
             maxlength="500"
@@ -84,16 +106,37 @@
               p.fuente === 'NombreContacto' ? 'Si no tiene nombre (ej.: cliente)' : 'Texto'
             "
           />
+          @if (valor.invalid && valor.touched) {
+            <span class="campo-error" role="alert">Escribe el texto de este parámetro.</span>
+          }
         </fieldset>
       }
       <div class="fila-campos">
         <label>
           Enviar desde
-          <input type="datetime-local" name="programada" [(ngModel)]="form.programada" required />
+          <input
+            type="datetime-local"
+            name="programada"
+            #programada="ngModel"
+            [(ngModel)]="form.programada"
+            required
+          />
+          @if (programada.invalid && programada.touched) {
+            <span class="campo-error" role="alert">Indica desde cuándo se envía.</span>
+          }
         </label>
         <label>
           Vence (lo que no salió antes no se envía)
-          <input type="datetime-local" name="expira" [(ngModel)]="form.expira" required />
+          <input
+            type="datetime-local"
+            name="expira"
+            #expira="ngModel"
+            [(ngModel)]="form.expira"
+            required
+          />
+          @if (expira.invalid && expira.touched) {
+            <span class="campo-error" role="alert">Indica hasta cuándo vale la campaña.</span>
+          }
         </label>
       </div>
       <div class="barra acciones-form">

@@ -9,7 +9,10 @@
   <form (ngSubmit)="crear()" #f="ngForm">
     <label>
       Usuario
-      <input name="usuario" [(ngModel)]="nuevo.usuario" required autocomplete="off" />
+      <input name="usuario" #usuarioCampo="ngModel" [(ngModel)]="nuevo.usuario" required autocomplete="off" />
+      @if (usuarioCampo.invalid && usuarioCampo.touched) {
+        <span class="campo-error" role="alert">Escribe el nombre de usuario.</span>
+      }
     </label>
     <fieldset>
       <legend>Roles</legend>
@@ -29,10 +32,14 @@
       <input
         name="clave"
         type="password"
+        #claveCampo="ngModel"
         [(ngModel)]="nuevo.clave"
         required
         autocomplete="new-password"
       />
+      @if (claveCampo.invalid && claveCampo.touched) {
+        <span class="campo-error" role="alert">Escribe una clave temporal.</span>
+      }
     </label>
     <button type="submit" [disabled]="ocupado() || f.invalid || nuevo.roles.length === 0">
       Crear

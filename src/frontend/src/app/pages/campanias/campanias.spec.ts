@@ -74,6 +74,28 @@ describe('Campañas y aprobaciones', () => {
   });
   afterEach(() => http.verify());
 
+  it('Guardar borrador con campos vacíos muestra el error de cada campo y no llama a la Api (F1.8b)', async () => {
+    const fixture = TestBed.createComponent(Campanias);
+    fixture.detectChanges();
+    http.expectOne('/api/campanias').flush([]);
+    await estable(fixture);
+    const el = fixture.nativeElement as HTMLElement;
+    const boton = (texto: string) => Array.from(el.querySelectorAll('button')).find((b) => b.textContent?.trim() === texto)!;
+
+    boton('Nueva campaña').click();
+    http.expectOne('/api/campanias/opciones').flush({ plantillas: [], listas: [] });
+    await estable(fixture);
+    await estable(fixture);
+    boton('Guardar borrador').click();
+    await estable(fixture);
+
+    const errores = Array.from(el.querySelectorAll('.campo-error'), (e) => e.textContent?.trim());
+    expect(errores).toContain('Escribe el nombre de la campaña.');
+    expect(errores).toContain('Elige la plantilla del mensaje.');
+    expect(errores).toContain('Elige a qué lista se envía.');
+    http.expectNone((r) => r.method === 'POST');
+  });
+
   it('utc toma las fechas de la Api (sin Z) como UTC y vistaPrevia muestra los parámetros', () => {
     expect(utc('2026-11-18T14:00:00')!.toISOString()).toBe('2026-11-18T14:00:00.000Z');
     expect(utc('2026-11-18T14:00:00Z')!.toISOString()).toBe('2026-11-18T14:00:00.000Z');
