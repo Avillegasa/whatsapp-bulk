@@ -3,6 +3,7 @@ import { Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/rou
 import { AuthService } from '../core/auth.service';
 import { MENU, OpcionMenu } from '../core/menu';
 import { TEXTO_TEMA, TemaService } from '../core/tema';
+import { DialogoConfirmacion } from './dialogo-confirmacion';
 import { ICONOS } from './iconos';
 
 interface GrupoMenu {
@@ -17,7 +18,7 @@ interface GrupoMenu {
  */
 @Component({
   selector: 'app-shell',
-  imports: [RouterOutlet, RouterLink, RouterLinkActive],
+  imports: [RouterOutlet, RouterLink, RouterLinkActive, DialogoConfirmacion],
   template: `
     <a class="saltar" href="#principal" (click)="irAlContenido($event)">Saltar al contenido</a>
     <div class="marco">
@@ -105,6 +106,7 @@ interface GrupoMenu {
         <main class="pagina" id="principal" tabindex="-1"><router-outlet /></main>
       </div>
     </div>
+    <app-dialogo-confirmacion />
   `,
 })
 export class Shell {

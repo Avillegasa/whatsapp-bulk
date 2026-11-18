@@ -2,6 +2,7 @@ import { DatePipe } from '@angular/common';
 import { Component, inject, OnInit, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { AuthService, Rol } from '../../core/auth.service';
+import { ConfirmacionService } from '../../core/confirmacion';
 import { Resultado, Usuario, UsuariosService } from './usuarios.service';
 
 const ROLES: Rol[] = ['Operador', 'Aprobador', 'Admin'];
@@ -14,6 +15,7 @@ const ROLES: Rol[] = ['Operador', 'Aprobador', 'Admin'];
 })
 export class Usuarios implements OnInit {
   private readonly api = inject(UsuariosService);
+  private readonly confirmacion = inject(ConfirmacionService);
   protected readonly auth = inject(AuthService);
   protected readonly roles = ROLES;
 
@@ -75,7 +77,15 @@ export class Usuarios implements OnInit {
   }
 
   protected async cambiarActivo(u: Usuario): Promise<void> {
-    if (u.activo && !confirm(`¿Desactivar a ${u.usuario}? No podrá entrar y su sesión abierta se cierra.`)) {
+    if (
+      u.activo &&
+      !(await this.confirmacion.preguntar({
+        titulo: 'Desactivar usuario',
+        texto: `¿Desactivar a ${u.usuario}? No podrá entrar y su sesión abierta se cierra.`,
+        aceptar: 'Desactivar',
+        peligro: true,
+      }))
+    ) {
       return;
     }
     await this.accion(

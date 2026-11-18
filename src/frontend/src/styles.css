@@ -1993,3 +1993,47 @@ button.destacado {
 main.pagina:focus {
   outline: none;
 }
+
+/* ---------- 20. Diálogo de confirmación ---------- */
+.dialogo {
+  width: min(28rem, calc(100vw - 2rem));
+  padding: var(--e5);
+  border: 1px solid var(--borde);
+  border-radius: var(--r3);
+  background: var(--superficie);
+  color: var(--texto);
+  box-shadow: var(--sombra-3);
+}
+
+.dialogo::backdrop {
+  background: rgb(15 12 10 / 55%);
+}
+
+.dialogo h2 {
+  margin: 0 0 var(--e2);
+}
+
+.dialogo p {
+  color: var(--texto-2);
+}
+
+.dialogo-acciones {
+  justify-content: flex-end;
+  margin: var(--e5) 0 0;
+}
+
+button.peligro-solido {
+  background: var(--mal-solido);
+  border-color: var(--mal-solido);
+  color: #fff;
+}
+
+:root[data-tema='oscuro'] button.peligro-solido {
+  background: #b42318;
+  border-color: #b42318;
+}
+
+button.peligro-solido:hover:not(:disabled) {
+  background: #8f1c13;
+  border-color: #8f1c13;
+}

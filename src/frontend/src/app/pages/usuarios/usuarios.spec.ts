@@ -5,6 +5,7 @@ import { provideRouter } from '@angular/router';
 import { AuthService, Sesion } from '../../core/auth.service';
 import { Usuario } from './usuarios.service';
 import { Usuarios } from './usuarios';
+import { ConfirmacionService } from '../../core/confirmacion';
 
 const ANDRES: Usuario = { id: '1', usuario: 'andres', roles: ['Admin'], activo: true, bloqueadoHasta: null };
 const ANA: Usuario = { id: '2', usuario: 'ana', roles: ['Operador'], activo: true, bloqueadoHasta: null };
@@ -82,9 +83,10 @@ describe('Pantalla de usuarios', () => {
 
   it('desactivar pide confirmación y llama a la Api', async () => {
     await abrir([ANDRES, ANA]);
-    const confirmar = vi.spyOn(window, 'confirm').mockReturnValue(true);
+    const confirmar = vi.spyOn(TestBed.inject(ConfirmacionService), 'preguntar').mockResolvedValue(true);
 
     boton(1, 'Desactivar').click();
+    await new Promise((r) => setTimeout(r, 0)); // la confirmación es asíncrona (diálogo propio, F1.8b)
     await responder('/api/usuarios/2/desactivar', 'POST', { ...ANA, activo: false }, [ANDRES, { ...ANA, activo: false }]);
 
     expect(confirmar).toHaveBeenCalled();

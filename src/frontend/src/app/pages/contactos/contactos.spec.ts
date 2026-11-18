@@ -6,6 +6,7 @@ import { Importar } from '../importar/importar';
 import { Mensajes } from '../mensajes/mensajes';
 import { Contacto, Conversacion, Importacion } from './contactos.service';
 import { Contactos } from './contactos';
+import { ConfirmacionService } from '../../core/confirmacion';
 
 const ABIERTA: Conversacion = {
   contactoId: 1,
@@ -78,7 +79,7 @@ describe('Mensajes recientes', () => {
     fixture.detectChanges();
     http.expectOne('/api/mensajes').flush([ABIERTA]);
     await estable(fixture);
-    const confirmar = vi.spyOn(window, 'confirm').mockReturnValue(true);
+    const confirmar = vi.spyOn(TestBed.inject(ConfirmacionService), 'preguntar').mockResolvedValue(true);
 
     (fixture.nativeElement as HTMLElement).querySelector<HTMLButtonElement>('tbody button')!.click();
     await estable(fixture);

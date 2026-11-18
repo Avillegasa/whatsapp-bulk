@@ -2,6 +2,7 @@ import { DatePipe } from '@angular/common';
 import { Component, DestroyRef, inject, OnInit, signal } from '@angular/core';
 import { Consentimiento, ContactosService, Conversacion, TEXTO_CONSENTIMIENTO } from '../contactos/contactos.service';
 import { ICONOS } from '../../layout/iconos';
+import { ConfirmacionService } from '../../core/confirmacion';
 
 /** Cada cuánto se recarga la lista (para ver llegar la respuesta del cliente sin tocar nada). */
 export const RECARGA_MS = 15_000;
@@ -17,6 +18,7 @@ export const RECARGA_MS = 15_000;
 })
 export class Mensajes implements OnInit {
   private readonly api = inject(ContactosService);
+  private readonly confirmacion = inject(ConfirmacionService);
   protected readonly conversaciones = signal<Conversacion[] | null>(null);
   protected readonly errorCarga = signal<string | null>(null);
   protected readonly aviso = signal<{ tipo: 'ok' | 'error'; texto: string } | null>(null);
@@ -38,7 +40,12 @@ export class Mensajes implements OnInit {
 
   protected async ofrecer(c: Conversacion): Promise<void> {
     const quien = c.nombre ?? c.telefono ?? `contacto ${c.contactoId}`;
-    if (!confirm(`¿Enviar a ${quien} la pregunta para recibir promociones?`)) {
+    const si = await this.confirmacion.preguntar({
+      titulo: 'Ofrecer promociones',
+      texto: `¿Enviar a ${quien} la pregunta para recibir promociones?`,
+      aceptar: 'Enviar pregunta',
+    });
+    if (!si) {
       return;
     }
 
