@@ -1,6 +1,7 @@
 import { DatePipe } from '@angular/common';
 import { Component, DestroyRef, inject, OnInit, signal } from '@angular/core';
 import { Consentimiento, ContactosService, Conversacion, TEXTO_CONSENTIMIENTO } from '../contactos/contactos.service';
+import { ICONOS } from '../../layout/iconos';
 
 /** Cada cuánto se recarga la lista (para ver llegar la respuesta del cliente sin tocar nada). */
 export const RECARGA_MS = 15_000;
@@ -20,6 +21,7 @@ export class Mensajes implements OnInit {
   protected readonly errorCarga = signal<string | null>(null);
   protected readonly aviso = signal<{ tipo: 'ok' | 'error'; texto: string } | null>(null);
   protected readonly ocupado = signal<number | null>(null);
+  protected readonly iconos = ICONOS;
 
   constructor() {
     const id = setInterval(() => void this.cargar(), RECARGA_MS);

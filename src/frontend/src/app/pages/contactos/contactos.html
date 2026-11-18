@@ -4,7 +4,7 @@
   <p class="aviso" [class.error]="a.tipo === 'error'" role="status">{{ a.texto }}</p>
 }
 
-<form class="barra" (ngSubmit)="buscar()">
+<form class="barra caja filtros" (ngSubmit)="buscar()">
   <label>
     Consentimiento
     <select name="consentimiento" [(ngModel)]="filtro.consentimiento">
@@ -22,8 +22,8 @@
 </form>
 
 @if (elegidos().size > 0) {
-  <div class="barra caja">
-    <span>{{ elegidos().size }} elegido(s)</span>
+  <div class="barra caja seleccion">
+    <strong>{{ elegidos().size }} elegido(s)</strong>
     @if (listas().length === 0) {
       <span class="sec">Crea una lista en "Listas" para agregarlos.</span>
     } @else {
@@ -44,10 +44,10 @@
   <p class="aviso error" role="alert">{{ errorCarga() }}</p>
 } @else if (contactos(); as lista) {
   @if (lista.length === 0) {
-    <p>No hay contactos con ese filtro.</p>
+    <p class="vacio">No hay contactos con ese filtro.</p>
   } @else {
     <div class="tabla">
-      <table>
+      <table class="apilable">
         <thead>
           <tr>
             <th></th>
@@ -61,7 +61,7 @@
         <tbody>
           @for (c of lista; track c.id) {
             <tr [class.elegida]="elegidos().has(c.id)">
-              <td>
+              <td data-label="">
                 <input
                   type="checkbox"
                   [attr.aria-label]="'Elegir ' + (c.nombre ?? c.telefono)"
@@ -69,19 +69,19 @@
                   (change)="alternar(c.id)"
                 />
               </td>
-              <td>
-                {{ c.nombre ?? 'Sin nombre' }}<br />
+              <td data-label="Cliente">
+                <strong>{{ c.nombre ?? 'Sin nombre' }}</strong><br />
                 <span class="sec">{{ c.telefono ?? 'solo nombre de usuario' }}</span>
               </td>
-              <td>{{ c.clienteId ?? '—' }}</td>
-              <td>
+              <td data-label="Código">{{ c.clienteId ?? '—' }}</td>
+              <td data-label="Consentimiento">
                 <span class="estado {{ c.consentimiento }}">{{ texto(c.consentimiento) }}</span>
                 @if (c.bajaPlataforma) {
                   <br /><span class="sec">Detuvo el marketing en WhatsApp</span>
                 }
               </td>
-              <td>{{ c.ultimoMensajeUtc ? (c.ultimoMensajeUtc | date: 'dd/MM HH:mm') : '—' }}</td>
-              <td><button type="button" class="chico" (click)="ver(c)">Ver</button></td>
+              <td data-label="Último mensaje">{{ c.ultimoMensajeUtc ? (c.ultimoMensajeUtc | date: 'dd/MM HH:mm') : '—' }}</td>
+              <td data-label=""><button type="button" class="chico" (click)="ver(c)">Ver</button></td>
             </tr>
           }
         </tbody>
@@ -92,7 +92,7 @@
     }
   }
 } @else {
-  <p>Cargando…</p>
+  <p class="cargando">Cargando…</p>
 }
 
 @if (detalle(); as d) {
@@ -111,15 +111,15 @@
     @if (d.contacto.telefono && d.contacto.consentimiento !== 'OptOut' && d.contacto.consentimiento !== 'NoContactar') {
       <form class="fila" (ngSubmit)="registrarBaja(d)">
         <input name="motivo" [(ngModel)]="motivo" placeholder="Cómo pidió la baja (por ejemplo: llamó a la tienda)" required />
-        <button type="submit" [disabled]="ocupado() || !motivo.trim()">Registrar baja</button>
+        <button type="submit" class="peligro" [disabled]="ocupado() || !motivo.trim()">Registrar baja</button>
       </form>
     }
 
-    <h2>Historial de consentimiento</h2>
+    <h3>Historial de consentimiento</h3>
     @if (d.historial.length === 0) {
       <p class="sec">Sin registros.</p>
     } @else {
-      <ul>
+      <ul class="datos">
         @for (h of d.historial; track $index) {
           <li>
             {{ h.recordedUtc | date: 'dd/MM/yyyy HH:mm' }} · <strong>{{ h.status }}</strong> por {{ h.source }} ({{ h.recordedBy }})
@@ -131,11 +131,11 @@
       </ul>
     }
 
-    <h2>Ofertas de promociones</h2>
+    <h3>Ofertas de promociones</h3>
     @if (d.ofertas.length === 0) {
       <p class="sec">Nunca se le ofreció.</p>
     } @else {
-      <ul>
+      <ul class="datos">
         @for (o of d.ofertas; track o.id) {
           <li>
             {{ o.offeredUtc | date: 'dd/MM/yyyy HH:mm' }} por {{ o.offeredBy }} (texto {{ o.textVersion }}) · {{ o.status }}
@@ -147,11 +147,11 @@
       </ul>
     }
 
-    <h2>Últimos mensajes</h2>
+    <h3>Últimos mensajes</h3>
     @if (d.mensajes.length === 0) {
       <p class="sec">No escribió.</p>
     } @else {
-      <ul>
+      <ul class="datos">
         @for (m of d.mensajes; track m.id) {
           <li>{{ m.sentUtc | date: 'dd/MM HH:mm' }} · {{ m.text ?? '(' + m.type + ')' }}</li>
         }

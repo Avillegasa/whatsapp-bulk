@@ -14,7 +14,7 @@
     <p class="vacio">No hay campañas por aprobar.</p>
   } @else {
     <div class="tabla">
-      <table>
+      <table class="apilable">
         <thead>
           <tr>
             <th>Campaña</th>
@@ -27,14 +27,14 @@
         <tbody>
           @for (c of ps; track c.id) {
             <tr [class.elegida]="abierta()?.campana?.id === c.id">
-              <td>
+              <td data-label="Campaña">
                 <strong>{{ c.nombre }}</strong
                 >&ngsp;<span class="sec">v{{ c.version }}</span>
               </td>
-              <td>{{ c.plantilla }}</td>
-              <td>{{ c.destinatarios }}</td>
-              <td>{{ c.creadaPor }}</td>
-              <td>
+              <td data-label="Plantilla">{{ c.plantilla }}</td>
+              <td data-label="Destinatarios">{{ c.destinatarios }}</td>
+              <td data-label="Creada por">{{ c.creadaPor }}</td>
+              <td data-label="">
                 <button type="button" class="chico principal" (click)="ver(c)">Revisar</button>
               </td>
             </tr>

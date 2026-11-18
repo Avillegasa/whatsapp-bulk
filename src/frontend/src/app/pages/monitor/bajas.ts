@@ -27,17 +27,17 @@ import { Baja, MonitorService } from './monitor.service';
       @if (list.length === 0) {
         <p>No hay bajas vigentes.</p>
       } @else {
-        <table>
+        <table class="apilable">
           <thead>
             <tr><th>Contacto</th><th>Capa</th><th>Desde</th><th>Cómo</th></tr>
           </thead>
           <tbody>
             @for (b of list; track b.telefono + b.capa) {
               <tr>
-                <td>{{ b.nombre ?? 'Sin nombre' }} <span class="sec">{{ b.telefono }}</span></td>
-                <td>{{ b.capa }}{{ b.estado === 'NoContactar' ? ' (no contactar)' : '' }}</td>
-                <td>{{ fecha(b.desdeUtc) | date: 'dd/MM/yyyy HH:mm' }}</td>
-                <td>
+                <td data-label="Contacto">{{ b.nombre ?? 'Sin nombre' }} <span class="sec">{{ b.telefono }}</span></td>
+                <td data-label="Capa">{{ b.capa }}{{ b.estado === 'NoContactar' ? ' (no contactar)' : '' }}</td>
+                <td data-label="Desde">{{ fecha(b.desdeUtc) | date: 'dd/MM/yyyy HH:mm' }}</td>
+                <td data-label="Cómo">
                   {{ b.fuente }}
                   @if (b.evidencia) {
                     <br /><span class="sec">{{ b.evidencia }}</span>

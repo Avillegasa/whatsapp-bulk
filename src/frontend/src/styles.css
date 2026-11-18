@@ -1618,3 +1618,123 @@ button.grande {
     grid-template-columns: minmax(0, 1fr);
   }
 }
+
+/* ---------- 16. Mensajes recientes y Contactos ---------- */
+.burbuja-entrante {
+  display: inline-block;
+  max-width: 28rem;
+  padding: var(--e1) var(--e3);
+  border-radius: 2px var(--r2) var(--r2) var(--r2);
+  background: var(--superficie-3);
+  color: var(--texto);
+  overflow-wrap: anywhere;
+}
+
+.filtros {
+  align-items: flex-end;
+  padding: var(--e4);
+}
+
+.seleccion {
+  position: sticky;
+  top: calc(var(--alto-cabecera) + var(--e2));
+  z-index: 5;
+  border-color: var(--tinta);
+  box-shadow: var(--sombra-2);
+}
+
+.detalle > .barra:first-child {
+  align-items: center;
+}
+
+.detalle > .barra:first-child h2 {
+  margin: 0;
+}
+
+/* ---------- 17. Tablas apiladas en móvil ----------
+ * Las tablas con class="apilable" pasan a tarjetas: cada fila es una tarjeta y cada celda muestra arriba el título
+ * de su columna (atributo data-label). Así ninguna acción queda fuera de la pantalla en un teléfono. */
+button.destacado {
+  white-space: nowrap;
+}
+
+.filtros label:has(input) {
+  flex: 1 1 18rem;
+}
+
+@media (max-width: 700px) {
+  .tabla:has(> table.apilable) {
+    overflow: visible;
+    background: transparent;
+    border: 0;
+    box-shadow: none;
+  }
+
+  table.apilable,
+  table.apilable tbody,
+  table.apilable tr,
+  table.apilable td {
+    display: block;
+    width: 100%;
+  }
+
+  table.apilable thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+  }
+
+  table.apilable tr {
+    margin: 0 0 var(--e3);
+    padding: var(--e2) 0;
+    background: var(--superficie);
+    border: 1px solid var(--borde);
+    border-radius: var(--r3);
+    box-shadow: var(--sombra-1);
+  }
+
+  table.apilable tr.elegida {
+    border-color: var(--marca);
+    box-shadow: 0 0 0 1px var(--marca);
+  }
+
+  table.apilable tbody tr:hover td,
+  table.apilable tr.elegida td {
+    background: transparent;
+  }
+
+  table.apilable tr.elegida td:first-child {
+    box-shadow: none;
+  }
+
+  table.apilable td {
+    padding: var(--e2) var(--e4);
+    border: 0;
+  }
+
+  table.apilable td::before {
+    content: attr(data-label);
+    display: block;
+    margin-bottom: 2px;
+    color: var(--texto-3);
+    font-size: 0.6875rem;
+    font-weight: 650;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+  }
+
+  table.apilable td[data-label='']::before {
+    display: none;
+  }
+
+  table.apilable td:first-child {
+    font-size: var(--t-md);
+  }
+
+  table.apilable button.destacado {
+    width: 100%;
+    min-height: 2.75rem;
+  }
+}

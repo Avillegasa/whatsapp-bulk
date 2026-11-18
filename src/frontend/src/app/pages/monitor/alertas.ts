@@ -38,19 +38,19 @@ const QUE_REVISAR: Record<string, string> = {
       @if (list.length === 0) {
         <p>No hay alertas abiertas.</p>
       } @else {
-        <table>
+        <table class="apilable">
           <thead>
             <tr><th>Alerta</th><th>Veces</th><th>Última</th></tr>
           </thead>
           <tbody>
             @for (a of list; track a.id) {
               <tr>
-                <td>
+                <td data-label="Alerta">
                   <strong>{{ a.tipo }}</strong> {{ a.mensaje }} <span class="sec">({{ a.origen }})</span>
                   <br /><span class="sec">{{ queRevisar(a.tipo) }}</span>
                 </td>
-                <td>{{ a.ocurrencias }}</td>
-                <td>{{ fecha(a.ultimaUtc) | date: 'dd/MM HH:mm' }}</td>
+                <td data-label="Veces">{{ a.ocurrencias }}</td>
+                <td data-label="Última">{{ fecha(a.ultimaUtc) | date: 'dd/MM HH:mm' }}</td>
               </tr>
             }
           </tbody>

@@ -105,7 +105,7 @@
     <p class="vacio">No hay campañas programadas, enviando, en pausa ni recién enviadas.</p>
   } @else {
     <div class="tabla">
-      <table class="tabla-monitor">
+      <table class="apilable tabla-monitor">
         <thead>
           <tr>
             <th>Campaña</th>
@@ -120,7 +120,7 @@
         <tbody>
           @for (c of t.campanias; track c.campanaId) {
             <tr>
-              <td>
+              <td data-label="Campaña">
                 <strong>{{ c.nombre }}</strong>&ngsp;<span class="sec">v{{ c.version }}</span>
                 <div class="etiquetas">
                   <span class="estado {{ c.estado }}">{{ estado(c.estado) }}</span>
@@ -130,30 +130,30 @@
                   }
                 </div>
               </td>
-              <td class="num">
+              <td data-label="En cola" class="num">
                 {{ c.enCola + c.enviandose }}
                 @if (c.enEspera > 0) {
                   <br /><span class="sec">{{ c.enEspera }} en espera (pausa)</span>
                 }
               </td>
-              <td class="num cifra ok">{{ c.enviados }}</td>
-              <td class="num">
+              <td data-label="Enviados" class="num cifra ok">{{ c.enviados }}</td>
+              <td data-label="Entregados" class="num">
                 <span class="cifra ok">{{ c.entregados }}</span>&ngsp;<span class="sec"
                   >{{ porcentaje(c.entregados, c.enviados) }} %</span
                 >
               </td>
-              <td class="num">
+              <td data-label="Leídos" class="num">
                 <span class="cifra info">{{ c.leidos }}</span>&ngsp;<span class="sec"
                   >{{ porcentaje(c.leidos, c.enviados) }} %</span
                 >
               </td>
-              <td class="num">
+              <td data-label="Fallidos" class="num">
                 <span class="cifra" [class.mal]="c.fallidos > 0">{{ c.fallidos }}</span>
                 @if (c.vencidos > 0) {
                   <br /><span class="sec">{{ c.vencidos }} vencidos</span>
                 }
               </td>
-              <td>
+              <td data-label="Omitidos">
                 @for (o of c.omitidos | keyvalue; track o.key) {
                   <span class="sec">{{ o.value }} {{ omision(o.key) }}</span
                   ><br />

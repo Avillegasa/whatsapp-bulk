@@ -1,8 +1,15 @@
-<h1>Mensajes recientes</h1>
+<div class="encabezado-pagina">
+  <h1>Mensajes recientes</h1>
+  <div class="barra">
+    <button type="button" class="chico" (click)="cargar()">
+      <svg class="icono" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="iconos['actualizar']" /></svg>
+      Actualizar
+    </button>
+  </div>
+</div>
 <p class="ayuda">
   Clientes que escribieron en los últimos 7 días. Puedes ofrecerles promociones mientras su ventana de 24 h esté abierta;
   su respuesta se registra sola. La lista se actualiza cada 15 segundos.
-  <button type="button" class="chico" (click)="cargar()">Actualizar</button>
 </p>
 
 @if (aviso(); as a) {
@@ -13,10 +20,10 @@
   <p class="aviso error" role="alert">{{ errorCarga() }}</p>
 } @else if (conversaciones(); as lista) {
   @if (lista.length === 0) {
-    <p>Nadie escribió en los últimos 7 días.</p>
+    <p class="vacio">Nadie escribió en los últimos 7 días.</p>
   } @else {
     <div class="tabla">
-      <table>
+      <table class="apilable">
         <thead>
           <tr>
             <th>Cliente</th>
@@ -29,24 +36,25 @@
         <tbody>
           @for (c of lista; track c.contactoId) {
             <tr>
-              <td>
-                {{ c.nombre ?? 'Sin nombre' }}<br />
+              <td data-label="Cliente">
+                <strong>{{ c.nombre ?? 'Sin nombre' }}</strong><br />
                 <span class="sec">{{ c.telefono ?? 'solo nombre de usuario' }}</span>
               </td>
-              <td>
-                {{ c.texto ?? '(' + c.tipo + ')' }}<br />
+              <td data-label="Último mensaje">
+                <span class="burbuja-entrante">{{ c.texto ?? '(' + c.tipo + ')' }}</span><br />
                 <span class="sec">{{ c.fechaUtc | date: 'dd/MM HH:mm' }}</span>
               </td>
-              <td>{{ c.ventanaHastaUtc | date: 'dd/MM HH:mm' }}</td>
-              <td><span class="estado {{ c.consentimiento }}">{{ texto(c.consentimiento) }}</span></td>
-              <td>
+              <td data-label="Ventana abierta hasta">{{ c.ventanaHastaUtc | date: 'dd/MM HH:mm' }}</td>
+              <td data-label="Consentimiento"><span class="estado {{ c.consentimiento }}">{{ texto(c.consentimiento) }}</span></td>
+              <td data-label="Oferta">
                 @if (c.respuesta) {
                   <span class="sec">Respondió: {{ c.respuesta === 'Si' ? 'Sí' : 'Ahora no' }}</span><br />
                 } @else if (c.ultimaOferta) {
                   <span class="sec">Última oferta: {{ c.ultimaOferta }}</span><br />
                 }
                 @if (c.puedeOfrecer) {
-                  <button type="button" class="principal chico" [disabled]="ocupado() !== null" (click)="ofrecer(c)">
+                  <button type="button" class="destacado" [disabled]="ocupado() !== null" (click)="ofrecer(c)">
+                    <svg class="icono" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="iconos['enviar']" /></svg>
                     Ofrecer promociones
                   </button>
                 } @else {
@@ -60,5 +68,5 @@
     </div>
   }
 } @else {
-  <p>Cargando…</p>
+  <p class="cargando">Cargando…</p>
 }

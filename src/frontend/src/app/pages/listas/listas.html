@@ -23,7 +23,7 @@
   @if (ls.length === 0) {
     <p>Todavía no hay listas.</p>
   } @else {
-    <table>
+    <table class="apilable">
       <thead>
         <tr>
           <th>Lista</th>
@@ -35,15 +35,15 @@
       <tbody>
         @for (l of ls; track l.id) {
           <tr>
-            <td>
+            <td data-label="Lista">
               {{ l.nombre }}
               @if (l.descripcion) {
                 <br /><span class="sec">{{ l.descripcion }}</span>
               }
             </td>
-            <td>{{ l.miembros }}</td>
-            <td>{{ l.creadaPor }}</td>
-            <td><button type="button" class="chico" (click)="ver(l)">Ver contactos</button></td>
+            <td data-label="Contactos">{{ l.miembros }}</td>
+            <td data-label="Creada por">{{ l.creadaPor }}</td>
+            <td data-label=""><button type="button" class="chico" (click)="ver(l)">Ver contactos</button></td>
           </tr>
         }
       </tbody>

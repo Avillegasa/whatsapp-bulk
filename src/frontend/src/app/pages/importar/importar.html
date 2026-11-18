@@ -52,7 +52,7 @@
     <p>Sin errores ni advertencias.</p>
   } @else {
     <div class="tabla">
-      <table>
+      <table class="apilable">
         <thead>
           <tr>
             <th>Fila</th>
@@ -64,10 +64,10 @@
         <tbody>
           @for (f of filas(); track f.row) {
             <tr>
-              <td>{{ f.row }}</td>
-              <td>{{ f.phone ?? '—' }}</td>
-              <td><span class="estado {{ f.result }}">{{ f.result }}</span></td>
-              <td>{{ f.message }}</td>
+              <td data-label="Fila">{{ f.row }}</td>
+              <td data-label="Teléfono">{{ f.phone ?? '—' }}</td>
+              <td data-label="Resultado"><span class="estado {{ f.result }}">{{ f.result }}</span></td>
+              <td data-label="Detalle">{{ f.message }}</td>
             </tr>
           }
         </tbody>

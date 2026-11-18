@@ -23,22 +23,22 @@ import { Incierto, MonitorService } from './monitor.service';
       @if (list.length === 0) {
         <p>No hay envíos inciertos.</p>
       } @else {
-        <table>
+        <table class="apilable">
           <thead>
             <tr><th>Contacto</th><th>Campaña</th><th>Enviado</th><th></th></tr>
           </thead>
           <tbody>
             @for (i of list; track i.trabajoId) {
               <tr>
-                <td>{{ i.nombre ?? 'Sin nombre' }} <span class="sec">{{ i.telefono }}</span></td>
-                <td>{{ i.campana ?? 'envío de prueba' }}</td>
-                <td>
+                <td data-label="Contacto">{{ i.nombre ?? 'Sin nombre' }} <span class="sec">{{ i.telefono }}</span></td>
+                <td data-label="Campaña">{{ i.campana ?? 'envío de prueba' }}</td>
+                <td data-label="Enviado">
                   {{ fecha(i.inicioUtc) | date: 'dd/MM HH:mm' }}
                   @if (i.vencido) {
                     <br /><span class="estado PendingApproval">vencido</span>
                   }
                 </td>
-                <td>
+                <td data-label="">
                   <button type="button" class="chico" [disabled]="ocupado()" (click)="marcar(i, true)">Llegó</button>
                   <button type="button" class="chico" [disabled]="ocupado()" (click)="marcar(i, false)">No llegó</button>
                 </td>

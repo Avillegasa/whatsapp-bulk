@@ -109,7 +109,7 @@
     <p class="vacio">Todavía no hay campañas.</p>
   } @else {
     <div class="tabla">
-      <table>
+      <table class="apilable">
         <thead>
           <tr>
             <th>Campaña</th>
@@ -123,22 +123,22 @@
         <tbody>
           @for (c of cs; track c.id) {
             <tr [class.elegida]="abierta()?.campana?.id === c.id">
-              <td>
+              <td data-label="Campaña">
                 <strong>{{ c.nombre }}</strong>&ngsp;<span class="sec">v{{ c.version }}</span>
                 @if (c.motivo) {
                   <br /><span class="sec">{{ c.motivo }}</span>
                 }
               </td>
-              <td>
+              <td data-label="Estado">
                 <span class="estado {{ c.estado }}">{{ estado(c.estado) }}</span>
               </td>
-              <td>{{ c.plantilla }}</td>
-              <td>{{ c.destinatarios }}</td>
-              <td>
+              <td data-label="Plantilla">{{ c.plantilla }}</td>
+              <td data-label="Destinatarios">{{ c.destinatarios }}</td>
+              <td data-label="Envío">
                 {{ fecha(c.programadaUtc) | date: 'dd/MM HH:mm' }}
                 <br /><span class="sec">vence {{ fecha(c.expiraUtc) | date: 'dd/MM HH:mm' }}</span>
               </td>
-              <td><button type="button" class="chico" (click)="ver(c.id)">Ver</button></td>
+              <td data-label=""><button type="button" class="chico" (click)="ver(c.id)">Ver</button></td>
             </tr>
           }
         </tbody>

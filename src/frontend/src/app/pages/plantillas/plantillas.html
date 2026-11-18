@@ -1,16 +1,17 @@
-<h1>Plantillas</h1>
+<div class="encabezado-pagina">
+  <h1>Plantillas</h1>
+  <div class="barra">
+    <button type="button" [disabled]="ocupado()" (click)="cargar()">Actualizar</button>
+    <button type="button" [disabled]="ocupado()" (click)="creando.set(!creando())">
+      {{ creando() ? 'Cerrar' : 'Nueva plantilla' }}
+    </button>
+    <button type="button" class="principal" [disabled]="ocupado()" (click)="sincronizar()">Sincronizar con Meta</button>
+  </div>
+</div>
 
 @if (aviso(); as a) {
   <p class="aviso" [class.error]="a.tipo === 'error'" role="status">{{ a.texto }}</p>
 }
-
-<div class="barra">
-  <button type="button" class="principal" [disabled]="ocupado()" (click)="sincronizar()">Sincronizar con Meta</button>
-  <button type="button" [disabled]="ocupado()" (click)="cargar()">Actualizar</button>
-  <button type="button" [disabled]="ocupado()" (click)="creando.set(!creando())">
-    {{ creando() ? 'Cerrar' : 'Nueva plantilla' }}
-  </button>
-</div>
 <p class="ayuda">
   Meta revisa cada plantilla nueva; el resultado (Aprobada o Rechazada) llega solo por webhook en unos minutos. Pulsa
   "Actualizar" para verlo.
@@ -84,10 +85,10 @@
 
 @if (plantillas(); as ps) {
   @if (ps.length === 0) {
-    <p>Todavía no hay plantillas. Pulsa "Sincronizar con Meta" para traer las de la cuenta.</p>
+    <p class="vacio">Todavía no hay plantillas. Pulsa "Sincronizar con Meta" para traer las de la cuenta.</p>
   } @else {
     <div class="tabla">
-      <table>
+      <table class="apilable">
         <thead>
           <tr>
             <th>Plantilla</th>
@@ -100,24 +101,24 @@
         <tbody>
           @for (p of ps; track p.id) {
             <tr [class.elegida]="abierta()?.plantilla?.id === p.id">
-              <td>
-                {{ p.nombre }} <span class="sec">{{ p.idioma }}</span>
+              <td data-label="Plantilla">
+                <strong>{{ p.nombre }}</strong>&ngsp;<span class="sec">{{ p.idioma }}</span>
                 @if (p.motivo) {
                   <br /><span class="sec">{{ p.motivo }}</span>
                 }
               </td>
-              <td>
+              <td data-label="Categoría">
                 {{ p.categoria }}
                 @if (p.categoriaNueva) {
                   <br /><span class="sec">Pasará a {{ p.categoriaNueva }}</span>
                 }
               </td>
-              <td>
+              <td data-label="Estado">
                 <span class="estado {{ claseEstado(p.estado) }}">{{ estado(p.estado) }}</span>
                 <br /><span class="sec">{{ p.estadoUtc | date: 'dd/MM HH:mm' }}</span>
               </td>
-              <td>{{ p.calidad ?? '—' }}</td>
-              <td><button type="button" class="chico" (click)="ver(p)">Ver</button></td>
+              <td data-label="Calidad">{{ p.calidad ?? '—' }}</td>
+              <td data-label=""><button type="button" class="chico" (click)="ver(p)">Ver</button></td>
             </tr>
           }
         </tbody>
@@ -125,7 +126,7 @@
     </div>
   }
 } @else {
-  <p>Cargando…</p>
+  <p class="cargando">Cargando…</p>
 }
 
 @if (abierta(); as d) {

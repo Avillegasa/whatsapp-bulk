@@ -34,7 +34,7 @@
 @if (errorCarga()) {
   <p class="aviso error" role="alert">{{ errorCarga() }}</p>
 } @else if (usuarios(); as lista) {
-  <table>
+  <table class="apilable">
     <thead>
       <tr>
         <th>Usuario</th>
@@ -46,13 +46,13 @@
     <tbody>
       @for (u of lista; track u.id) {
         <tr [class.inactivo]="!u.activo">
-          <td>
+          <td data-label="Usuario">
             {{ u.usuario }}
             @if (esYo(u)) {
               <span class="yo">(tú)</span>
             }
           </td>
-          <td>
+          <td data-label="Roles">
             @for (rol of roles; track rol) {
               <label class="check">
                 <input
@@ -68,13 +68,13 @@
               <button type="button" class="chico" [disabled]="ocupado()" (click)="guardarRoles(u)">Guardar roles</button>
             }
           </td>
-          <td>
+          <td data-label="Estado">
             {{ u.activo ? 'Activo' : 'Desactivado' }}
             @if (bloqueado(u)) {
               <br /><span class="bloqueo">Bloqueado hasta {{ u.bloqueadoHasta | date: 'HH:mm' }}</span>
             }
           </td>
-          <td class="acciones">
+          <td data-label="Acciones" class="acciones">
             @if (!esYo(u)) {
               <button type="button" [disabled]="ocupado()" (click)="cambiarActivo(u)">
                 {{ u.activo ? 'Desactivar' : 'Activar' }}
