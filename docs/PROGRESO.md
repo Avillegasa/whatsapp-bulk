@@ -1,8 +1,8 @@
 # Progreso
 
-**Fase actual:** Fase 1 — Demo interna (D-028)
-**Siguiente tarea:** visto bueno de Andrés a F1.8b (diseño, antes de la demo); luego terminar F1.5 (pasos 6–9) y las pruebas reales de F1.6 y F1.7 cuando Meta apruebe `promo_f15` o `promo_demo`. F1.9 (Docker) necesita la decisión D-006 (dónde corre SQL Server en producción) y dónde se publica el receptor con HTTPS. F1.1 sigue en curso con Andrés (Claude desktop)
-**Última actualización:** 2026-11-18
+**Fase actual:** EN PAUSA desde 2026-11-19 (D-040) — se desarrolla una solución in-house como proyecto nuevo (SDD)
+**Siguiente tarea:** ninguna en este repo. Traspaso en `docs/traspaso/` (documento, skills SDD y `CLAUDE.md` inicial para el repo nuevo). Al pausar: Fase 1 detenida con F1.1, F1.5 y F1.7 en curso, F1.6 y F1.8 hechas sin verificar, F1.9 y F1.10 pendientes
+**Última actualización:** 2026-11-19
 
 ## Estado de tareas
 
@@ -73,6 +73,14 @@ Estados: Pendiente · En curso · Hecho (sin verificar) · Verificado · Bloquea
 - Datos de desarrollo: los intentos 01A1E617… y 01A1E975… quedaron con `EstadoEntrega` = Read por el replay de F0.8 (no es una lectura real).
 
 ## Bitácora (lo más reciente arriba)
+
+### 2026-11-19 — Proyecto en pausa y traspaso a la solución in-house (Claude Code)
+- Contexto: tras la reunión con gerencia se acordó desarrollar una solución in-house como proyecto nuevo, desde cero con SDD, con activos reales de Meta desde el inicio y un alcance más amplio que las promociones (D-040).
+- Hecho: `docs/traspaso/TRASPASO-INHOUSE.md` (estado del PoC, qué se probó en real y qué no, insumos para `specs/mission.md`, `tech-stack.md` y `roadmap.md`, modelo de datos, reglas, lecciones de Meta, alcance ampliado, recomendaciones, riesgos, banco de preguntas para `/grill-me`, roadmap sugerido, mapa al código y catálogo D-001…D-039 con su estado); skills `sdd-planificar`, `sdd-feature`, `sdd-implementar`, `sdd-adversarial` y `sdd-cerrar` con plantillas; `CLAUDE-inicial.md` y `README.md` del paquete. Fuentes: docs del repo, documento de diseño en Claude Docs y comandos del plugin de Codex instalado (1.0.6).
+- Verificación: sin código cambiado; `git status` solo con documentación.
+- Decisiones: D-040.
+- Pendientes: checklist de cierre del PoC (traspaso, sección 19.2: token `wabulk-poc`, túnel `avit-agenticwpp`, contenedor de SQL Server, Claude desktop).
+- Siguiente: ninguna en este repo; planificación en el repo nuevo con la skill `sdd-planificar`.
 
 ### 2026-11-18 — Túnel renombrado con prefijo avit (pedido de Infraestructura)
 - Hecho: regla 13 en CLAUDE.md, D-039, META-SETUP B.2 y comando del túnel actualizados a `avit-agenticwpp`.

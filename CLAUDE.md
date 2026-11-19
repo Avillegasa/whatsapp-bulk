@@ -2,6 +2,8 @@
 
 Sistema interno de la empresa para enviar promociones por WhatsApp a clientes con consentimiento, usando la API oficial de Meta (Cloud API). Sin BSP, sin WhatsApp Web, sin extensiones.
 
+> **Proyecto en pausa desde 2026-11-19 (D-040).** La gerencia acordó desarrollar una solución in-house como proyecto nuevo (SDD). Este repo queda como referencia: solo consultas puntuales, sin tareas nuevas. Todo lo que se lleva al proyecto nuevo está en `docs/traspaso/` (empezar por `docs/traspaso/README.md`).
+
 ## Antes de cualquier tarea (obligatorio)
 
 1. Lee `docs/PROGRESO.md` (estado, siguiente tarea, última sesión) y la tarea en `docs/PLAN.md`.
